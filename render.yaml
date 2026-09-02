@@ -1,0 +1,44 @@
+databases:
+  - name: smm-panel-db
+    plan: free
+    postgresMajorVersion: "16"
+
+services:
+  - type: web
+    name: smm-panel
+    runtime: node
+    plan: free
+    region: oregon
+    branch: main
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: smm-panel-db
+          property: connectionString
+      - key: ADMIN_EMAILS
+        sync: false
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false
+      - key: KASHIER_MERCHANT_ID
+        sync: false
+      - key: KASHIER_API_KEY
+        sync: false
+      - key: KASHIER_WEBHOOK_SECRET
+        sync: false
+      - key: KASHIER_MODE
+        value: live
+      - key: KASHIER_CHECKOUT_URL
+        value: https://checkout.kashier.io/
+      - key: KASHIER_CURRENCY
+        value: EGP
+      - key: CURRENCY
+        value: EGP

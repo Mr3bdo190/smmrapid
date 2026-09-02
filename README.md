@@ -61,3 +61,23 @@ A full integration test still requires your real PostgreSQL, Firebase, payment g
 
 ### Database networking
 Runtime PostgreSQL connections are configured with Node `family: 4`, so the panel uses IPv4 for PostgreSQL. Use a database hostname that has an IPv4 (A) record or an explicit IPv4 address.
+
+## Deploying on Render
+
+This repo includes a `render.yaml` Blueprint, so Render can provision the web service and a managed Postgres database together.
+
+1. Push this project to a GitHub/GitLab repository.
+2. In the Render dashboard: **New → Blueprint**, point it at the repo. Render reads `render.yaml` and proposes a web service (`smm-panel`) plus a Postgres database (`smm-panel-db`).
+3. Click **Apply**. `DATABASE_URL` is wired automatically from the database. Fill in the remaining secrets it prompts for (they're `sync: false` so Render asks you): `ADMIN_EMAILS`, `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`, `KASHIER_MERCHANT_ID`, `KASHIER_API_KEY`, `KASHIER_WEBHOOK_SECRET`.
+4. After the first deploy, open a Render **Shell** on the service (or run locally against the same `DATABASE_URL`) and apply the migrations in order:
+   ```
+   psql "$DATABASE_URL" -f drizzle/0000_worried_scourge.sql
+   psql "$DATABASE_URL" -f drizzle/0001_production_hardening.sql
+   psql "$DATABASE_URL" -f drizzle/0002_security_and_indexes.sql
+   psql "$DATABASE_URL" -f drizzle/0003_auth_reliability.sql
+   ```
+5. Confirm `GET /api/health` returns `{"ok":true}` — this is also the Render health check path.
+6. Log in once with the account you listed in `ADMIN_EMAILS` so it gets promoted to admin, then go to `/admin/providers` and add a real SMM provider, and `/admin/settings` to set the site name/currency/support email.
+7. Only switch `KASHIER_MODE` to `live` (already the default in `render.yaml`) once you've completed one real end-to-end payment test against your Kashier merchant account.
+
+If you deploy without the Blueprint (manual Web Service), set the **Build Command** to `npm ci && npm run build`, the **Start Command** to `npm start`, and add the same environment variables from `.env.example` in the Render dashboard.

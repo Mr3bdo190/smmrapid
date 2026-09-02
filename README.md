@@ -81,3 +81,6 @@ This repo includes a `render.yaml` Blueprint, so Render can provision the web se
 7. Only switch `KASHIER_MODE` to `live` (already the default in `render.yaml`) once you've completed one real end-to-end payment test against your Kashier merchant account.
 
 If you deploy without the Blueprint (manual Web Service), set the **Build Command** to `npm ci && npm run build`, the **Start Command** to `npm start`, and add the same environment variables from `.env.example` in the Render dashboard.
+
+## Heleket payments
+The panel supports Heleket invoice payments. Configure `HELEKET_MERCHANT_ID`, `HELEKET_PAYMENT_API_KEY`, `HELEKET_CURRENCY`, and `PUBLIC_APP_URL`. The server signs API requests using Heleket's documented MD5(base64(JSON body)+API key) scheme and verifies the `sign` included in webhook bodies. Configure Heleket's callback URL as `https://YOUR_DOMAIN/api/heleket/webhook`. The uploaded Heleket verification file is served from `/heleket_0c30774c.html`.

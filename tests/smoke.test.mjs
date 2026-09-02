@@ -65,6 +65,18 @@ test('production build does not silently use Kashier test mode', () => {
   assert.ok(server.includes("isProd && mode !== 'live'"));
 });
 
+test('Heleket gateway and verification file are wired', () => {
+  const server = fs.readFileSync('server.ts', 'utf8');
+  const client = fs.readFileSync('src/pages/client/ClientAddFunds.tsx', 'utf8');
+  assert.match(server, /\/api\/heleket\/create/);
+  assert.match(server, /\/api\/heleket\/webhook/);
+  assert.match(server, /HELEKET_PAYMENT_API_KEY/);
+  assert.match(server, /createHash\('md5'\)/);
+  assert.match(server, /payment_status|status/);
+  assert.match(client, /Crypto \(Heleket\)/);
+  assert.ok(fs.existsSync('public/heleket_0c30774c.html'));
+});
+
 test('provider and API key hardening is present', () => {
   assert.ok(server.includes('assertSafeProviderUrl'));
   assert.ok(server.includes('hashApiKey'));

@@ -7,7 +7,7 @@ import { Wallet, CreditCard } from 'lucide-react';
 export default function ClientAddFunds() {
   const { user } = useAuth();
   const [amount, setAmount] = useState<number | ''>('');
-  const [paymentMethod, setPaymentMethod] = useState<'vodafone' | 'kashier'>('vodafone');
+  const [paymentMethod, setPaymentMethod] = useState<'vodafone' | 'kashier' | 'heleket'>('vodafone');
   const [phoneNumber, setPhoneNumber] = useState('');
 
   const { data: config } = useQuery({
@@ -21,7 +21,15 @@ export default function ClientAddFunds() {
   const submitPayment = useMutation({
     mutationFn: async (payload: any) => {
       const token = await user?.getIdToken();
-      if (paymentMethod === 'kashier') {
+      if (paymentMethod === 'heleket') {
+        const res = await fetch('/api/heleket/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ amount: payload.amount })
+        });
+        if (!res.ok) throw new Error((await res.json()).error || 'Heleket payment init failed');
+        return res.json();
+      } else if (paymentMethod === 'kashier') {
         const res = await fetch('/api/kashier/create', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -40,7 +48,7 @@ export default function ClientAddFunds() {
       }
     },
     onSuccess: (data) => {
-      if (paymentMethod === 'kashier' && data.paymentUrl) {
+      if ((paymentMethod === 'kashier' || paymentMethod === 'heleket') && data.paymentUrl) {
         window.location.href = data.paymentUrl;
       } else {
         toast.success('Payment request submitted for review!');
@@ -66,6 +74,9 @@ export default function ClientAddFunds() {
         </button>
         <button onClick={() => setPaymentMethod('kashier')} className={`flex-1 py-4 px-6 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${paymentMethod === 'kashier' ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-gray-200 hover:bg-gray-50 text-gray-600'}`}>
           <CreditCard className="w-8 h-8" /> <span className="font-semibold">Credit/Debit (Kashier)</span>
+        </button>
+        <button onClick={() => setPaymentMethod('heleket')} className={`flex-1 py-4 px-6 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${paymentMethod === 'heleket' ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-gray-200 hover:bg-gray-50 text-gray-600'}`}>
+          <CreditCard className="w-8 h-8" /> <span className="font-semibold">Crypto (Heleket)</span>
         </button>
       </div>
 

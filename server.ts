@@ -296,6 +296,112 @@ const paymentApprove = async (paymentId: string, adminId: string) => {
 app.put('/api/admin/payments/:id/approve', requireAuth, requireAdmin, async (req: any, res) => { try { const changed = await paymentApprove(req.params.id, req.dbUser.id); if (!changed) return apiError(res, 409, 'Payment already resolved', 'ALREADY_RESOLVED'); await audit(req.dbUser.id, 'APPROVE_PAYMENT', 'PAYMENT', req.params.id); res.json({ success: true }); } catch (e: any) { apiError(res, 400, e.message); } });
 app.put('/api/admin/payments/:id/reject', requireAuth, requireAdmin, async (req: any, res) => { try { await db.transaction(async tx => { const [p] = await tx.select().from(payments).where(eq(payments.id, req.params.id)).for('update'); if (!p) throw new Error('Payment not found'); if (p.status !== 'Pending') throw new Error('Payment already resolved'); await tx.update(payments).set({ status: 'Rejected', resolvedAt: new Date() }).where(eq(payments.id, p.id)); }); await audit(req.dbUser.id, 'REJECT_PAYMENT', 'PAYMENT', req.params.id); res.json({ success: true }); } catch (e: any) { apiError(res, 400, e.message); } });
 
+// Heleket crypto payment gateway.
+// API authentication: MD5(base64(JSON body) + payment API key).
+const heleketJson = (value: any) => JSON.stringify(value).replace(/\\\//g, '\\/');
+const heleketSign = (body: string, apiKey: string) => crypto.createHash('md5').update(Buffer.from(body).toString('base64') + apiKey).digest('hex');
+const heleketApiPost = async (pathName: string, payload: any) => {
+  const merchant = process.env.HELEKET_MERCHANT_ID;
+  const apiKey = process.env.HELEKET_PAYMENT_API_KEY;
+  if (!merchant || !apiKey) throw Object.assign(new Error('Heleket gateway is not configured'), { code: 'GATEWAY_NOT_CONFIGURED' });
+  const body = heleketJson(payload);
+  const response = await fetch(`https://api.heleket.com${pathName}`, {
+    method: 'POST',
+    headers: { merchant, sign: heleketSign(body, apiKey), 'Content-Type': 'application/json' },
+    body,
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok || !data || Number(data.state) !== 0) {
+    throw new Error(data?.message || data?.result?.message || `Heleket API error (${response.status})`);
+  }
+  return data.result;
+};
+
+app.post('/api/heleket/create', requireAuth, async (req: any, res) => {
+  try {
+    const amount = num(req.body?.amount);
+    if (!positiveMoney(amount) || amount < 1 || amount > 1000000) return apiError(res, 400, 'Invalid amount', 'INVALID_AMOUNT');
+    const apiKey = process.env.HELEKET_PAYMENT_API_KEY;
+    const merchant = process.env.HELEKET_MERCHANT_ID;
+    if (!apiKey || !merchant) return apiError(res, 503, 'Heleket is not configured', 'GATEWAY_NOT_CONFIGURED');
+    const currency = process.env.HELEKET_CURRENCY || process.env.CURRENCY || 'USD';
+    const baseUrl = process.env.PUBLIC_APP_URL || `${req.protocol}://${req.get('host')}`;
+    const [p] = await db.insert(payments).values({
+      userId: req.dbUser.id,
+      amount: money(amount).toFixed(4),
+      method: 'Heleket',
+      status: 'Pending',
+      transactionDetails: { gateway: 'heleket', currency },
+    }).returning();
+    const orderId = `PAY-${p.id}`;
+    const result = await heleketApiPost('/v1/payment', {
+      amount: money(amount).toFixed(4),
+      currency,
+      order_id: orderId,
+      url_return: `${baseUrl}/dashboard/add-funds?payment=return`,
+      url_success: `${baseUrl}/dashboard/add-funds?payment=success`,
+      url_callback: `${baseUrl}/api/heleket/webhook`,
+      is_payment_multiple: false,
+      lifetime: Number(process.env.HELEKET_INVOICE_LIFETIME || 3600),
+      payer_email: req.dbUser.email || null,
+      additional_data: p.id,
+      theme: 'light',
+    });
+    await db.update(payments).set({
+      transactionId: String(result?.uuid || orderId),
+      transactionDetails: { gateway: 'heleket', currency, invoiceUuid: result?.uuid || null, orderId, response: result },
+    }).where(eq(payments.id, p.id));
+    res.json({ paymentId: p.id, orderId, invoiceUuid: result?.uuid, paymentUrl: result?.url, expiresAt: result?.expired_at || null });
+  } catch (e: any) {
+    console.error('Heleket create:', e?.message || e);
+    apiError(res, e?.code === 'GATEWAY_NOT_CONFIGURED' ? 503 : 400, e?.message || 'Heleket payment initialization failed', e?.code || 'HELEKET_CREATE_ERROR');
+  }
+});
+
+app.post('/api/heleket/webhook', async (req, res) => {
+  try {
+    const apiKey = process.env.HELEKET_PAYMENT_API_KEY;
+    const merchant = process.env.HELEKET_MERCHANT_ID;
+    if (!apiKey || !merchant) return apiError(res, 503, 'Heleket is not configured', 'GATEWAY_NOT_CONFIGURED');
+    if (req.headers.merchant && String(req.headers.merchant) !== merchant) return apiError(res, 401, 'Invalid merchant', 'INVALID_MERCHANT');
+    const payload = { ...(req.body || {}) };
+    const provided = String(payload.sign || '');
+    delete payload.sign;
+    if (!provided) return apiError(res, 401, 'Missing signature', 'INVALID_SIGNATURE');
+    const expected = heleketSign(heleketJson(payload), apiKey);
+    if (provided.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected))) return apiError(res, 401, 'Invalid signature', 'INVALID_SIGNATURE');
+
+    const orderId = String(payload.order_id || '');
+    const paymentId = String(payload.additional_data || '').match(/^[0-9a-f-]{36}$/i)?.[0] || (orderId.startsWith('PAY-') ? orderId.slice(4) : '');
+    if (!paymentId) return apiError(res, 400, 'Invalid payment reference', 'INVALID_PAYMENT');
+    const [p] = await db.select().from(payments).where(eq(payments.id, paymentId));
+    if (!p || p.method !== 'Heleket') return apiError(res, 404, 'Payment not found', 'PAYMENT_NOT_FOUND');
+    if (money(num(payload.amount)) !== money(num(p.amount))) return apiError(res, 400, 'Payment amount mismatch', 'PAYMENT_MISMATCH');
+
+    const status = String(payload.status || '').toLowerCase();
+    const finalCreditStatuses = new Set(['paid', 'paid_over']);
+    const rejectStatuses = new Set(['cancel', 'fail', 'system_fail', 'refund_fail']);
+    if (finalCreditStatuses.has(status)) {
+      await db.transaction(async tx => {
+        const [locked] = await tx.select().from(payments).where(eq(payments.id, p.id)).for('update');
+        if (!locked || locked.status !== 'Pending') return;
+        await tx.update(payments).set({ status: 'Approved', transactionId: String(payload.txid || payload.uuid || locked.transactionId || orderId), transactionDetails: { gateway: 'heleket', webhook: payload }, resolvedAt: new Date() }).where(eq(payments.id, locked.id));
+        // Credit the invoice amount only after a verified final payment webhook.
+        await creditWallet(tx, locked.userId, num(locked.amount), 'Heleket Deposit', locked.id);
+        await applyAffiliateCommission(tx, locked);
+      });
+    } else if (rejectStatuses.has(status)) {
+      await db.update(payments).set({ status: 'Rejected', transactionId: String(payload.txid || payload.uuid || p.transactionId || orderId), transactionDetails: { gateway: 'heleket', webhook: payload }, resolvedAt: new Date() }).where(and(eq(payments.id, p.id), eq(payments.status, 'Pending')));
+    } else {
+      await db.update(payments).set({ transactionDetails: { gateway: 'heleket', webhook: payload } }).where(eq(payments.id, p.id));
+    }
+    res.sendStatus(200);
+  } catch (e: any) {
+    console.error('Heleket webhook:', e?.message || e);
+    apiError(res, 400, 'Webhook processing failed', 'WEBHOOK_ERROR');
+  }
+});
+
 // Kashier integration. Signature verification must be configured for live mode.
 app.post('/api/kashier/create', requireAuth, async (req: any, res) => {
   try {

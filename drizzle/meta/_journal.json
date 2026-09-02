@@ -1,0 +1,20 @@
+{
+  "version": "5",
+  "dialect": "pg",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1788161776826,
+      "tag": "0000_worried_scourge",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1788320000000,
+      "tag": "0001_production_hardening",
+      "breakpoints": true
+    }
+  ]
+}

@@ -27,12 +27,23 @@ export const AuthProvider = ({ children }: any) => {
         const token = await u.getIdToken();
         const params = new URLSearchParams(window.location.search);
         const ref = params.get('ref');
-        const res = await fetch('/api/auth/sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify(ref ? { referralCode: ref } : {})
-        });
-        if (res.ok) setDbUser(await res.json());
+        try {
+          const res = await fetch('/api/auth/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify(ref ? { referralCode: ref } : {})
+          });
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            console.error('Auth sync failed', res.status, body);
+            setDbUser(null);
+          } else {
+            setDbUser(await res.json());
+          }
+        } catch (error) {
+          console.error('Auth sync network error', error);
+          setDbUser(null);
+        }
       } else {
         setDbUser(null);
       }

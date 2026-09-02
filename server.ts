@@ -1,4 +1,6 @@
 import dns from 'node:dns';
+import { promises as dnsPromises } from 'node:dns';
+import net from 'node:net';
 dns.setDefaultResultOrder('ipv4first');
 import crypto from 'node:crypto';
 import path from 'node:path';
@@ -24,7 +26,10 @@ app.disable('x-powered-by');
 app.set('trust proxy', 1);
 app.use(express.json({ limit: '256kb' }));
 app.use(express.urlencoded({ extended: true, limit: '64kb' }));
-app.use(rateLimit({ windowMs: 60_000, limit: 180, standardHeaders: true, legacyHeaders: false }));
+const globalLimiter = rateLimit({ windowMs: 60_000, limit: 180, standardHeaders: true, legacyHeaders: false });
+const authLimiter = rateLimit({ windowMs: 15 * 60_000, limit: 30, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many authentication attempts', code: 'RATE_LIMITED' } });
+const apiLimiter = rateLimit({ windowMs: 60_000, limit: 120, standardHeaders: true, legacyHeaders: false, message: { error: 'API rate limit exceeded', code: 'RATE_LIMITED' } });
+app.use(globalLimiter);
 
 const apiError = (res: express.Response, status: number, message: string, code = 'ERROR') =>
   res.status(status).json({ error: message, code });
@@ -34,6 +39,33 @@ const money = (v: number) => Math.round((v + Number.EPSILON) * 10000) / 10000;
 const positiveMoney = (v: unknown) => Number.isFinite(num(v)) && num(v) > 0;
 const uuidLike = (v: unknown) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
 const validUrl = (v: unknown) => { try { const u = new URL(String(v)); return ['http:', 'https:'].includes(u.protocol); } catch { return false; } };
+const hashApiKey = (key: string) => crypto.createHash('sha256').update(key).digest('hex');
+const isPrivateIp = (ip: string) => {
+  if (net.isIPv4(ip)) {
+    const [a,b] = ip.split('.').map(Number);
+    return a === 10 || a === 127 || a === 0 || (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
+  }
+  if (net.isIPv6(ip)) {
+    const x = ip.toLowerCase();
+    return x === '::1' || x === '::' || x.startsWith('fc') || x.startsWith('fd') || x.startsWith('fe80:');
+  }
+  return false;
+};
+const assertSafeProviderUrl = async (value: string) => {
+  const u = new URL(value);
+  if (!['http:', 'https:'].includes(u.protocol)) throw new Error('Provider URL must use HTTP(S)');
+  const hostname = u.hostname.toLowerCase();
+  if (hostname === 'localhost' || hostname.endsWith('.localhost') || hostname === 'metadata.google.internal') throw new Error('Provider host is not allowed');
+  if (net.isIP(hostname) && isPrivateIp(hostname)) throw new Error('Provider host is not allowed');
+  try {
+    const answers = await dnsPromises.lookup(hostname, { all: true });
+    if (answers.some(a => isPrivateIp(a.address))) throw new Error('Provider host resolves to a private address');
+  } catch (e:any) {
+    if (e?.message === 'Provider host resolves to a private address') throw e;
+    // DNS failure is allowed here; fetch will report the actual connectivity error.
+  }
+};
 
 async function audit(adminId: string, actionType: string, entityType: string, entityId: string, details?: string, oldValue?: string, newValue?: string) {
   await db.insert(auditLogs).values({ adminId, actionType, entityType, entityId, details, oldValue, newValue });
@@ -100,7 +132,7 @@ app.get('/api/client/config', async (_req, res) => {
   res.json({ siteName: s.site_name || 'RapidSMM', currencySymbol: s.currency_symbol || '$', vodafoneCashNumber: s.vodafone_cash_number || '', siteDescription: s.site_description || '', supportEmail: s.support_email || '', siteLogo: s.site_logo || '' });
 });
 
-app.post('/api/auth/sync', requireAuth, async (req: any, res) => {
+app.post('/api/auth/sync', authLimiter, requireAuth, async (req: any, res) => {
   let user = req.dbUser;
   const referralCode = typeof req.body?.referralCode === 'string' ? req.body.referralCode.trim().toUpperCase() : '';
   if (!user.referredBy && referralCode) {
@@ -194,6 +226,20 @@ app.post('/api/client/payments', requireAuth, async (req: any, res) => {
   res.status(201).json(p);
 });
 
+const applyAffiliateCommission = async (tx:any, payment:any) => {
+  const [u] = await tx.select().from(users).where(eq(users.id, payment.userId));
+  if (!u?.referredBy) return;
+  const [existing] = await tx.select().from(affiliateCommissions).where(eq(affiliateCommissions.paymentId, payment.id));
+  if (existing) return;
+  const settingsRows = await tx.select().from(settings);
+  const pct = Math.max(0, Math.min(100, num(settingsRows.find((s:any) => s.key === 'affiliate_commission_percentage')?.value || 5)));
+  const commission = money(num(payment.amount) * pct / 100);
+  if (commission > 0) {
+    await tx.insert(affiliateCommissions).values({ affiliateId: u.referredBy, referredUserId: u.id, paymentId: payment.id, amount: commission.toFixed(4) });
+    await creditWallet(tx, u.referredBy, commission, `Affiliate commission from ${u.email}`, payment.id);
+  }
+};
+
 const paymentApprove = async (paymentId: string, adminId: string) => {
   return db.transaction(async tx => {
     const [p] = await tx.select().from(payments).where(eq(payments.id, paymentId)).for('update');
@@ -201,19 +247,7 @@ const paymentApprove = async (paymentId: string, adminId: string) => {
     if (p.status !== 'Pending') return false;
     await tx.update(payments).set({ status: 'Approved', resolvedAt: new Date() }).where(eq(payments.id, p.id));
     await creditWallet(tx, p.userId, num(p.amount), `Funds added via ${p.method}`, p.id);
-    const [u] = await tx.select().from(users).where(eq(users.id, p.userId));
-    if (u?.referredBy) {
-      const [existing] = await tx.select().from(affiliateCommissions).where(eq(affiliateCommissions.paymentId, p.id));
-      if (!existing) {
-        const settingsRows = await tx.select().from(settings);
-        const pct = Math.max(0, Math.min(100, num(settingsRows.find(s => s.key === 'affiliate_commission_percentage')?.value || 5)));
-        const commission = money(num(p.amount) * pct / 100);
-        if (commission > 0) {
-          await tx.insert(affiliateCommissions).values({ affiliateId: u.referredBy, referredUserId: u.id, paymentId: p.id, amount: commission.toFixed(4) });
-          await creditWallet(tx, u.referredBy, commission, `Affiliate commission from ${u.email}`, p.id);
-        }
-      }
-    }
+    await applyAffiliateCommission(tx, p);
     return true;
   });
 };
@@ -230,8 +264,8 @@ app.post('/api/kashier/create', requireAuth, async (req: any, res) => {
     if (!merchantId || !apiKey) return apiError(res, 503, 'Payment gateway is not configured', 'GATEWAY_NOT_CONFIGURED');
     const currency = process.env.KASHIER_CURRENCY || 'EGP';
     const [p] = await db.insert(payments).values({ userId: req.dbUser.id, amount: money(amount).toFixed(4), method: 'Kashier', status: 'Pending' }).returning();
-    const mode = process.env.KASHIER_MODE === 'live' ? 'live' : 'test';
-    const baseUrl = mode === 'live' ? 'https://checkout.kashier.io/' : 'https://checkout.test.kashier.io/';
+    const mode = process.env.KASHIER_MODE === 'live' ? 'live' : 'test'; if (isProd && mode !== 'live') return apiError(res,503,'Live payment gateway is not enabled','GATEWAY_NOT_LIVE');
+    const baseUrl = process.env.KASHIER_CHECKOUT_URL || 'https://checkout.kashier.io/';
     const pathToSign = `/?payment=${merchantId}.${p.id}.${amount}.${currency}`;
     const hash = crypto.createHmac('sha256', apiKey).update(pathToSign).digest('hex');
     res.json({ orderId: p.id, amount, currency, merchantId, paymentUrl: `${baseUrl}?merchantId=${encodeURIComponent(merchantId)}&orderId=${encodeURIComponent(p.id)}&amount=${encodeURIComponent(amount)}&currency=${encodeURIComponent(currency)}&hash=${encodeURIComponent(hash)}` });
@@ -255,6 +289,7 @@ app.post('/api/kashier/webhook', async (req, res) => {
         if (!locked || locked.status !== 'Pending') return;
         await tx.update(payments).set({ status: 'Approved', transactionId: transactionId ? String(transactionId) : null, transactionDetails: req.body, resolvedAt: new Date() }).where(eq(payments.id, locked.id));
         await creditWallet(tx, locked.userId, num(locked.amount), 'Kashier Deposit', locked.id);
+        await applyAffiliateCommission(tx, locked);
       });
     } else if (['FAILED', 'CANCELLED'].includes(paymentStatus)) {
       await db.update(payments).set({ status: 'Rejected', transactionId: transactionId ? String(transactionId) : null, transactionDetails: req.body, resolvedAt: new Date() }).where(and(eq(payments.id, p.id), eq(payments.status, 'Pending')));
@@ -295,9 +330,24 @@ app.post('/api/client/raffles/:id/buy', requireAuth, async(req:any,res)=>{try{co
 const secretKeys = new Set(['KASHIER_API_KEY','KASHIER_WEBHOOK_SECRET','provider_api_key']);
 app.get('/api/admin/settings',requireAuth,requireAdmin,async(_req,res)=>{const rows=await db.select().from(settings); const out:any={}; for(const r of rows)out[r.key]=secretKeys.has(r.key)?'********':r.value; res.json(out);});
 app.put('/api/admin/settings',requireAuth,requireAdmin,async(req:any,res)=>{const allowed=new Set(['site_name','currency_symbol','vodafone_cash_number','site_description','support_email','site_logo','affiliate_commission_percentage']); for(const [key,val] of Object.entries(req.body||{})){if(!allowed.has(key))return apiError(res,400,`Setting not allowed: ${key}`,'INVALID_SETTING'); const value=String(val).trim(); if(key==='affiliate_commission_percentage'&&(!Number.isFinite(num(value))||num(value)<0||num(value)>100))return apiError(res,400,'Invalid commission percentage','INVALID_SETTING'); await db.insert(settings).values({key,value}).onConflictDoUpdate({target:settings.key,set:{value}});} await audit(req.dbUser.id,'UPDATE_SETTINGS','SETTINGS','settings'); res.json({success:true});});
-app.get('/api/admin/users',requireAuth,requireAdmin,async(_req,res)=>res.json(await db.query.users.findMany({orderBy:[desc(users.createdAt)]})));
-app.get('/api/admin/users/:id',requireAuth,requireAdmin,async(req,res)=>{const u=await db.query.users.findFirst({where:eq(users.id,req.params.id)});if(!u)return apiError(res,404,'User not found','NOT_FOUND');res.json({user:u,orders:await db.query.orders.findMany({where:eq(orders.userId,u.id),with:{service:true},orderBy:[desc(orders.createdAt)]}),payments:await db.query.payments.findMany({where:eq(payments.userId,u.id),orderBy:[desc(payments.createdAt)]}),tickets:await db.query.tickets.findMany({where:eq(tickets.userId,u.id),orderBy:[desc(tickets.createdAt)]})});});
-app.put('/api/admin/users/:id/status',requireAuth,requireAdmin,async(req:any,res)=>{const status=req.body?.status;if(!['active','suspended','banned'].includes(status))return apiError(res,400,'Invalid status');if(req.params.id===req.dbUser.id)return apiError(res,403,'Cannot modify your own status');const [u]=await db.select().from(users).where(eq(users.id,req.params.id));if(!u)return apiError(res,404,'User not found');const [updated]=await db.update(users).set({status}).where(eq(users.id,u.id)).returning();await audit(req.dbUser.id,'UPDATE_STATUS','USER',u.id,`Status changed to ${status}`,u.status,status);res.json(updated);});
+app.get('/api/admin/users',requireAuth,requireAdmin,async(_req,res)=>{
+  const rows=await db.select({
+    id:users.id,uid:users.uid,name:users.name,email:users.email,role:users.role,status:users.status,
+    balance:users.balance,gamePoints:users.gamePoints,currentStreak:users.currentStreak,keys:users.keys,
+    referralCode:users.referralCode,referredBy:users.referredBy,createdAt:users.createdAt
+  }).from(users).orderBy(desc(users.createdAt));
+  res.json(rows);
+});
+app.get('/api/admin/users/:id',requireAuth,requireAdmin,async(req,res)=>{const u=await db.select({
+    id:users.id,uid:users.uid,name:users.name,email:users.email,role:users.role,status:users.status,
+    balance:users.balance,gamePoints:users.gamePoints,currentStreak:users.currentStreak,keys:users.keys,
+    referralCode:users.referralCode,referredBy:users.referredBy,createdAt:users.createdAt
+  }).from(users).where(eq(users.id,req.params.id)).limit(1).then(r=>r[0]);
+  if(!u)return apiError(res,404,'User not found','NOT_FOUND');res.json({user:u,orders:await db.query.orders.findMany({where:eq(orders.userId,u.id),with:{service:true},orderBy:[desc(orders.createdAt)]}),payments:await db.query.payments.findMany({where:eq(payments.userId,u.id),orderBy:[desc(payments.createdAt)]}),tickets:await db.query.tickets.findMany({where:eq(tickets.userId,u.id),orderBy:[desc(tickets.createdAt)]})});});
+app.put('/api/admin/users/:id/status',requireAuth,requireAdmin,async(req:any,res)=>{const status=req.body?.status;if(!['active','suspended','banned'].includes(status))return apiError(res,400,'Invalid status');if(req.params.id===req.dbUser.id)return apiError(res,403,'Cannot modify your own status');const [u]=await db.select().from(users).where(eq(users.id,req.params.id));if(!u)return apiError(res,404,'User not found');const [updated]=await db.update(users).set({status}).where(eq(users.id,u.id)).returning({
+id:users.id,uid:users.uid,name:users.name,email:users.email,role:users.role,status:users.status,balance:users.balance,
+gamePoints:users.gamePoints,currentStreak:users.currentStreak,keys:users.keys,referralCode:users.referralCode,referredBy:users.referredBy,createdAt:users.createdAt
+});await audit(req.dbUser.id,'UPDATE_STATUS','USER',u.id,`Status changed to ${status}`,u.status,status);res.json(updated);});
 app.put('/api/admin/users/:id/balance',requireAuth,requireAdmin,async(req:any,res)=>{try{const amount=num(req.body?.amount);if(!Number.isFinite(amount)||amount===0||Math.abs(amount)>1000000)throw new Error('Invalid balance adjustment');await db.transaction(async tx=>{if(amount>0)await creditWallet(tx,req.params.id,amount,'Admin balance adjustment',req.params.id);else await debitWallet(tx,req.params.id,Math.abs(amount),'Admin balance adjustment',req.params.id);});await audit(req.dbUser.id,'ADJUST_BALANCE','USER',req.params.id,`Adjustment ${amount}`);res.json({success:true});}catch(e:any){apiError(res,400,e.message);}});
 app.get('/api/admin/stats',requireAuth,requireAdmin,async(_req,res)=>{const [[u],[o],[p]] = await Promise.all([db.select({count:sql<number>`count(*)`}).from(users),db.select({count:sql<number>`count(*)`}).from(orders),db.select({count:sql<number>`count(*)`}).from(payments)]);res.json({totalUsers:Number(u.count),totalOrders:Number(o.count),totalPayments:Number(p.count)});});
 
@@ -307,14 +357,76 @@ app.put('/api/admin/categories/:id',requireAuth,requireAdmin,async(req:any,res)=
 app.delete('/api/admin/categories/:id',requireAuth,requireAdmin,async(req:any,res)=>{const used=await db.query.services.findFirst({where:eq(services.categoryId,req.params.id)});if(used)return apiError(res,409,'Category has services; deactivate it instead');await db.delete(categories).where(eq(categories.id,req.params.id));res.json({success:true});});
 
 app.get('/api/admin/services',requireAuth,requireAdmin,async(_req,res)=>res.json(await db.query.services.findMany({with:{category:true,provider:true},orderBy:[asc(services.sortOrder)]})));
-app.post('/api/admin/services',requireAuth,requireAdmin,async(req:any,res)=>{const d=req.body||{};const min=Number(d.minQuantity),max=Number(d.maxQuantity),price=num(d.pricePer1k);if(!uuidLike(d.categoryId)||!d.name||!positiveMoney(price)||!Number.isInteger(min)||!Number.isInteger(max)||min<1||max<min)return apiError(res,400,'Invalid service data');const [s]=await db.insert(services).values({categoryId:d.categoryId,name:String(d.name).trim(),pricePer1k:money(price).toFixed(4),minQuantity:min,maxQuantity:max,providerId:uuidLike(d.providerId)?d.providerId:null,providerServiceId:d.providerServiceId||null,providerPrice:positiveMoney(d.providerPrice)?money(num(d.providerPrice)).toFixed(4):'0.0000',description:d.description||null,sortOrder:Number(d.sortOrder||0),cashbackPercentage:Math.max(0,Math.min(100,Number(d.cashbackPercentage||0))),status:d.status==='inactive'?'inactive':'active'}).returning();res.status(201).json(s);});
+app.post('/api/admin/services',requireAuth,requireAdmin,async(req:any,res)=>{const d=req.body||{};const min=Number(d.minQuantity),max=Number(d.maxQuantity),price=num(d.pricePer1k);if(!uuidLike(d.categoryId)||!d.name||!positiveMoney(price)||!Number.isInteger(min)||!Number.isInteger(max)||min<1||max<min)return apiError(res,400,'Invalid service data');const cat=await db.query.categories.findFirst({where:eq(categories.id,d.categoryId)});if(!cat)return apiError(res,404,'Category not found');if(d.providerId&&uuidLike(d.providerId)){const pr=await db.query.providers.findFirst({where:and(eq(providers.id,d.providerId),eq(providers.isDeleted,false))});if(!pr)return apiError(res,404,'Provider not found');}const [s]=await db.insert(services).values({categoryId:d.categoryId,name:String(d.name).trim(),pricePer1k:money(price).toFixed(4),minQuantity:min,maxQuantity:max,providerId:uuidLike(d.providerId)?d.providerId:null,providerServiceId:d.providerServiceId||null,providerPrice:positiveMoney(d.providerPrice)?money(num(d.providerPrice)).toFixed(4):'0.0000',description:d.description||null,sortOrder:Number(d.sortOrder||0),cashbackPercentage:Math.max(0,Math.min(100,Number(d.cashbackPercentage||0))),status:d.status==='inactive'?'inactive':'active'}).returning();res.status(201).json(s);});
 app.put('/api/admin/services/:id',requireAuth,requireAdmin,async(req:any,res)=>{const d=req.body||{};const [s]=await db.update(services).set({name:d.name,categoryId:d.categoryId,pricePer1k:String(d.pricePer1k),minQuantity:Number(d.minQuantity),maxQuantity:Number(d.maxQuantity),providerId:d.providerId||null,providerServiceId:d.providerServiceId||null,providerPrice:d.providerPrice?String(d.providerPrice):'0.0000',description:d.description||null,sortOrder:Number(d.sortOrder||0),cashbackPercentage:Number(d.cashbackPercentage||0),status:d.status==='inactive'?'inactive':'active'}).where(eq(services.id,req.params.id)).returning();if(!s)return apiError(res,404,'Service not found');res.json(s);});
 app.delete('/api/admin/services/:id',requireAuth,requireAdmin,async(req,res)=>{const [s]=await db.update(services).set({status:'inactive'}).where(eq(services.id,req.params.id)).returning();if(!s)return apiError(res,404,'Service not found');res.json({success:true});});
 
 app.get('/api/admin/providers',requireAuth,requireAdmin,async(_req,res)=>{const ps=await db.select({id:providers.id,name:providers.name,apiUrl:providers.apiUrl,profitMargin:providers.profitMargin,status:providers.status,isDeleted:providers.isDeleted}).from(providers).where(eq(providers.isDeleted,false));res.json(ps);});
-app.post('/api/admin/providers',requireAuth,requireAdmin,async(req:any,res)=>{if(!req.body?.name||!validUrl(req.body.apiUrl)||!req.body.apiKey)return apiError(res,400,'Invalid provider');const [p]=await db.insert(providers).values({name:String(req.body.name).trim(),apiUrl:req.body.apiUrl,apiKey:req.body.apiKey,profitMargin:Number(req.body.profitMargin||50),status:req.body.status==='inactive'?'inactive':'active'}).returning();await audit(req.dbUser.id,'CREATE_PROVIDER','PROVIDER',p.id);res.status(201).json({id:p.id,name:p.name,apiUrl:p.apiUrl,status:p.status});});
-app.get('/api/admin/providers/:id/balance',requireAuth,requireAdmin,async(req,res)=>{try{const [p]=await db.select().from(providers).where(eq(providers.id,req.params.id));if(!p)return apiError(res,404,'Provider not found');const c=new ProviderClient(p.apiUrl,p.apiKey);const b=await c.balance();if(b.error)return apiError(res,502,'Provider request failed');res.json(b);}catch{apiError(res,502,'Provider request failed');}});
-app.post('/api/admin/providers/:id/sync',requireAuth,requireAdmin,async(req,res)=>{try{const [p]=await db.select().from(providers).where(eq(providers.id,req.params.id));if(!p)return apiError(res,404,'Provider not found');const c=new ProviderClient(p.apiUrl,p.apiKey);const data=await c.services();if(data.error)return apiError(res,502,'Provider request failed');res.json(data);}catch{apiError(res,502,'Provider request failed');}});
+app.post('/api/admin/providers',requireAuth,requireAdmin,async(req:any,res)=>{if(!req.body?.name||!validUrl(req.body.apiUrl)||!req.body.apiKey)return apiError(res,400,'Invalid provider');await assertSafeProviderUrl(String(req.body.apiUrl));const margin=Number(req.body.profitMargin ?? 50);if(!Number.isInteger(margin)||margin<0||margin>10000)return apiError(res,400,'Invalid profit margin');const [p]=await db.insert(providers).values({name:String(req.body.name).trim(),apiUrl:String(req.body.apiUrl).trim(),apiKey:String(req.body.apiKey),profitMargin:margin,status:req.body.status==='inactive'?'inactive':'active'}).returning();await audit(req.dbUser.id,'CREATE_PROVIDER','PROVIDER',p.id);res.status(201).json({id:p.id,name:p.name,apiUrl:p.apiUrl,status:p.status});});
+app.put('/api/admin/providers/:id',requireAuth,requireAdmin,async(req:any,res)=>{
+  try {
+    const [old]=await db.select().from(providers).where(and(eq(providers.id,req.params.id),eq(providers.isDeleted,false)));
+    if(!old)return apiError(res,404,'Provider not found');
+    const name=String(req.body?.name ?? old.name).trim();
+    const apiUrl=String(req.body?.apiUrl ?? old.apiUrl).trim();
+    const apiKey=String(req.body?.apiKey ?? '').trim();
+    const margin=Number(req.body?.profitMargin ?? old.profitMargin);
+    const status=req.body?.status==='inactive'?'inactive':'active';
+    if(name.length<2||name.length>100||!validUrl(apiUrl)||!Number.isInteger(margin)||margin<0||margin>10000)return apiError(res,400,'Invalid provider data');
+    await assertSafeProviderUrl(apiUrl);
+    const patch:any={name,apiUrl,profitMargin:margin,status};
+    if(apiKey)patch.apiKey=apiKey;
+    const [updated]=await db.update(providers).set(patch).where(eq(providers.id,old.id)).returning({id:providers.id,name:providers.name,apiUrl:providers.apiUrl,profitMargin:providers.profitMargin,status:providers.status,isDeleted:providers.isDeleted});
+    await audit(req.dbUser.id,'UPDATE_PROVIDER','PROVIDER',old.id,undefined,old.name,updated.name);
+    res.json(updated);
+  } catch(e:any){apiError(res,400,e.message||'Invalid provider');}
+});
+app.delete('/api/admin/providers/:id',requireAuth,requireAdmin,async(req:any,res)=>{
+  const [p]=await db.update(providers).set({isDeleted:true,status:'inactive'}).where(and(eq(providers.id,req.params.id),eq(providers.isDeleted,false))).returning();
+  if(!p)return apiError(res,404,'Provider not found');
+  await audit(req.dbUser.id,'DELETE_PROVIDER','PROVIDER',p.id);
+  res.json({success:true});
+});
+app.get('/api/admin/providers/:id/balance',requireAuth,requireAdmin,async(req,res)=>{try{const [p]=await db.select().from(providers).where(and(eq(providers.id,req.params.id),eq(providers.isDeleted,false)));if(!p)return apiError(res,404,'Provider not found');await assertSafeProviderUrl(p.apiUrl);const c=new ProviderClient(p.apiUrl,p.apiKey);const b=await c.balance();if(b.error)return apiError(res,502,'Provider request failed');res.json(b);}catch{apiError(res,502,'Provider request failed');}});
+app.post('/api/admin/providers/:id/sync',requireAuth,requireAdmin,async(req:any,res)=>{
+  try{
+    const [p]=await db.select().from(providers).where(and(eq(providers.id,req.params.id),eq(providers.isDeleted,false)));
+    if(!p)return apiError(res,404,'Provider not found');
+    await assertSafeProviderUrl(p.apiUrl);
+    const data=await new ProviderClient(p.apiUrl,p.apiKey).services();
+    if(data.error)return apiError(res,502,'Provider request failed');
+    const incoming=Array.isArray(data) ? data : (Array.isArray(data.services) ? data.services : []);
+    if(!incoming.length)return res.json({success:true,synced:0,created:0,updated:0});
+    const defaultCategoryName=`${p.name} Services`;
+    let created=0,updated=0;
+    await db.transaction(async tx=>{
+      const categoryRows=await tx.select().from(categories).where(eq(categories.name,defaultCategoryName)).limit(1); let category=categoryRows[0];
+      if(!category){
+        const [c]=await tx.insert(categories).values({name:defaultCategoryName,status:'active'}).returning();
+        category=c;
+      }
+      for(const raw of incoming.slice(0,2000)){
+        const providerServiceId=String(raw.service ?? raw.id ?? '').trim();
+        const name=String(raw.name ?? `Service ${providerServiceId}`).trim().slice(0,150);
+        const providerPrice=Number(raw.rate ?? raw.price ?? raw.pricePer1k);
+        const min=Number(raw.min ?? raw.minQuantity ?? 1);
+        const max=Number(raw.max ?? raw.maxQuantity ?? 1000000);
+        if(!providerServiceId||!name||!Number.isFinite(providerPrice)||providerPrice<0||!Number.isInteger(min)||!Number.isInteger(max)||min<1||max<min)continue;
+        const selling=money(providerPrice*(1+Math.max(0,p.profitMargin)/100));
+        const existingRows=await tx.select().from(services).where(and(eq(services.providerId,p.id),eq(services.providerServiceId,providerServiceId))).limit(1); const existing=existingRows[0];
+        if(existing){
+          await tx.update(services).set({name,categoryId:category.id,providerPrice:providerPrice.toFixed(4),pricePer1k:selling.toFixed(4),minQuantity:min,maxQuantity:max,status:'active'}).where(eq(services.id,existing.id));
+          updated++;
+        }else{
+          await tx.insert(services).values({categoryId:category.id,providerId:p.id,providerServiceId,name,providerPrice:providerPrice.toFixed(4),pricePer1k:selling.toFixed(4),minQuantity:min,maxQuantity:max,status:'active'});
+          created++;
+        }
+      }
+    });
+    await audit(req.dbUser.id,'SYNC_PROVIDER','PROVIDER',p.id,`created=${created},updated=${updated}`);
+    res.json({success:true,synced:created+updated,created,updated});
+  }catch(e:any){apiError(res,502,e.message||'Provider synchronization failed','PROVIDER_SYNC_FAILED');}
+});
 
 app.get('/api/admin/orders',requireAuth,requireAdmin,async(_req,res)=>res.json(await db.query.orders.findMany({orderBy:[desc(orders.createdAt)],with:{user:true,service:true},limit:500})));
 app.get('/api/admin/payments',requireAuth,requireAdmin,async(_req,res)=>res.json(await db.query.payments.findMany({orderBy:[desc(payments.createdAt)],with:{user:true},limit:500})));
@@ -328,6 +440,21 @@ app.get('/api/admin/reports',requireAuth,requireAdmin,async(_req,res)=>res.json(
 app.get('/api/admin/shortlinks',requireAuth,requireAdmin,async(_req,res)=>res.json(await db.select().from(shortlinks).orderBy(desc(shortlinks.createdAt))));
 app.post('/api/admin/shortlinks',requireAuth,requireAdmin,async(req:any,res)=>{const reward=num(req.body?.rewardAmount);if(!req.body?.name||!validUrl(req.body?.url)||!positiveMoney(reward))return apiError(res,400,'Invalid shortlink');const [s]=await db.insert(shortlinks).values({name:String(req.body.name).trim(),url:req.body.url,rewardAmount:money(reward).toFixed(4),status:'active'}).returning();res.status(201).json(s);});
 
+app.put('/api/admin/shortlinks/:id',requireAuth,requireAdmin,async(req:any,res)=>{
+  const reward=num(req.body?.rewardAmount);
+  const status=req.body?.status==='inactive'?'inactive':'active';
+  if(!req.body?.name||!validUrl(req.body?.url)||!positiveMoney(reward))return apiError(res,400,'Invalid shortlink');
+  const [s]=await db.update(shortlinks).set({name:String(req.body.name).trim(),url:String(req.body.url),rewardAmount:money(reward).toFixed(4),status}).where(eq(shortlinks.id,req.params.id)).returning();
+  if(!s)return apiError(res,404,'Shortlink not found');
+  await audit(req.dbUser.id,'UPDATE_SHORTLINK','SHORTLINK',s.id);
+  res.json(s);
+});
+app.delete('/api/admin/shortlinks/:id',requireAuth,requireAdmin,async(req:any,res)=>{
+  const [s]=await db.update(shortlinks).set({status:'inactive'}).where(eq(shortlinks.id,req.params.id)).returning();
+  if(!s)return apiError(res,404,'Shortlink not found');
+  await audit(req.dbUser.id,'DEACTIVATE_SHORTLINK','SHORTLINK',s.id);
+  res.json({success:true});
+});
 app.get('/api/admin/raffles',requireAuth,requireAdmin,async(_req,res)=>{const rs=await db.select().from(raffles).orderBy(desc(raffles.createdAt));const out=[];for(const r of rs){const [c]=await db.select({count:sql<number>`count(*)`}).from(raffleTickets).where(eq(raffleTickets.raffleId,r.id));out.push({...r,ticketsCount:Number(c.count||0)});}res.json(out);});
 app.post('/api/admin/raffles',requireAuth,requireAdmin,async(req:any,res)=>{const prize=num(req.body?.prizeAmount),ticket=num(req.body?.ticketPrice),end=new Date(req.body?.endDate);if(!positiveMoney(prize)||!positiveMoney(ticket)||isNaN(end.getTime())||end<=new Date())return apiError(res,400,'Invalid raffle');const [r]=await db.insert(raffles).values({title:String(req.body?.title||'Weekly Raffle').trim(),prizeAmount:money(prize).toFixed(4),ticketPrice:money(ticket).toFixed(4),maxTickets:req.body?.maxTickets?Number(req.body.maxTickets):null,maxTicketsPerUser:req.body?.maxTicketsPerUser?Number(req.body.maxTicketsPerUser):null,endDate:end,status:'Open'}).returning();await audit(req.dbUser.id,'CREATE_RAFFLE','RAFFLE',r.id);res.status(201).json(r);});
 app.put('/api/admin/raffles/:id/close',requireAuth,requireAdmin,async(req,res)=>{const [r]=await db.update(raffles).set({status:'Closed'}).where(and(eq(raffles.id,req.params.id),eq(raffles.status,'Open'))).returning();if(!r)return apiError(res,409,'Raffle cannot be closed');await audit(req.dbUser.id,'CLOSE_RAFFLE','RAFFLE',r.id);res.json(r);});
@@ -335,10 +462,25 @@ app.put('/api/admin/raffles/:id/draw',requireAuth,requireAdmin,async(req:any,res
 
 app.get('/api/admin/mystery-boxes',requireAuth,requireAdmin,async(_req,res)=>res.json(await db.select().from(mysteryBoxTiers)));
 app.post('/api/admin/mystery-boxes',requireAuth,requireAdmin,async(req:any,res)=>{const min=num(req.body?.minAmount),max=num(req.body?.maxAmount),prob=Number(req.body?.probability);if(!req.body?.name||!Number.isFinite(min)||!Number.isFinite(max)||min<0||max<min||!Number.isInteger(prob)||prob<=0)return apiError(res,400,'Invalid tier');const [t]=await db.insert(mysteryBoxTiers).values({name:String(req.body.name).trim(),minAmount:min.toFixed(4),maxAmount:max.toFixed(4),probability:prob,status:'active'}).returning();res.status(201).json(t);});
+app.put('/api/admin/mystery-boxes/:id',requireAuth,requireAdmin,async(req:any,res)=>{
+  const min=num(req.body?.minAmount),max=num(req.body?.maxAmount),prob=Number(req.body?.probability);
+  if(!req.body?.name||!Number.isFinite(min)||!Number.isFinite(max)||min<0||max<min||!Number.isInteger(prob)||prob<=0)return apiError(res,400,'Invalid tier');
+  const [t]=await db.update(mysteryBoxTiers).set({name:String(req.body.name).trim(),minAmount:min.toFixed(4),maxAmount:max.toFixed(4),probability:prob,status:req.body.status==='inactive'?'inactive':'active'}).where(eq(mysteryBoxTiers.id,req.params.id)).returning();
+  if(!t)return apiError(res,404,'Tier not found');
+  res.json(t);
+});
+app.delete('/api/admin/mystery-boxes/:id',requireAuth,requireAdmin,async(req:any,res)=>{
+  const [t]=await db.update(mysteryBoxTiers).set({status:'inactive'}).where(eq(mysteryBoxTiers.id,req.params.id)).returning();
+  if(!t)return apiError(res,404,'Tier not found');
+  res.json({success:true});
+});
 app.post('/api/client/mystery-boxes/open',requireAuth,async(req:any,res)=>{try{let result:any;await db.transaction(async tx=>{const [u]=await tx.select().from(users).where(eq(users.id,req.dbUser.id)).for('update');if(u.keys<1)throw new Error('You need a key');const tiers=await tx.select().from(mysteryBoxTiers).where(eq(mysteryBoxTiers.status,'active'));const total=tiers.reduce((a,t)=>a+t.probability,0);if(!tiers.length||total<=0)throw new Error('Mystery box is unavailable');let n=crypto.randomInt(0,total),chosen=tiers[tiers.length-1];for(const t of tiers){if(n<t.probability){chosen=t;break;}n-=t.probability;}const reward=money(num(chosen.minAmount)+Math.random()*(num(chosen.maxAmount)-num(chosen.minAmount)));await tx.update(users).set({keys:u.keys-1}).where(eq(users.id,u.id));await creditWallet(tx,u.id,reward,`Mystery Box: ${chosen.name}` ,chosen.id);result={tier:chosen.name,reward};});res.json(result);}catch(e:any){apiError(res,400,e.message);}});
 
 // Public SMM API
-app.post('/api/v1', async (req,res)=>{try{const key=String(req.body?.key||'');if(!key)return apiError(res,401,'Invalid API key','INVALID_API_KEY');const u=await db.query.users.findFirst({where:and(eq(users.apiKey,key),eq(users.status,'active'))});if(!u)return apiError(res,401,'Invalid API key','INVALID_API_KEY');const action=String(req.body?.action||'');if(action==='balance')return res.json({balance:u.balance,currency:(process.env.CURRENCY||'EGP')});if(action==='services'){const rows=await db.query.services.findMany({where:eq(services.status,'active'),with:{category:true}});return res.json(rows.filter(s=>s.category?.status==='active').map(s=>({service:s.id,name:s.name,rate:s.pricePer1k,min:s.minQuantity,max:s.maxQuantity,category:s.category?.name||''})));}if(action==='status'){const o=await db.query.orders.findFirst({where:and(eq(orders.id,String(req.body.order||'')),eq(orders.userId,u.id))});if(!o)return apiError(res,404,'Order not found','NOT_FOUND');return res.json({order:o.id,status:o.status,charge:o.charge,start_count:o.startCount,remains:o.remains});}if(action==='add'){const {service,q,charge}=await validateOrderInput(req.body.service,req.body.link,req.body.quantity);let id='';await db.transaction(async tx=>{await debitWallet(tx,u.id,charge,'API order',undefined);const [o]=await tx.insert(orders).values({userId:u.id,serviceId:service.id,link:req.body.link,quantity:q,charge:charge.toFixed(4),cost:money(num(service.providerPrice)*q/1000).toFixed(4),status:'Pending'}).returning();id=o.id;});placeOrderToProvider(id).catch(console.error);return res.json({order:id});}return apiError(res,400,'Invalid action','INVALID_ACTION');}catch(e:any){apiError(res,400,e.message||'API error','API_ERROR');}});
+app.post('/api/v1', apiLimiter, async (req,res)=>{try{const key=String(req.body?.key||'');if(!key)return apiError(res,401,'Invalid API key','INVALID_API_KEY');const u=await db.query.users.findFirst({where:and(eq(users.status,'active'),sql`(${users.apiKeyHash} = ${hashApiKey(key)} OR ${users.apiKey} = ${key})`)});if(!u)return apiError(res,401,'Invalid API key','INVALID_API_KEY');
+if (!u.apiKeyHash && u.apiKey === key) {
+  await db.update(users).set({ apiKey: null, apiKeyHash: hashApiKey(key) }).where(eq(users.id, u.id));
+}const action=String(req.body?.action||'');if(action==='balance')return res.json({balance:u.balance,currency:(process.env.CURRENCY||'EGP')});if(action==='services'){const rows=await db.query.services.findMany({where:eq(services.status,'active'),with:{category:true}});return res.json(rows.filter(s=>s.category?.status==='active').map(s=>({service:s.id,name:s.name,rate:s.pricePer1k,min:s.minQuantity,max:s.maxQuantity,category:s.category?.name||''})));}if(action==='status'){const o=await db.query.orders.findFirst({where:and(eq(orders.id,String(req.body.order||'')),eq(orders.userId,u.id))});if(!o)return apiError(res,404,'Order not found','NOT_FOUND');return res.json({order:o.id,status:o.status,charge:o.charge,start_count:o.startCount,remains:o.remains});}if(action==='add'){const {service,q,charge}=await validateOrderInput(req.body.service,req.body.link,req.body.quantity);let id='';await db.transaction(async tx=>{await debitWallet(tx,u.id,charge,'API order',undefined);const [o]=await tx.insert(orders).values({userId:u.id,serviceId:service.id,link:req.body.link,quantity:q,charge:charge.toFixed(4),cost:money(num(service.providerPrice)*q/1000).toFixed(4),status:'Pending'}).returning();id=o.id;});placeOrderToProvider(id).catch(console.error);return res.json({order:id});}return apiError(res,400,'Invalid action','INVALID_ACTION');}catch(e:any){apiError(res,400,e.message||'API error','API_ERROR');}});
 
 // Auto-close raffles safely; no fake system audit user.
 setInterval(async()=>{try{await db.update(raffles).set({status:'Closed'}).where(and(eq(raffles.status,'Open'),sql`${raffles.endDate} <= now()`));}catch(e){console.error('raffle close job',e);}},60_000);

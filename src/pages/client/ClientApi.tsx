@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { Code, Key } from 'lucide-react';
@@ -6,14 +7,13 @@ import toast from 'react-hot-toast';
 export default function ClientApi() {
   const { user } = useAuth();
 
+  const [newApiKey, setNewApiKey] = useState('');
   const { data: userData, refetch } = useQuery({
     queryKey: ['client-api-key'],
     queryFn: async () => {
       const token = await user?.getIdToken();
-      const res = await fetch('/api/auth/sync', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await fetch('/api/client/me', { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error('Failed to load account');
       return res.json();
     },
     enabled: !!user,
@@ -27,8 +27,13 @@ export default function ClientApi() {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
-        toast.success('API Key generated');
+        const data = await res.json();
+        setNewApiKey(data.apiKey);
+        toast.success('API Key generated. Save it now; it will not be shown again.');
         refetch();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to generate key');
       }
     } catch (err) {
       toast.error('Failed to generate key');
@@ -41,16 +46,16 @@ export default function ClientApi() {
       
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
         <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><Key className="w-5 h-5"/> Your API Key</h3>
-        {userData?.apiKey ? (
+        {newApiKey ? (
           <div className="flex items-center gap-4">
             <input 
               type="text" 
               readOnly 
-              value={userData.apiKey} 
+              value={newApiKey} 
               className="input-field w-full md:w-96 font-mono text-sm bg-gray-50"
             />
             <button 
-              onClick={() => { navigator.clipboard.writeText(userData.apiKey); toast.success('Copied!'); }}
+              onClick={() => { navigator.clipboard.writeText(newApiKey); toast.success('Copied!'); }}
               className="btn-secondary"
             >
               Copy
@@ -59,7 +64,7 @@ export default function ClientApi() {
           </div>
         ) : (
           <div>
-            <p className="text-gray-500 mb-4">You do not have an API key yet.</p>
+            <p className="text-gray-500 mb-4">{userData?.apiKeyHash ? 'Your API key is configured and hidden for security. Generate a new key to replace it.' : 'You do not have an API key yet.'}</p>
             <button onClick={generateApiKey} className="btn-primary">Generate API Key</button>
           </div>
         )}

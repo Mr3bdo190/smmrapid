@@ -28,7 +28,7 @@ const navItems = [
 ];
 
 export default function ClientLayout() {
-  const { dbUser, loading, logOut } = useAuth();
+  const { user, dbUser, loading, logOut } = useAuth();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -38,6 +38,19 @@ export default function ClientLayout() {
       const res = await fetch('/api/client/config');
       return res.ok ? res.json() : {};
     }
+  });
+
+  const { data: freshUser } = useQuery({
+    queryKey: ['client-me'],
+    queryFn: async () => {
+      const token = await user?.getIdToken();
+      const res = await fetch('/api/client/me', { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error('Unable to load account');
+      return res.json();
+    },
+    enabled: !!user,
+    staleTime: 10_000,
+    refetchInterval: 30_000,
   });
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500">Loading...</div>;
@@ -82,10 +95,10 @@ export default function ClientLayout() {
           </div>
           <div className="flex items-center gap-4">
             <div className="flex flex-col text-right">
-              <span className="text-sm font-medium text-gray-900">{config?.currencySymbol || '$'}{Number(dbUser.balance).toFixed(4)}</span>
+              <span className="text-sm font-medium text-gray-900">{config?.currencySymbol || '$'}{Number((freshUser || dbUser).balance).toFixed(4)}</span>
               <span className="text-xs text-gray-500 hidden sm:block">Current Balance</span>
             </div>
-            <Link to="/dashboard/profile" className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold border border-indigo-200 transition-colors">{dbUser.email[0].toUpperCase()}</Link>
+            <Link to="/dashboard/profile" className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold border border-indigo-200 transition-colors">{(freshUser || dbUser).email[0].toUpperCase()}</Link>
           </div>
         </header>
         <div className="flex-1 overflow-y-auto p-4 md:p-8">

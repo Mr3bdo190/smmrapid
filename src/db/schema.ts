@@ -21,7 +21,8 @@ export const users = pgTable('users', {
   name: text('name'),
   email: text('email').notNull().unique(),
   balance: decimal('balance', { precision: 12, scale: 4 }).default('0.0000').notNull(),
-  apiKey: text('api_key').unique(),
+  apiKey: text('api_key').unique(), // legacy plaintext key; new keys use apiKeyHash
+  apiKeyHash: text('api_key_hash').unique(),
   status: userStatusEnum('status').default('active').notNull(),
   gamePoints: integer('game_points').default(0).notNull(),
   gameLastClick: timestamp('game_last_click'),

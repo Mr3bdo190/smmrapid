@@ -15,6 +15,13 @@
       "when": 1788320000000,
       "tag": "0001_production_hardening",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1788330000000,
+      "tag": "0002_security_and_indexes",
+      "breakpoints": true
     }
   ]
 }

@@ -13,7 +13,6 @@ export default function ClientMassOrder() {
     e.preventDefault();
     if (!ordersText.trim()) return toast.error('Please enter orders');
     
-    // Simple placeholder for mass order logic
     const token = await user?.getIdToken();
     try {
       const res = await fetch('/api/client/orders/mass', {

@@ -1,44 +1,59 @@
-# SMM Panel
+# SMM Panel — Production Hardened
 
-Production-oriented SMM panel with Firebase authentication, PostgreSQL/Drizzle, provider integration, wallet ledger, payments, affiliate rewards, raffles, mystery boxes, shortlinks, support tickets and a public SMM API.
+This package is a production-oriented SMM panel with Firebase authentication, PostgreSQL/Drizzle, provider management, wallet ledger, orders, payments, affiliate rewards, raffles, mystery boxes, shortlinks, support tickets, admin controls, audit logs and a public API.
 
-## Requirements
-- Node.js 20+
-- PostgreSQL/Supabase PostgreSQL
-- Firebase project with Authentication enabled
-- SMM provider API (optional until providers/services are configured)
-- Kashier account (optional until payments are configured)
+## Before launch
 
-## Setup
-1. Copy `.env.example` to `.env` and fill in real server-side values.
-2. Install dependencies: `npm ci`
-3. Apply migrations with your Drizzle workflow.
-4. Run `npm run typecheck`.
-5. Run `npm run build`.
-6. Start with `npm start`.
+1. Run `npm ci`.
+2. Run `npm test`.
+3. Run `npm run typecheck`.
+4. Run `npm run build`.
+5. Create PostgreSQL database and apply Drizzle migrations in order, including `drizzle/0002_security_and_indexes.sql`.
+6. Fill `.env` from `.env.example`.
+7. Use Firebase Admin credentials belonging to the same Firebase project as the client config.
+8. Set `ADMIN_EMAILS` explicitly to the administrator account(s).
+9. In production set `KASHIER_MODE=live` and configure the real gateway credentials/webhook according to the current Kashier merchant integration instructions.
+10. Configure at least one real SMM provider and test its balance/services/order/status endpoints.
+11. Enable HTTPS and configure a reverse proxy/load balancer.
+12. Take database backups before opening registration.
 
-## Admin bootstrap
-Put one or more trusted Firebase account emails in `ADMIN_EMAILS`. New verified accounts matching this allowlist are provisioned as admins; all other accounts are users. Never trust a role supplied by the browser.
+## Important security notes
 
-## Security
-- Firebase ID tokens are verified server-side.
-- Admin APIs require DB role `admin`.
-- Financial mutations use DB transactions and row locks.
-- Wallet changes are recorded in `wallet_ledger`.
-- Kashier webhooks require an HMAC signature configured by `KASHIER_WEBHOOK_SECRET`.
-- Provider API keys and payment secrets never go to the client.
+- API keys are generated as high-entropy secrets and stored hashed for new keys. A generated key is shown only once.
+- Provider API keys never appear in admin list responses.
+- User/admin APIs use Firebase ID-token verification and server-side role checks.
+- Wallet operations use database row locks and a ledger.
+- Production refuses to create a Kashier checkout while `KASHIER_MODE` is not `live`.
+- Provider URLs are checked against common private/local network targets to reduce SSRF risk.
+- Never commit `.env` or service-account JSON files.
+
+## Provider synchronization
+
+The admin Provider → Sync action reads a standard SMM-provider `services` response and imports/updates services using:
+`service`, `name`, `rate`, `min`, `max`.
+
+Imported services are placed under a provider-specific category and their selling price is calculated from provider rate plus the provider's configured margin.
+
+Providers that use a non-standard API response may require a small adapter in `src/lib/provider-engine.ts`.
+
+## Payment gateway
+
+The application keeps the payment gateway secret server-side. The exact Kashier webhook/signature contract must match the merchant credentials/integration version enabled on your Kashier account. Do not enable live payments until you have completed a real end-to-end test payment and verified the callback/webhook in your merchant dashboard.
 
 ## Public API
-`POST /api/v1` with `key` and one of:
+
+`POST /api/v1`
+
+Actions:
 - `services`
 - `balance`
 - `add`
 - `status`
 
-Use the generated service UUID in the `service` field.
+Use the API key generated from the Client → API page.
 
-## Health
-`GET /api/health`
+## Tests
 
-## Production note
-Do not commit `.env`, Firebase private keys, provider API keys or payment secrets. Configure them through the hosting provider's secret/environment system.
+`npm test` runs a dependency-free smoke suite that checks critical routes, security guards, financial protections, frontend/backend endpoint coverage and production payment safeguards.
+
+A full integration test still requires your real PostgreSQL, Firebase, payment gateway and provider credentials; those external systems cannot be tested from this package in isolation.

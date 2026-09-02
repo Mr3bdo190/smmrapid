@@ -52,6 +52,7 @@ export default function AdminShortlinks() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">URL</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reward</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
@@ -61,6 +62,7 @@ export default function AdminShortlinks() {
                 <td className="px-6 py-4 text-sm text-gray-500 truncate max-w-[200px]">{s.url}</td>
                 <td className="px-6 py-4 text-sm font-bold text-emerald-600">${Number(s.rewardAmount).toFixed(4)}</td>
                 <td className="px-6 py-4 text-sm"><span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">{s.status}</span></td>
+                <td className="px-6 py-4 text-sm"><button onClick={async()=>{const token=await user?.getIdToken();const res=await fetch(`/api/admin/shortlinks/${s.id}`,{method:'DELETE',headers:{Authorization:`Bearer ${token}`}});if(res.ok){toast.success('Shortlink deactivated');queryClient.invalidateQueries({queryKey:['admin-shortlinks']});}else toast.error('Action failed')}} className="text-red-600 hover:underline">Deactivate</button></td>
               </tr>
             ))}
           </tbody>

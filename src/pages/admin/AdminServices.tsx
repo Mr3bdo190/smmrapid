@@ -61,6 +61,8 @@ export default function AdminServices() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Price/1k</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
@@ -69,6 +71,8 @@ export default function AdminServices() {
                 <td className="px-6 py-4 text-sm font-medium text-gray-900">{s.name}</td>
                 <td className="px-6 py-4 text-sm text-gray-500">{s.category?.name}</td>
                 <td className="px-6 py-4 text-sm text-gray-500">${Number(s.pricePer1k).toFixed(4)}</td>
+                <td className="px-6 py-4 text-sm">{s.status}</td>
+                <td className="px-6 py-4 text-sm"><button onClick={async()=>{const token=await user?.getIdToken();const res=await fetch(`/api/admin/services/${s.id}`,{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({...s,status:s.status==='active'?'inactive':'active',categoryId:s.categoryId,pricePer1k:s.pricePer1k,minQuantity:s.minQuantity,maxQuantity:s.maxQuantity})});if(res.ok){toast.success('Service updated');queryClient.invalidateQueries({queryKey:['admin-services']});}else toast.error('Update failed')}} className="text-indigo-600 hover:underline">{s.status==='active'?'Deactivate':'Activate'}</button></td>
               </tr>
             ))}
           </tbody>

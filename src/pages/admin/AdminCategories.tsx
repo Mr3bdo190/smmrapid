@@ -50,6 +50,7 @@ export default function AdminCategories() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sort Order</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
@@ -58,6 +59,7 @@ export default function AdminCategories() {
                 <td className="px-6 py-4 text-sm text-gray-500">{c.sortOrder}</td>
                 <td className="px-6 py-4 text-sm font-medium text-gray-900">{c.name}</td>
                 <td className="px-6 py-4 text-sm text-gray-500">{c.status}</td>
+                <td className="px-6 py-4 text-sm"><button onClick={async()=>{const token=await user?.getIdToken();const res=await fetch(`/api/admin/categories/${c.id}`,{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({...c,status:c.status==='active'?'inactive':'active'})});if(res.ok){toast.success('Category updated');queryClient.invalidateQueries({queryKey:['admin-categories']});}else toast.error('Update failed')}} className="text-indigo-600 hover:underline">{c.status==='active'?'Deactivate':'Activate'}</button></td>
               </tr>
             ))}
           </tbody>

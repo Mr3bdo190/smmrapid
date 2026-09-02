@@ -1,4 +1,6 @@
 import { eq, inArray } from 'drizzle-orm';
+import dns from 'node:dns';
+import net from 'node:net';
 import { db } from '../db/index';
 import { orders, providers, services, users, walletLedger } from '../db/schema';
 
@@ -18,6 +20,10 @@ export class ProviderClient {
       const controller=new AbortController(); const timer=setTimeout(()=>controller.abort(),10000);
       try{
         const u=new URL(this.url); if(!['http:','https:'].includes(u.protocol)) throw new Error('Invalid provider URL');
+        const host=u.hostname.toLowerCase();
+        const privateIp=(ip:string)=>net.isIPv4(ip) ? (()=>{const [a,b]=ip.split('.').map(Number);return a===10||a===127||a===0||(a===169&&b===254)||(a===172&&b>=16&&b<=31)||(a===192&&b===168)})() : net.isIPv6(ip) && (ip==='::1'||ip.startsWith('fc')||ip.startsWith('fd')||ip.startsWith('fe80:'));
+        if(host==='localhost'||host.endsWith('.localhost')||(net.isIP(host)&&privateIp(host))) throw new Error('Provider host is not allowed');
+        try { const ips=await dns.promises.lookup(host,{all:true}); if(ips.some(x=>privateIp(x.address))) throw new Error('Provider host is not allowed'); } catch(e:any) { if(e?.message==='Provider host is not allowed') throw e; }
         const body=new URLSearchParams({key:this.key,...data});
         const res=await fetch(u,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','Accept':'application/json'},body:body.toString(),signal:controller.signal});
         if(res.status===429||res.status>=500){last=`Provider HTTP ${res.status}`;await sleep(500*(2**attempt));continue;}
@@ -80,4 +86,14 @@ export async function checkOrderStatus(orderId:string){
 }
 
 let workerStarted=false;
-export function startProviderWorker(){if(workerStarted)return;workerStarted=true;setInterval(async()=>{try{const pending=await db.query.orders.findMany({where:eq(orders.status,'Pending'),limit:50});for(const o of pending)await placeOrderToProvider(o.id).catch(console.error);const active=await db.query.orders.findMany({where:inArray(orders.status,['Processing','In Progress']),limit:100});for(const o of active)await checkOrderStatus(o.id).catch(console.error);}catch(e){console.error('Provider worker',e);}},60_000);}
+let workerRunning=false;
+export function startProviderWorker(){
+  if(workerStarted)return;
+  workerStarted=true;
+  const run=async()=>{
+    if(workerRunning)return;
+    workerRunning=true;
+    try{const pending=await db.query.orders.findMany({where:eq(orders.status,'Pending'),limit:50});for(const o of pending)await placeOrderToProvider(o.id).catch(console.error);const active=await db.query.orders.findMany({where:inArray(orders.status,['Processing','In Progress']),limit:100});for(const o of active)await checkOrderStatus(o.id).catch(console.error);}catch(e){console.error('Provider worker',e);}finally{workerRunning=false;}};
+  run();
+  setInterval(run,60_000);
+}

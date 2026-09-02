@@ -55,6 +55,7 @@ export default function AdminMysteryBoxes() {
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Min / Max ($)</th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Probability (%)</th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-100">
@@ -64,6 +65,7 @@ export default function AdminMysteryBoxes() {
                 <td className="px-6 py-4 text-sm text-gray-500">${Number(t.minAmount).toFixed(2)} - ${Number(t.maxAmount).toFixed(2)}</td>
                 <td className="px-6 py-4 text-sm">{t.probability}%</td>
                 <td className="px-6 py-4 text-sm"><span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">{t.status}</span></td>
+                <td className="px-6 py-4 text-sm"><button onClick={async()=>{const token=await user?.getIdToken();const res=await fetch(`/api/admin/mystery-boxes/${t.id}`,{method:'DELETE',headers:{Authorization:`Bearer ${token}`}});if(res.ok){toast.success('Tier deactivated');queryClient.invalidateQueries({queryKey:['admin-mystery-tiers']});}else toast.error('Action failed')}} className="text-red-600 hover:underline">Deactivate</button></td>
               </tr>
             ))}
             {tiers.length === 0 && <tr><td colSpan={4} className="px-6 py-8 text-center text-gray-500">No tiers found.</td></tr>}

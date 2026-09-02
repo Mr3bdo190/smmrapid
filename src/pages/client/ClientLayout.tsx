@@ -28,7 +28,7 @@ const navItems = [
 ];
 
 export default function ClientLayout() {
-  const { user, dbUser, loading, logOut } = useAuth();
+  const { user, dbUser, loading, authError, logOut } = useAuth();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -58,7 +58,8 @@ export default function ClientLayout() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
         <h1 className="text-3xl font-bold mb-4 text-red-600">Access Denied</h1>
-        <p className="text-gray-600 mb-8">Please log in to access the client area.</p>
+        <p className="text-gray-600 mb-2">{user ? 'Your login is valid, but your account could not be synchronized with the server.' : 'Please log in to access the client area.'}</p>
+        {user && authError?.code && <p className="text-xs text-red-500 mb-6">Error: {authError.code}</p>}
         <Link to="/" className="text-indigo-600 hover:underline">Return to Home</Link>
       </div>
     );

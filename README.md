@@ -57,3 +57,7 @@ Use the API key generated from the Client → API page.
 `npm test` runs a dependency-free smoke suite that checks critical routes, security guards, financial protections, frontend/backend endpoint coverage and production payment safeguards.
 
 A full integration test still requires your real PostgreSQL, Firebase, payment gateway and provider credentials; those external systems cannot be tested from this package in isolation.
+
+
+### Database networking
+Runtime PostgreSQL connections are configured with Node `family: 4`, so the panel uses IPv4 for PostgreSQL. Use a database hostname that has an IPv4 (A) record or an explicit IPv4 address.

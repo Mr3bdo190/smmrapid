@@ -98,8 +98,16 @@ const requireAuth = async (req: any, res: any, next: any) => {
   if (!header?.startsWith('Bearer ')) return apiError(res, 401, 'Unauthorized', 'UNAUTHORIZED');
   const token = header.slice(7).trim();
   if (!token) return apiError(res, 401, 'Unauthorized', 'UNAUTHORIZED');
+
+  let decoded: any;
   try {
-    const decoded = await adminAuth.verifyIdToken(token);
+    decoded = await adminAuth.verifyIdToken(token);
+  } catch (e: any) {
+    console.error('[auth] Firebase token verification failed:', e?.code || e?.message || e);
+    return apiError(res, 401, 'Firebase authentication failed. Please sign in again.', 'INVALID_TOKEN');
+  }
+
+  try {
     req.user = decoded;
     let userRecord = await db.query.users.findFirst({ where: eq(users.uid, decoded.uid) });
     if (!userRecord) {
@@ -108,14 +116,21 @@ const requireAuth = async (req: any, res: any, next: any) => {
       const referralCode = crypto.randomBytes(6).toString('hex').toUpperCase();
       const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map((x:string)=>x.trim().toLowerCase()).filter(Boolean);
       const role = adminEmails.includes(email.toLowerCase()) ? 'admin' : 'user';
-      const [created] = await db.insert(users).values({ uid: decoded.uid, email, name: decoded.name || null, role, status: 'active', referralCode }).returning();
-      userRecord = created;
+      try {
+        const [created] = await db.insert(users).values({ uid: decoded.uid, email, name: decoded.name || null, role, status: 'active', referralCode }).returning();
+        userRecord = created;
+      } catch (insertError: any) {
+        // A concurrent first request may have created the same user.
+        userRecord = await db.query.users.findFirst({ where: eq(users.uid, decoded.uid) });
+        if (!userRecord) throw insertError;
+      }
     }
     if (userRecord.status !== 'active') return apiError(res, 403, 'Account is not active', 'ACCOUNT_DISABLED');
     req.dbUser = userRecord;
     next();
-  } catch {
-    return apiError(res, 401, 'Unauthorized', 'INVALID_TOKEN');
+  } catch (e: any) {
+    console.error('[auth] Database/user sync failed:', e?.code || e?.message || e);
+    return apiError(res, 503, 'Authentication succeeded, but the account database is unavailable.', 'AUTH_DB_UNAVAILABLE');
   }
 };
 const requireAdmin = (req: any, res: any, next: any) => req.dbUser?.role === 'admin' ? next() : apiError(res, 403, 'Admin access required', 'FORBIDDEN');

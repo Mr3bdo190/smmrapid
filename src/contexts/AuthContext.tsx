@@ -12,41 +12,72 @@ const config = {
 
 const app = initializeApp(config);
 const auth = getAuth(app);
-
 const AuthContext = createContext<any>({});
+
+async function syncAccount(u: User, referralCode?: string) {
+  // Force-refresh once so a stale cached Firebase ID token cannot cause a false Access Denied.
+  let token = await u.getIdToken();
+  let res = await fetch('/api/auth/sync', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify(referralCode ? { referralCode } : {})
+  });
+
+  if (res.status === 401) {
+    token = await u.getIdToken(true);
+    res = await fetch('/api/auth/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(referralCode ? { referralCode } : {})
+    });
+  }
+
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const error: any = new Error(body?.error || `Authentication sync failed (${res.status})`);
+    error.status = res.status;
+    error.code = body?.code;
+    throw error;
+  }
+  return body;
+}
 
 export const AuthProvider = ({ children }: any) => {
   const [user, setUser] = useState<User | null>(null);
   const [dbUser, setDbUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState<any>(null);
 
   useEffect(() => {
     return onAuthStateChanged(auth, async (u) => {
       setUser(u);
-      if (u) {
-        const token = await u.getIdToken();
-        const params = new URLSearchParams(window.location.search);
-        const ref = params.get('ref');
-        try {
-          const res = await fetch('/api/auth/sync', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify(ref ? { referralCode: ref } : {})
-          });
-          if (!res.ok) {
-            const body = await res.json().catch(() => ({}));
-            console.error('Auth sync failed', res.status, body);
-            setDbUser(null);
-          } else {
-            setDbUser(await res.json());
-          }
-        } catch (error) {
-          console.error('Auth sync network error', error);
-          setDbUser(null);
-        }
-      } else {
+      setAuthError(null);
+      if (!u) {
         setDbUser(null);
+        setLoading(false);
+        return;
       }
+
+      const params = new URLSearchParams(window.location.search);
+      const ref = params.get('ref') || localStorage.getItem('ref') || undefined;
+      let lastError: any = null;
+
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const synced = await syncAccount(u, ref);
+          setDbUser(synced);
+          setAuthError(null);
+          setLoading(false);
+          return;
+        } catch (error: any) {
+          lastError = error;
+          console.error(`Auth sync attempt ${attempt + 1} failed`, error);
+          if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
+        }
+      }
+
+      setDbUser(null);
+      setAuthError(lastError || new Error('Unable to sync account'));
       setLoading(false);
     });
   }, []);
@@ -65,7 +96,7 @@ export const AuthProvider = ({ children }: any) => {
   };
   const logOut = () => signOut(auth);
 
-  return <AuthContext.Provider value={{ user, dbUser, loading, signIn, registerWithEmail, loginWithEmail, logOut }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ user, dbUser, loading, authError, signIn, registerWithEmail, loginWithEmail, logOut }}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => useContext(AuthContext);

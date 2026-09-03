@@ -137,3 +137,19 @@ test('admin control center additions are wired', () => {
   assert.match(orders, /Sync status/); assert.match(orders, /Search order/);
   assert.match(reports, /Resolve/);
 });
+
+test('complete affiliate system is wired', () => {
+  const server = fs.readFileSync(path.join(root, 'server.ts'), 'utf8');
+  const client = fs.readFileSync(path.join(root, 'src/pages/client/ClientAffiliates.tsx'), 'utf8');
+  const admin = fs.readFileSync(path.join(root, 'src/pages/admin/AdminAffiliates.tsx'), 'utf8');
+  const app = fs.readFileSync(path.join(root, 'src/App.tsx'), 'utf8');
+  assert.match(server, /\/api\/client\/affiliates\/stats/);
+  assert.match(server, /\/api\/admin\/affiliates/);
+  assert.match(server, /ensureReferralCode/);
+  assert.match(server, /count\(distinct/);
+  assert.match(client, /Commission History/);
+  assert.match(client, /Referred Users/);
+  assert.match(admin, /Affiliate Control Center/);
+  assert.match(app, /ref_click:/);
+  assert.ok(fs.existsSync(path.join(root, 'drizzle/0005_affiliate_system.sql')));
+});

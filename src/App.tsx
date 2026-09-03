@@ -17,6 +17,7 @@ const AdminMysteryBoxes = lazy(() => import('./pages/admin/AdminMysteryBoxes'));
 const AdminProviders = lazy(() => import('./pages/admin/AdminProviders'));
 const AdminSystemReports = lazy(() => import('./pages/admin/AdminSystemReports'));
 const AdminAuditLogs = lazy(() => import('./pages/admin/AdminAuditLogs'));
+const AdminAffiliates = lazy(() => import('./pages/admin/AdminAffiliates'));
 const AdminCategories = lazy(() => import('./pages/admin/AdminCategories'));
 const AdminServices = lazy(() => import('./pages/admin/AdminServices'));
 
@@ -46,12 +47,17 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     const ref = params.get('ref');
     if (ref) {
-      localStorage.setItem('ref', ref);
-      fetch('/api/client/affiliates/click', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ referralCode: ref })
-      }).catch(() => {});
+      const code = ref.trim().toUpperCase();
+      localStorage.setItem('ref', code);
+      const clickKey = `ref_click:${code}`;
+      if (!sessionStorage.getItem(clickKey)) {
+        sessionStorage.setItem(clickKey, '1');
+        fetch('/api/client/affiliates/click', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ referralCode: code })
+        }).catch(() => {});
+      }
     }
   }, []);
 
@@ -94,6 +100,7 @@ export default function App() {
             <Route path="providers" element={<AdminProviders />} />
             <Route path="reports" element={<AdminSystemReports />} />
             <Route path="audit" element={<AdminAuditLogs />} />
+            <Route path="affiliates" element={<AdminAffiliates />} />
           </Route>
           <Route path="*" element={<div className="p-10 text-center">404 - Not Found</div>} />
         </Routes>

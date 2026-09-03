@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLocation, Link, Outlet } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { LayoutDashboard, Users, ShoppingCart, Settings, Server, Tags, ListOrdered, Wallet, LogOut, Menu, X, Ticket, LifeBuoy, Link2, Gift, ShieldAlert, History } from 'lucide-react';
+import { LayoutDashboard, Users, ShoppingCart, Settings, Server, Tags, ListOrdered, Wallet, LogOut, Menu, X, Ticket, LifeBuoy, Link2, Gift, ShieldAlert, History, Handshake } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 const navItems = [
@@ -21,6 +21,7 @@ const navItems = [
 
   { name: 'Reports', href: '/admin/reports', icon: ShieldAlert },
   { name: 'Audit Logs', href: '/admin/audit', icon: History },
+  { name: 'Affiliates', href: '/admin/affiliates', icon: Handshake },
   { name: 'Settings', href: '/admin/settings', icon: Settings },
 ];
 

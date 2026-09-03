@@ -466,9 +466,79 @@ app.post('/api/client/tickets', requireAuth, async (req: any, res) => {
 app.get('/api/client/tickets/:id', requireAuth, async (req: any, res) => { const t = await db.query.tickets.findFirst({ where: eq(tickets.id, req.params.id) }); if (!t || t.userId !== req.dbUser.id) return apiError(res,404,'Ticket not found','NOT_FOUND'); const messages = await db.query.ticketMessages.findMany({ where: eq(ticketMessages.ticketId,t.id), orderBy:[desc(ticketMessages.createdAt)] }); res.json({ ticket:t, messages }); });
 app.post('/api/client/tickets/:id/messages', requireAuth, async (req: any, res) => { const message=String(req.body?.message||'').trim(); if(!message||message.length>5000)return apiError(res,400,'Invalid message','VALIDATION_ERROR'); const t=await db.query.tickets.findFirst({where:eq(tickets.id,req.params.id)}); if(!t||t.userId!==req.dbUser.id)return apiError(res,404,'Ticket not found','NOT_FOUND'); if(t.status==='Closed')return apiError(res,409,'Ticket is closed','TICKET_CLOSED'); const [m]=await db.insert(ticketMessages).values({ticketId:t.id,senderId:req.dbUser.id,message,isAdmin:false}).returning(); await db.update(tickets).set({status:'Open'}).where(eq(tickets.id,t.id)); res.status(201).json(m); });
 
-// Affiliate
-app.post('/api/client/affiliates/click', async (req,res)=>{ const code=String(req.body?.referralCode||'').trim().toUpperCase(); if(!code||code.length>32)return apiError(res,400,'Invalid referral code','VALIDATION_ERROR'); const ref=await db.query.users.findFirst({where:eq(users.referralCode,code)}); if(!ref)return res.status(404).json({error:'Referral code not found'}); await db.insert(referralClicks).values({referralCode:code}); res.json({success:true}); });
-app.get('/api/client/affiliates/stats', requireAuth, async (req:any,res)=>{ let u=req.dbUser; if(!u.referralCode){ for(let i=0;i<5 && !u.referralCode;i++){ const code=crypto.randomBytes(6).toString('hex').toUpperCase(); try{ const [updated]=await db.update(users).set({referralCode:code}).where(and(eq(users.id,u.id),isNull(users.referralCode))).returning(); if(updated)u=updated; else u=(await db.query.users.findFirst({where:eq(users.id,u.id)}))||u; }catch{} } }  const [clicks] = await db.select({count:sql<number>`count(*)`}).from(referralClicks).where(eq(referralClicks.referralCode,u.referralCode||'')); const [signups]=await db.select({count:sql<number>`count(*)`}).from(users).where(eq(users.referredBy,u.id)); const commissions=await db.select().from(affiliateCommissions).where(eq(affiliateCommissions.affiliateId,u.id)); res.json({referralCode:u.referralCode,clicks:Number(clicks?.count||0),signups:Number(signups?.count||0),totalCommission:money(commissions.reduce((a,c)=>a+num(c.amount),0))}); });
+// Affiliate / Referral system
+const ensureReferralCode = async (userId: string, current?: string) => {
+  if (current) return current;
+  for (let i = 0; i < 8; i++) {
+    const code = crypto.randomBytes(6).toString('hex').toUpperCase();
+    try {
+      const [updated] = await db.update(users).set({ referralCode: code }).where(and(eq(users.id, userId), isNull(users.referralCode))).returning({ referralCode: users.referralCode });
+      if (updated?.referralCode) return updated.referralCode;
+      const row = await db.query.users.findFirst({ where: eq(users.id, userId), columns: { referralCode: true } });
+      if (row?.referralCode) return row.referralCode;
+    } catch { /* retry on the unique referral_code constraint */ }
+  }
+  throw new Error('Could not generate referral code');
+};
+
+app.post('/api/client/affiliates/click', async (req,res)=>{
+  try {
+    const code=String(req.body?.referralCode||'').trim().toUpperCase();
+    if(!/^[A-Z0-9]{6,32}$/.test(code))return apiError(res,400,'Invalid referral code','VALIDATION_ERROR');
+    const ref=await db.query.users.findFirst({where:eq(users.referralCode,code),columns:{id:true,referralCode:true}});
+    if(!ref)return res.status(404).json({error:'Referral code not found',code:'REFERRAL_NOT_FOUND'});
+    await db.insert(referralClicks).values({referralCode:code});
+    res.json({success:true});
+  } catch(e:any){ apiError(res,500,e.message||'Unable to record referral click','REFERRAL_CLICK_ERROR'); }
+});
+
+app.get('/api/client/affiliates/stats', requireAuth, async (req:any,res)=>{
+  try {
+    const code = await ensureReferralCode(req.dbUser.id, req.dbUser.referralCode);
+    const [clickRow] = await db.select({count:sql<number>`count(*)`}).from(referralClicks).where(eq(referralClicks.referralCode,code));
+    const [signupRow] = await db.select({count:sql<number>`count(*)`}).from(users).where(eq(users.referredBy,req.dbUser.id));
+    const [paidRow] = await db.select({count:sql<number>`count(distinct ${affiliateCommissions.referredUserId})`}).from(affiliateCommissions).where(eq(affiliateCommissions.affiliateId,req.dbUser.id));
+    const [depositRow] = await db.select({amount:sql<string>`coalesce(sum(${payments.amount}),0)`}).from(affiliateCommissions).innerJoin(payments,eq(payments.id,affiliateCommissions.paymentId)).where(eq(affiliateCommissions.affiliateId,req.dbUser.id));
+    const [commissionRow] = await db.select({amount:sql<string>`coalesce(sum(${affiliateCommissions.amount}),0)`}).from(affiliateCommissions).where(eq(affiliateCommissions.affiliateId,req.dbUser.id));
+    const referred = await db.select({id:users.id,name:users.name,email:users.email,status:users.status,createdAt:users.createdAt}).from(users).where(eq(users.referredBy,req.dbUser.id)).orderBy(desc(users.createdAt)).limit(100);
+    const commissions = await db.select({id:affiliateCommissions.id,amount:affiliateCommissions.amount,paymentId:affiliateCommissions.paymentId,createdAt:affiliateCommissions.createdAt,referredEmail:users.email}).from(affiliateCommissions).innerJoin(users,eq(users.id,affiliateCommissions.referredUserId)).where(eq(affiliateCommissions.affiliateId,req.dbUser.id)).orderBy(desc(affiliateCommissions.createdAt)).limit(100);
+    const totalCommission=money(num(commissionRow?.amount||0));
+    res.json({referralCode:code,referralLink:`${process.env.PUBLIC_APP_URL || `${req.protocol}://${req.get('host')}`}/?ref=${encodeURIComponent(code)}`,clicks:Number(clickRow?.count||0),signups:Number(signupRow?.count||0),paidReferrals:Number(paidRow?.count||0),referralDeposits:money(num(depositRow?.amount||0)),totalCommission,referred,commissions});
+  } catch(e:any){ console.error('affiliate stats',e); apiError(res,500,'Unable to load affiliate statistics','AFFILIATE_STATS_ERROR'); }
+});
+
+app.get('/api/admin/affiliates', requireAuth, requireAdmin, async (_req,res)=>{
+  try {
+    const [settingsRows, usersRows, clicksRows, commissionRows] = await Promise.all([
+      db.select().from(settings),
+      db.select({id:users.id,name:users.name,email:users.email,referralCode:users.referralCode,createdAt:users.createdAt}).from(users).orderBy(desc(users.createdAt)),
+      db.select({referralCode:referralClicks.referralCode,count:sql<number>`count(*)`}).from(referralClicks).groupBy(referralClicks.referralCode),
+      db.select({id:affiliateCommissions.id,affiliateId:affiliateCommissions.affiliateId,referredUserId:affiliateCommissions.referredUserId,paymentId:affiliateCommissions.paymentId,amount:affiliateCommissions.amount,createdAt:affiliateCommissions.createdAt}).from(affiliateCommissions).orderBy(desc(affiliateCommissions.createdAt)).limit(500)
+    ]);
+    const clickMap=new Map(clicksRows.map((r:any)=>[r.referralCode,Number(r.count||0)]));
+    const ids=commissionRows.map((r:any)=>r.affiliateId).filter(Boolean);
+    const refIds=commissionRows.map((r:any)=>r.referredUserId).filter(Boolean);
+    const payIds=commissionRows.map((r:any)=>r.paymentId).filter(Boolean);
+    const [commissionUsers,paymentRows]=await Promise.all([
+      ids.length?db.select({id:users.id,email:users.email,name:users.name,referredBy:users.referredBy}).from(users).where(inArray(users.id,[...new Set([...ids,...refIds])])):Promise.resolve([]),
+      payIds.length?db.select({id:payments.id,amount:payments.amount}).from(payments).where(inArray(payments.id,[...new Set(payIds)])):Promise.resolve([])
+    ]);
+    const userMap=new Map((commissionUsers as any[]).map((u:any)=>[u.id,u]));
+    const payMap=new Map((paymentRows as any[]).map((p:any)=>[p.id,num(p.amount)]));
+    const byAffiliate=new Map<string,any>();
+    for(const u of usersRows){
+      byAffiliate.set(u.id,{...u,clicks:Number(clickMap.get(u.referralCode)||0),signups:0,paidReferrals:new Set<string>(),referralDeposits:0,totalCommission:0});
+    }
+    const signupMap=new Map<string,number>();
+    for(const u of (await db.select({id:users.id,referredBy:users.referredBy}).from(users))) if(u.referredBy) signupMap.set(u.referredBy,(signupMap.get(u.referredBy)||0)+1);
+    for(const [id,row] of byAffiliate) row.signups=signupMap.get(id)||0;
+    for(const c of commissionRows){ const row=byAffiliate.get(c.affiliateId); if(row){row.paidReferrals.add(c.referredUserId);row.referralDeposits+=payMap.get(c.paymentId)||0;row.totalCommission+=num(c.amount);} }
+    const affiliates=[...byAffiliate.values()].map(r=>({...r,paidReferrals:r.paidReferrals.size,referralDeposits:money(r.referralDeposits),totalCommission:money(r.totalCommission)})).filter(r=>r.referralCode||r.signups||r.totalCommission!=='0.0000');
+    const summary={clicks:[...clickMap.values()].reduce((a,b)=>a+b,0),signups:[...signupMap.values()].reduce((a,b)=>a+b,0),deposited:money(commissionRows.reduce((a,c)=>a+(payMap.get(c.paymentId)||0),0)),commissions:money(commissionRows.reduce((a,c)=>a+num(c.amount),0)),commissionPercentage:settingsRows.find((x:any)=>x.key==='affiliate_commission_percentage')?.value||'5'};
+    const recentCommissions=commissionRows.slice(0,100).map((c:any)=>({id:c.id,affiliateEmail:userMap.get(c.affiliateId)?.email||'-',referredEmail:userMap.get(c.referredUserId)?.email||'-',paymentId:c.paymentId,amount:c.amount,createdAt:c.createdAt}));
+    res.json({summary,affiliates,recentCommissions});
+  } catch(e:any){ console.error('admin affiliates',e); apiError(res,500,'Unable to load affiliate report','AFFILIATE_ADMIN_ERROR'); }
+});
 
 // Game/rewards
 app.post('/api/client/game/claim', requireAuth, async (req:any,res)=>{ try { let result:any; await db.transaction(async tx=>{ const [u]=await tx.select().from(users).where(eq(users.id,req.dbUser.id)).for('update'); const now=new Date(); if(u.lastClaimDate && now.getTime()-new Date(u.lastClaimDate).getTime()<24*60*60*1000)throw new Error('Daily claim is not available yet'); const last=u.lastClaimDate?new Date(u.lastClaimDate):null; const within=last && now.getTime()-last.getTime()<=48*60*60*1000; const streak=within?(u.currentStreak+1):1; const points=10+Math.min(streak,30)*2; await tx.update(users).set({gamePoints:u.gamePoints+points,currentStreak:streak,lastClaimDate:now}).where(eq(users.id,u.id)); result={points,currentStreak:streak}; }); res.json(result); } catch(e:any){apiError(res,400,e.message);} });

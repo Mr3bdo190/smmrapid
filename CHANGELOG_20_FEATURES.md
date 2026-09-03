@@ -28,3 +28,13 @@
 Smoke tests: 14/14 PASS.
 Live Firebase/PostgreSQL/provider/payment gateway tests require the deployed environment and real credentials.
 TypeScript/build certification requires a complete dependency installation (`npm ci`).
+
+## Complete Referral/Affiliate System
+- Permanent unique referral codes with automatic backfill for legacy users.
+- Referral link generated from PUBLIC_APP_URL when configured, otherwise current request origin.
+- Click tracking with browser-session deduplication.
+- Immutable first-referrer assignment through the existing auth sync guard (`referred_by IS NULL`).
+- Approved-payment commissions are idempotent via unique payment_id and credited transactionally.
+- Client affiliate dashboard: link, code, clicks, signups, paid referrals, referred users and commission history.
+- Admin Affiliate Control Center with global clicks/signups/deposits/commissions and recent commission audit.
+- Affiliate indexes added in migration 0005.

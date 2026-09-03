@@ -174,6 +174,20 @@ app.get('/api/client/config', async (_req, res) => {
   res.json({ siteName: s.site_name || 'RapidSMM', currencySymbol: s.currency_symbol || '$', vodafoneCashNumber: s.vodafone_cash_number || '', siteDescription: s.site_description || '', supportEmail: s.support_email || '', siteLogo: s.site_logo || '' });
 });
 
+// Public, read-only preview used by the landing page — no pricing/account secrets, safe to expose logged-out.
+app.get('/api/public/showcase', async (_req, res) => {
+  const [[catRow], [svcRow]] = await Promise.all([
+    db.select({ count: sql<number>`count(*)` }).from(categories).where(eq(categories.status, 'active')),
+    db.select({ count: sql<number>`count(*)` }).from(services).where(eq(services.status, 'active')),
+  ]);
+  const preview = await db.query.services.findMany({ where: eq(services.status, 'active'), with: { category: true }, orderBy: [asc(services.sortOrder)], limit: 8 });
+  res.json({
+    categoryCount: Number(catRow?.count || 0),
+    serviceCount: Number(svcRow?.count || 0),
+    services: preview.filter(s => s.category?.status === 'active').map(s => ({ id: s.id, name: s.name, category: s.category?.name || '', rate: s.pricePer1k, min: s.minQuantity, max: s.maxQuantity })),
+  });
+});
+
 app.post('/api/auth/sync', authLimiter, requireAuth, async (req: any, res) => {
   let user = req.dbUser;
   const referralCode = typeof req.body?.referralCode === 'string' ? req.body.referralCode.trim().toUpperCase() : '';

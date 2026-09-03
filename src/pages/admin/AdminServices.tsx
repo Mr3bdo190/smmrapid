@@ -1,109 +1,16 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useAuth } from '../../contexts/AuthContext';
-import { apiFetch } from '../../lib/api';
-import { useState } from 'react';
-import { Plus } from 'lucide-react';
-import toast from 'react-hot-toast';
-
-export default function AdminServices() {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [formData, setFormData] = useState({ categoryId: '', name: '', pricePer1k: '', minQuantity: 10, maxQuantity: 10000 });
-
-  const { data: services = [] } = useQuery({
-    queryKey: ['admin-services'],
-    queryFn: async () => {
-      const token = await user?.getIdToken();
-      const res = await apiFetch(`/api/admin/services`, user, { headers: { Authorization: `Bearer ${token}` } });
-      if (!res.ok) throw new Error('Failed to load services');
-      return res.json();
-    },
-    enabled: !!user,
-  });
-
-  const { data: categories = [] } = useQuery({
-    queryKey: ['admin-categories'],
-    queryFn: async () => {
-      const token = await user?.getIdToken();
-      const res = await apiFetch(`/api/admin/categories`, user, { headers: { Authorization: `Bearer ${token}` } });
-      const json = await res.json();
-      return json.data || json;
-    },
-    enabled: !!user,
-  });
-
-  const saveMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const token = await user?.getIdToken();
-      const res = await apiFetch('/api/admin/services', user, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(data)
-      });
-      if (!res.ok) { const body = await res.json().catch(() => ({})); throw new Error(body?.error || 'Failed to save service'); }
-      return res.json();
-    },
-    onError: (err: any) => toast.error(err.message),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-services'] });
-      setIsModalOpen(false);
-      toast.success('Service added');
-    }
-  });
-
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium text-gray-900">Services</h3>
-        <button onClick={() => setIsModalOpen(true)} className="btn-primary"><Plus className="w-4 h-4 mr-2" /> Add Service</button>
-      </div>
-      <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden w-full">
-        <div className="overflow-x-auto w-full">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Price/1k</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {(services.data || services).map((s: any) => (
-              <tr key={s.id}>
-                <td className="px-6 py-4 text-sm font-medium text-gray-900">{s.name}</td>
-                <td className="px-6 py-4 text-sm text-gray-500">{s.category?.name}</td>
-                <td className="px-6 py-4 text-sm text-gray-500">${Number(s.pricePer1k).toFixed(4)}</td>
-                <td className="px-6 py-4 text-sm">{s.status}</td>
-                <td className="px-6 py-4 text-sm"><button onClick={async()=>{const token=await user?.getIdToken();const res=await apiFetch(`/api/admin/services/${s.id}`, user,{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({...s,status:s.status==='active'?'inactive':'active',categoryId:s.categoryId,pricePer1k:s.pricePer1k,minQuantity:s.minQuantity,maxQuantity:s.maxQuantity})});if(res.ok){toast.success('Service updated');queryClient.invalidateQueries({queryKey:['admin-services']});}else toast.error('Update failed')}} className="text-indigo-600 hover:underline">{s.status==='active'?'Deactivate':'Activate'}</button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        </div>
-      </div>
-
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl">
-            <h3 className="text-lg font-bold mb-4">Add Service</h3>
-            <form onSubmit={(e) => { e.preventDefault(); saveMutation.mutate(formData); }} className="space-y-4">
-              <select required value={formData.categoryId} onChange={e => setFormData({...formData, categoryId: e.target.value})} className="input-primary">
-                <option value="">Select Category</option>
-                {categories.map((c:any) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-              <input required type="text" placeholder="Service Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="input-primary" />
-              <input required type="number" step="0.0001" placeholder="Price Per 1k" value={formData.pricePer1k} onChange={e => setFormData({...formData, pricePer1k: e.target.value})} className="input-primary" />
-              <div className="flex justify-end gap-3 mt-6">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 border rounded-md">Cancel</button>
-                <button type="submit" className="btn-primary">Save</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+import { useMemo,useState } from 'react';
+import { useQuery,useMutation,useQueryClient } from '@tanstack/react-query'; import toast from 'react-hot-toast';
+import { Plus,Pencil,Trash2,Search,CheckSquare,RefreshCw } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext'; import { apiFetch } from '../../lib/api';
+const err=async(r:Response,f:string)=>{const b=await r.json().catch(()=>({}));return b?.error||f};
+const empty={categoryId:'',providerId:'',providerServiceId:'',name:'',pricePer1k:'',providerPrice:'',minQuantity:'1',maxQuantity:'100000',description:'',sortOrder:'0',cashbackPercentage:'0',status:'active'};
+export default function AdminServices(){const{user}=useAuth();const qc=useQueryClient();const[modal,setModal]=useState<any>(null);const[q,setQ]=useState('');const[cat,setCat]=useState('all');const[provider,setProvider]=useState('all');const[selected,setSelected]=useState<string[]>([]);
+const servicesQ=useQuery({queryKey:['admin-services'],enabled:!!user,queryFn:async()=>{const t=await user!.getIdToken();const r=await apiFetch('/api/admin/services',user,{headers:{Authorization:`Bearer ${t}`}});if(!r.ok)throw new Error(await err(r,'Failed to load services'));return r.json()}});
+const catsQ=useQuery({queryKey:['admin-categories'],enabled:!!user,queryFn:async()=>{const t=await user!.getIdToken();const r=await apiFetch('/api/admin/categories',user,{headers:{Authorization:`Bearer ${t}`}});if(!r.ok)throw new Error(await err(r,'Failed to load categories'));return r.json()}});
+const providersQ=useQuery({queryKey:['admin-providers'],enabled:!!user,queryFn:async()=>{const t=await user!.getIdToken();const r=await apiFetch('/api/admin/providers',user,{headers:{Authorization:`Bearer ${t}`}});if(!r.ok)throw new Error(await err(r,'Failed to load providers'));return r.json()}});
+const save=useMutation({mutationFn:async(d:any)=>{const t=await user!.getIdToken();const url=d.id?`/api/admin/services/${d.id}`:'/api/admin/services';const r=await apiFetch(url,user,{method:d.id?'PUT':'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${t}`},body:JSON.stringify(d)});if(!r.ok)throw new Error(await err(r,'Save failed'));return r.json()},onSuccess:()=>{toast.success('Service saved');setModal(null);qc.invalidateQueries({queryKey:['admin-services']})},onError:(e:any)=>toast.error(e.message)});
+const remove=useMutation({mutationFn:async(id:string)=>{const t=await user!.getIdToken();const r=await apiFetch(`/api/admin/services/${id}`,user,{method:'DELETE',headers:{Authorization:`Bearer ${t}`}});if(!r.ok)throw new Error(await err(r,'Delete failed'));},onSuccess:()=>{toast.success('Service deactivated');qc.invalidateQueries({queryKey:['admin-services']})},onError:(e:any)=>toast.error(e.message)});
+const bulk=useMutation({mutationFn:async(status:string)=>{const t=await user!.getIdToken();const r=await apiFetch('/api/admin/services/bulk',user,{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${t}`},body:JSON.stringify({serviceIds:selected,status})});if(!r.ok)throw new Error(await err(r,'Bulk update failed'));return r.json()},onSuccess:d=>{toast.success(`${d.changed} services updated`);setSelected([]);qc.invalidateQueries({queryKey:['admin-services']})},onError:(e:any)=>toast.error(e.message)});
+const rows=useMemo(()=>{const a=servicesQ.data||[];return a.filter((s:any)=>(cat==='all'||s.categoryId===cat)&&(provider==='all'||String(s.providerId||'none')===provider)&&(`${s.name} ${s.providerServiceId||''} ${s.category?.name||''} ${s.provider?.name||''}`.toLowerCase().includes(q.toLowerCase())))},[servicesQ.data,q,cat,provider]);
+return <div className="space-y-5"><div className="flex flex-wrap justify-between gap-3"><div><h3 className="text-xl font-bold">Service Control Center</h3><p className="text-sm text-gray-500">Full edit, filtering, bulk activation and deactivation.</p></div><button className="btn-primary" onClick={()=>setModal({...empty})}><Plus className="w-4 h-4 mr-1"/>Add Service</button></div><div className="bg-white border rounded-xl p-4 flex flex-wrap gap-3"><div className="relative flex-1 min-w-[220px]"><Search className="absolute left-3 top-3 w-4 h-4 text-gray-400"/><input className="input-primary pl-9" placeholder="Search name, provider ID..." value={q} onChange={e=>setQ(e.target.value)}/></div><select className="input-primary w-auto" value={cat} onChange={e=>setCat(e.target.value)}><option value="all">All categories</option>{(catsQ.data||[]).map((c:any)=><option key={c.id} value={c.id}>{c.name}</option>)}</select><select className="input-primary w-auto" value={provider} onChange={e=>setProvider(e.target.value)}><option value="all">All providers</option><option value="none">No provider</option>{(providersQ.data||[]).map((p:any)=><option key={p.id} value={p.id}>{p.name}</option>)}</select><button className="btn-secondary" onClick={()=>servicesQ.refetch()}><RefreshCw className="w-4 h-4 mr-1"/>Refresh</button></div><div className="bg-white border rounded-xl p-3 flex flex-wrap items-center gap-2"><button className="btn-secondary" onClick={()=>setSelected(selected.length===rows.length?[]:rows.map((r:any)=>r.id))}><CheckSquare className="w-4 h-4 mr-1"/>Select {rows.length}</button><button disabled={!selected.length||bulk.isPending} className="btn-secondary" onClick={()=>bulk.mutate('active')}>Activate selected</button><button disabled={!selected.length||bulk.isPending} className="btn-secondary" onClick={()=>bulk.mutate('inactive')}>Deactivate selected</button><span className="text-xs text-gray-500 ml-auto">{selected.length} selected</span></div><div className="bg-white border rounded-xl overflow-x-auto"><table className="min-w-[1100px] w-full"><thead className="bg-gray-50"><tr>{['','Service','Category','Provider','Provider ID','Sell/1K','Min-Max','Status','Actions'].map((h,i)=><th key={i} className="px-4 py-3 text-left text-xs text-gray-500 uppercase">{h}</th>)}</tr></thead><tbody className="divide-y">{servicesQ.isLoading?<tr><td colSpan={9} className="p-8 text-center">Loading...</td></tr>:rows.length?rows.map((s:any)=><tr key={s.id}><td className="px-4 py-3"><input type="checkbox" checked={selected.includes(s.id)} onChange={e=>setSelected(v=>e.target.checked?[...v,s.id]:v.filter(x=>x!==s.id))}/></td><td className="px-4 py-3 text-sm font-medium">{s.name}</td><td className="px-4 py-3 text-sm">{s.category?.name||'-'}</td><td className="px-4 py-3 text-sm">{s.provider?.name||'-'}</td><td className="px-4 py-3 text-xs font-mono">{s.providerServiceId||'-'}</td><td className="px-4 py-3 text-sm">${Number(s.pricePer1k).toFixed(4)}</td><td className="px-4 py-3 text-sm">{s.minQuantity} / {s.maxQuantity}</td><td className="px-4 py-3 text-sm">{s.status}</td><td className="px-4 py-3"><div className="flex gap-2"><button className="text-indigo-600" onClick={()=>setModal({...s,pricePer1k:String(s.pricePer1k),providerPrice:String(s.providerPrice||''),minQuantity:String(s.minQuantity),maxQuantity:String(s.maxQuantity),sortOrder:String(s.sortOrder||0),cashbackPercentage:String(s.cashbackPercentage||0)})}><Pencil className="w-4 h-4 inline mr-1"/>Edit</button><button className="text-red-600" onClick={()=>confirm('Deactivate this service?')&&remove.mutate(s.id)}><Trash2 className="w-4 h-4 inline mr-1"/>Disable</button></div></td></tr>):<tr><td colSpan={9} className="p-8 text-center text-gray-500">No services match.</td></tr>}</tbody></table></div>{modal&&<ServiceModal data={modal} setData={setModal} categories={catsQ.data||[]} providers={providersQ.data||[]} onClose={()=>setModal(null)} onSave={()=>save.mutate(modal)} pending={save.isPending}/>}</div>}
+function ServiceModal({data,setData,categories,providers,onClose,onSave,pending}:{data:any,setData:(v:any)=>void,categories:any[],providers:any[],onClose:()=>void,onSave:()=>void,pending:boolean}){return <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"><form onSubmit={e=>{e.preventDefault();onSave()}} className="bg-white rounded-xl w-full max-w-2xl max-h-[92vh] overflow-y-auto p-6 space-y-3"><h4 className="text-lg font-bold">{data.id?'Edit Service':'Add Service'}</h4><div className="grid grid-cols-1 md:grid-cols-2 gap-3"><select required className="input-primary" value={data.categoryId} onChange={e=>setData({...data,categoryId:e.target.value})}><option value="">Category</option>{categories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select><select className="input-primary" value={data.providerId||''} onChange={e=>setData({...data,providerId:e.target.value})}><option value="">No provider</option>{providers.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select><input required className="input-primary" placeholder="Service name" value={data.name} onChange={e=>setData({...data,name:e.target.value})}/><input className="input-primary" placeholder="Provider service ID" value={data.providerServiceId||''} onChange={e=>setData({...data,providerServiceId:e.target.value})}/><input required type="number" step="0.0001" className="input-primary" placeholder="Selling price / 1K" value={data.pricePer1k} onChange={e=>setData({...data,pricePer1k:e.target.value})}/><input type="number" step="0.0001" className="input-primary" placeholder="Provider cost / 1K" value={data.providerPrice} onChange={e=>setData({...data,providerPrice:e.target.value})}/><input required type="number" className="input-primary" placeholder="Minimum" value={data.minQuantity} onChange={e=>setData({...data,minQuantity:e.target.value})}/><input required type="number" className="input-primary" placeholder="Maximum" value={data.maxQuantity} onChange={e=>setData({...data,maxQuantity:e.target.value})}/><input type="number" className="input-primary" placeholder="Sort order" value={data.sortOrder} onChange={e=>setData({...data,sortOrder:e.target.value})}/><input type="number" min="0" max="100" className="input-primary" placeholder="Cashback %" value={data.cashbackPercentage} onChange={e=>setData({...data,cashbackPercentage:e.target.value})}/></div><textarea className="input-primary min-h-28" placeholder="Full service description" value={data.description||''} onChange={e=>setData({...data,description:e.target.value})}/><select className="input-primary" value={data.status} onChange={e=>setData({...data,status:e.target.value})}><option value="active">Active</option><option value="inactive">Inactive</option></select><div className="flex justify-end gap-2 pt-3"><button type="button" className="btn-secondary" onClick={onClose}>Cancel</button><button disabled={pending} className="btn-primary">{pending?'Saving...':'Save service'}</button></div></form></div>}

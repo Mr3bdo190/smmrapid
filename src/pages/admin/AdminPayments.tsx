@@ -1,8 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
-import { Check, X } from 'lucide-react';
+import { Check, X, Search, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useState, useMemo } from 'react';
 
 async function readApiError(res: Response, fallback: string) {
   const body = await res.json().catch(() => ({}));
@@ -12,6 +13,7 @@ async function readApiError(res: Response, fallback: string) {
 export default function AdminPayments() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [q,setQ]=useState(''); const [status,setStatus]=useState('all');
 
   const { data: payments = [], isLoading, isError, error } = useQuery({
     queryKey: ['admin-payments'],
@@ -44,9 +46,11 @@ export default function AdminPayments() {
     onError: (e: any) => toast.error(e.message || 'Payment operation failed'),
   });
 
+  const rows = useMemo(() => payments.filter((p:any) => (status==='all'||p.status===status) && `${p.user?.email||''} ${p.method||''} ${p.transactionId||''}`.toLowerCase().includes(q.toLowerCase())), [payments,q,status]);
+
   return (
     <div className="space-y-6">
-      <h3 className="text-xl font-bold text-gray-900 tracking-tight">Transactions & Payments</h3>
+      <div className="flex justify-between gap-3 flex-wrap"><h3 className="text-xl font-bold text-gray-900 tracking-tight">Transactions & Payments</h3><button className="btn-secondary" onClick={()=>queryClient.invalidateQueries({queryKey:['admin-payments']})}><RefreshCw className="w-4 h-4 inline mr-1"/>Refresh</button></div><div className="bg-white border rounded-xl p-4 flex flex-wrap gap-3"><div className="relative flex-1 min-w-[220px]"><Search className="absolute left-3 top-3 w-4 h-4 text-gray-400"/><input className="input-primary pl-9" placeholder="Search email, method or transaction ID" value={q} onChange={e=>setQ(e.target.value)}/></div><select className="input-primary w-auto" value={status} onChange={e=>setStatus(e.target.value)}><option value="all">All statuses</option><option>Pending</option><option>Approved</option><option>Rejected</option></select></div>
       {isError && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{(error as Error)?.message || 'Failed to load payments'}</div>}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden w-full">
         <div className="overflow-x-auto">
@@ -60,8 +64,8 @@ export default function AdminPayments() {
             </tr></thead>
             <tbody className="bg-white divide-y divide-gray-100">
               {isLoading && <tr><td colSpan={5} className="px-6 py-10 text-center text-gray-500">Loading payments...</td></tr>}
-              {!isLoading && payments.length === 0 && <tr><td colSpan={5} className="px-6 py-10 text-center text-gray-500">No payments found.</td></tr>}
-              {payments.map((p: any) => {
+              {!isLoading && rows.length === 0 && <tr><td colSpan={5} className="px-6 py-10 text-center text-gray-500">No payments found.</td></tr>}
+              {rows.map((p: any) => {
                 const pending = p.status === 'Pending';
                 return <tr key={p.id} className="hover:bg-gray-50/50">
                   <td className="px-6 py-4 text-sm text-gray-900">{p.user?.email || p.userId}</td>

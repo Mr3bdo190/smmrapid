@@ -84,3 +84,11 @@ If you deploy without the Blueprint (manual Web Service), set the **Build Comman
 
 ## Heleket payments
 The panel supports Heleket invoice payments. Configure `HELEKET_MERCHANT_ID`, `HELEKET_PAYMENT_API_KEY`, `HELEKET_CURRENCY`, and `PUBLIC_APP_URL`. The server signs API requests using Heleket's documented MD5(base64(JSON body)+API key) scheme and verifies the `sign` included in webhook bodies. Configure Heleket's callback URL as `https://YOUR_DOMAIN/api/heleket/webhook`. The uploaded Heleket verification file is served from `/heleket_0c30774c.html`.
+
+## Latest fixes: wallet ledger + provider control center
+- Added automatic wallet_ledger compatibility repair at startup for older deployments.
+- Added `drizzle/0004_wallet_ledger_compatibility.sql` for manual Supabase migration.
+- Admin Providers now supports editing provider URL/API key/margin/status.
+- Added provider connection test and clearer provider HTTP/API error messages.
+- Added provider service control center with bulk activate/deactivate and bulk selling-price adjustment.
+- Provider service list and bulk management endpoints are available under `/api/admin/providers/:id/services`.

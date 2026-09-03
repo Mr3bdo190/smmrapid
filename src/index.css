@@ -36,3 +36,6 @@ button:not(:disabled), a { -webkit-tap-highlight-color: transparent; }
 @media (max-width: 640px) {
   .btn-primary, .btn-secondary { min-height: 42px; }
 }
+.label-primary{display:block;font-size:.875rem;font-weight:600;color:#374151;margin-bottom:.375rem}
+.btn-secondary{display:inline-flex;align-items:center;justify-content:center;border:1px solid #d1d5db;background:#fff;color:#374151;border-radius:.5rem;padding:.55rem .8rem;font-size:.875rem;font-weight:600}
+.btn-secondary:hover{background:#f9fafb}

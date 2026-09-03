@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
-import { Shield, ShieldAlert, DollarSign, Eye, X } from 'lucide-react';
+import { Shield, ShieldAlert, DollarSign, Eye, X, Search, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 function UserDetailsModal({ userId, onClose }: { userId: string, onClose: () => void }) {
@@ -99,6 +99,7 @@ export default function AdminUsers() {
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [balanceModal, setBalanceModal] = useState<{id: string, email: string} | null>(null);
   const [balanceAmount, setBalanceAmount] = useState('');
+  const [q,setQ]=useState(''); const [statusFilter,setStatusFilter]=useState('all');
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['admin-users'],
@@ -158,11 +159,12 @@ export default function AdminUsers() {
     },
   });
 
+  const rows = users.filter((u:any)=>(statusFilter==='all'||u.status===statusFilter)&&`${u.email} ${u.name||''} ${u.role}`.toLowerCase().includes(q.toLowerCase()));
   if (isLoading) return <div>Loading users...</div>;
 
   return (
     <div className="space-y-6">
-      <h3 className="text-xl font-bold text-gray-900 tracking-tight">User Management</h3>
+      <div className="flex justify-between flex-wrap gap-3"><h3 className="text-xl font-bold text-gray-900 tracking-tight">User Management</h3><button className="btn-secondary" onClick={()=>queryClient.invalidateQueries({queryKey:['admin-users']})}><RefreshCw className="w-4 h-4 inline mr-1"/>Refresh</button></div><div className="bg-white border rounded-xl p-4 flex gap-3 flex-wrap"><div className="relative flex-1 min-w-[220px]"><Search className="absolute left-3 top-3 w-4 h-4 text-gray-400"/><input className="input-primary pl-9" placeholder="Search email, name or role" value={q} onChange={e=>setQ(e.target.value)}/></div><select className="input-primary w-auto" value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}><option value="all">All statuses</option><option value="active">Active</option><option value="suspended">Suspended</option><option value="banned">Banned</option></select></div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden w-full">
         <div className="overflow-x-auto w-full">
@@ -176,7 +178,7 @@ export default function AdminUsers() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-100">
-              {users.map((u: any) => (
+              {rows.map((u: any) => (
                 <tr key={u.id} className="hover:bg-gray-50/50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">{u.email}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">{u.role}</td>

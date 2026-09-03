@@ -27,8 +27,20 @@ export class ProviderClient {
         try { const ips=await dns.promises.lookup(host,{all:true}); if(ips.some(x=>privateIp(x.address))) throw new Error('Provider host is not allowed'); } catch(e:any) { if(e?.message==='Provider host is not allowed') throw e; }
         const body=new URLSearchParams({key:this.key,...data});
         const res=await fetch(u,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','Accept':'application/json'},body:body.toString(),signal:controller.signal});
-        if(res.status===429||res.status>=500){last=`Provider HTTP ${res.status}`;await sleep(500*(2**attempt));continue;}
-        if(!res.ok){last=`Provider HTTP ${res.status}`;break;}
+        if(res.status===429||res.status>=500){
+          const raw=await res.text().catch(()=>"");
+          let detail="";
+          try { const parsed=raw?JSON.parse(raw):null; detail=parsed?.error||parsed?.message||parsed?.detail||""; } catch {}
+          last=`Provider HTTP ${res.status}${detail?`: ${String(detail).slice(0,240)}`:""}`;
+          await sleep(500*(2**attempt));continue;
+        }
+        if(!res.ok){
+          const raw=await res.text().catch(()=>"");
+          let detail="";
+          try { const parsed=raw?JSON.parse(raw):null; detail=parsed?.error||parsed?.message||parsed?.detail||""; } catch { detail=raw.slice(0,240); }
+          last=`Provider HTTP ${res.status}${detail?`: ${String(detail).slice(0,240)}`:""}`;
+          break;
+        }
         const json=await res.json() as ProviderResponse;
         if(json.error)return json;
         return json;

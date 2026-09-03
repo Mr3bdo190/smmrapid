@@ -106,3 +106,34 @@ test('provider sync returns useful provider errors and supports common response 
   assert.match(server, /Array\.isArray\(data\.data\)/);
   assert.match(server, /Array\.isArray\(data\.result\)/);
 });
+
+test('provider control center endpoints and ledger compatibility migration exist', () => {
+  const server = fs.readFileSync(path.join(root, 'server.ts'), 'utf8');
+  assert.match(server, /\/api\/admin\/providers\/\:id\/test/);
+  assert.match(server, /\/api\/admin\/providers\/\:id\/services/);
+  assert.match(server, /\/api\/admin\/providers\/\:id\/services\/bulk/);
+  assert.match(fs.readFileSync(path.join(root, 'src/pages/admin/AdminProviders.tsx'), 'utf8'), /Edit Provider/);
+  assert.match(fs.readFileSync(path.join(root, 'src/pages/admin/AdminProviders.tsx'), 'utf8'), /Service Control/);
+  assert.match(fs.readFileSync(path.join(root, 'drizzle/0004_wallet_ledger_compatibility.sql'), 'utf8'), /ALTER TABLE wallet_ledger ALTER COLUMN type TYPE text/);
+});
+
+test('new client category-driven order UX is wired', () => {
+  const page = fs.readFileSync(path.join(root,'src/pages/client/ClientNewOrder.tsx'),'utf8');
+  for (const value of ['Choose a category','Search services in this category','Selected service','favoriteServices','recentServices','Estimated charge']) {
+    assert.ok(page.includes(value), `missing client feature ${value}`);
+  }
+});
+
+test('admin control center additions are wired', () => {
+  const services = fs.readFileSync(path.join(root,'src/pages/admin/AdminServices.tsx'),'utf8');
+  const categories = fs.readFileSync(path.join(root,'src/pages/admin/AdminCategories.tsx'),'utf8');
+  const orders = fs.readFileSync(path.join(root,'src/pages/admin/AdminOrders.tsx'),'utf8');
+  const reports = fs.readFileSync(path.join(root,'src/pages/admin/AdminSystemReports.tsx'),'utf8');
+  assert.match(server, /\/api\/admin\/services\/bulk/);
+  assert.match(server, /\/api\/admin\/orders\/:id\/refresh/);
+  assert.match(server, /\/api\/admin\/reports\/:id\/status/);
+  assert.match(services, /Edit Service/); assert.match(services, /Select \{rows.length\}/);
+  assert.match(categories, /Edit Category/); assert.match(categories, /Delete/);
+  assert.match(orders, /Sync status/); assert.match(orders, /Search order/);
+  assert.match(reports, /Resolve/);
+});

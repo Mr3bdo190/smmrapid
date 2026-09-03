@@ -75,6 +75,9 @@ This repo includes a `render.yaml` Blueprint, so Render can provision the web se
    psql "$DATABASE_URL" -f drizzle/0001_production_hardening.sql
    psql "$DATABASE_URL" -f drizzle/0002_security_and_indexes.sql
    psql "$DATABASE_URL" -f drizzle/0003_auth_reliability.sql
+   psql "$DATABASE_URL" -f drizzle/0004_wallet_ledger_compatibility.sql
+   psql "$DATABASE_URL" -f drizzle/0005_affiliate_system.sql
+   psql "$DATABASE_URL" -f drizzle/0006_contact_messages.sql
    ```
 5. Confirm `GET /api/health` returns `{"ok":true}` — this is also the Render health check path.
 6. Log in once with the account you listed in `ADMIN_EMAILS` so it gets promoted to admin, then go to `/admin/providers` and add a real SMM provider, and `/admin/settings` to set the site name/currency/support email.
@@ -88,11 +91,9 @@ The panel supports Heleket invoice payments. Configure `HELEKET_MERCHANT_ID`, `H
 ## Latest fixes: wallet ledger + provider control center
 - Added automatic wallet_ledger compatibility repair at startup for older deployments.
 - Added `drizzle/0004_wallet_ledger_compatibility.sql` for manual Supabase migration.
+- Added `drizzle/0006_contact_messages.sql` (public contact form submissions — run it after `0005_affiliate_system.sql`).
+- Added Arabic/English site-wide language toggle (`src/lib/i18n.tsx`), a public `/services` catalog, `/contact` page, and `/terms`, `/privacy`, `/refund-policy` legal pages. **After deploying, go to `/admin/settings` and set a real Support Email** — payment processors (Kashier, Heleket, etc.) check for this during account review, and it's what's shown on the public Contact page.
 - Admin Providers now supports editing provider URL/API key/margin/status.
 - Added provider connection test and clearer provider HTTP/API error messages.
 - Added provider service control center with bulk activate/deactivate and bulk selling-price adjustment.
 - Provider service list and bulk management endpoints are available under `/api/admin/providers/:id/services`.
-
-## Commercial starter catalog
-
-`drizzle/0006_moderation_starter_catalog.sql` adds a small, idempotent starter catalog for public commercial content. Only publish services you can actually fulfill; connect a real provider or use a genuine manual fulfillment workflow.

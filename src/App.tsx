@@ -1,11 +1,13 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 import LandingPage from './pages/LandingPage';
-import PublicServices from './pages/PublicServices';
-import PublicSupport from './pages/PublicSupport';
-import { Terms, Refunds } from './pages/PublicPolicy';
 import AdminLayout from './pages/admin/AdminLayout';
 import ClientLayout from './pages/client/ClientLayout';
+import PublicServices from './pages/PublicServices';
+import Contact from './pages/Contact';
+import Terms from './pages/Terms';
+import Privacy from './pages/Privacy';
+import RefundPolicy from './pages/RefundPolicy';
 
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'));
@@ -23,6 +25,7 @@ const AdminAuditLogs = lazy(() => import('./pages/admin/AdminAuditLogs'));
 const AdminAffiliates = lazy(() => import('./pages/admin/AdminAffiliates'));
 const AdminCategories = lazy(() => import('./pages/admin/AdminCategories'));
 const AdminServices = lazy(() => import('./pages/admin/AdminServices'));
+const AdminContactMessages = lazy(() => import('./pages/admin/AdminContactMessages'));
 
 const ClientDashboard = lazy(() => import('./pages/client/ClientDashboard'));
 const ClientNewOrder = lazy(() => import('./pages/client/ClientNewOrder'));
@@ -70,9 +73,10 @@ export default function App() {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/services" element={<PublicServices />} />
-          <Route path="/support" element={<PublicSupport />} />
+          <Route path="/contact" element={<Contact />} />
           <Route path="/terms" element={<Terms />} />
-          <Route path="/refund-policy" element={<Refunds />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/refund-policy" element={<RefundPolicy />} />
           <Route path="/dashboard" element={<ClientLayout />}>
             <Route index element={<ClientDashboard />} />
             <Route path="new-order" element={<ClientNewOrder />} />
@@ -108,6 +112,7 @@ export default function App() {
             <Route path="reports" element={<AdminSystemReports />} />
             <Route path="audit" element={<AdminAuditLogs />} />
             <Route path="affiliates" element={<AdminAffiliates />} />
+            <Route path="contact-messages" element={<AdminContactMessages />} />
           </Route>
           <Route path="*" element={<div className="p-10 text-center">404 - Not Found</div>} />
         </Routes>

@@ -293,3 +293,17 @@ export const affiliateCommissions = pgTable('affiliate_commissions', {
   amount: decimal('amount', { precision: 12, scale: 4 }).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+export const contactMessageStatusEnum = pgEnum('contact_message_status', ['New', 'Read', 'Replied']);
+
+// Public, no-login contact form submissions — required so anonymous visitors (and
+// payment-processor reviewers) have a way to reach support without an account.
+export const contactMessages = pgTable('contact_messages', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  email: text('email').notNull(),
+  subject: text('subject').notNull(),
+  message: text('message').notNull(),
+  status: contactMessageStatusEnum('status').default('New').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});

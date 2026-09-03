@@ -1,29 +1,77 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, CheckCircle, ShoppingCart, Headphones, ShieldCheck } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { Search } from 'lucide-react';
+import PublicPageShell from './PublicPageShell';
+import { useTranslation } from '../lib/i18n';
+
+interface SvcRow { id: string; name: string; description: string | null; rate: string; min: number; max: number; }
+interface CatRow { id: string; name: string; services: SvcRow[]; }
 
 export default function PublicServices() {
-  const { data: services = [], isLoading } = useQuery({
+  const { t } = useTranslation();
+  const [q, setQ] = useState('');
+  const { data, isLoading } = useQuery({
     queryKey: ['public-services'],
-    queryFn: async () => {
-      const r = await fetch('/api/public/services');
-      if (!r.ok) throw new Error('Failed to load catalog');
-      return r.json();
-    },
+    queryFn: async () => { const res = await fetch('/api/public/services'); if (!res.ok) throw new Error('failed'); return res.json() as Promise<{ categories: CatRow[] }>; },
   });
-  const groups = services.reduce((acc:any, s:any) => {
-    const key = s.categoryId || 'other';
-    (acc[key] ||= { name: s.categoryName || 'Services', items: [] }).items.push(s);
-    return acc;
-  }, {});
-  return <div className="min-h-screen bg-slate-50 text-slate-900">
-    <header className="bg-white border-b sticky top-0 z-40"><div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-      <Link to="/" className="font-bold text-xl">smmrapid.store</Link><Link to="/" className="text-sm text-indigo-600 flex items-center gap-1"><ArrowLeft className="w-4 h-4"/> Home</Link>
-    </div></header>
-    <main className="max-w-6xl mx-auto px-6 py-12 space-y-10">
-      <section className="text-center"><div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-sm font-medium"><ShoppingCart className="w-4 h-4"/> Available services</div><h1 className="text-4xl md:text-5xl font-extrabold mt-4">Social Media Marketing Services</h1><p className="max-w-2xl mx-auto mt-4 text-slate-600">Browse our currently available services, pricing and quantity limits before creating an order.</p></section>
-      <section className="grid md:grid-cols-3 gap-4"><div className="bg-white border rounded-xl p-5"><CheckCircle className="text-emerald-600 mb-2"/><b>Clear pricing</b><p className="text-sm text-slate-500 mt-1">Rates are shown per 1,000 units.</p></div><div className="bg-white border rounded-xl p-5"><ShieldCheck className="text-indigo-600 mb-2"/><b>Order tracking</b><p className="text-sm text-slate-500 mt-1">Registered customers can track orders from their dashboard.</p></div><div className="bg-white border rounded-xl p-5"><Headphones className="text-orange-600 mb-2"/><b>Customer support</b><p className="text-sm text-slate-500 mt-1">Support is available through the support contact shown on the website.</p></div></section>
-      {isLoading ? <div className="bg-white border rounded-xl p-12 text-center text-slate-500">Loading available services...</div> : !services.length ? <div className="bg-white border rounded-xl p-12 text-center"><h2 className="text-xl font-bold">Catalog is being updated</h2><p className="text-slate-500 mt-2">Our service catalog is temporarily unavailable. Please check back shortly.</p><Link to="/" className="inline-block mt-5 px-5 py-2 rounded-lg bg-indigo-600 text-white">Back to home</Link></div> : Object.values(groups).map((g:any)=><section key={g.name} className="space-y-3"><h2 className="text-2xl font-bold">{g.name}</h2><div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">{g.items.map((s:any)=><article key={s.id} className="bg-white border rounded-xl p-5 shadow-sm"><h3 className="font-semibold text-lg">{s.name}</h3>{s.description&&<p className="text-sm text-slate-500 mt-2 line-clamp-3">{s.description}</p>}<div className="mt-4 grid grid-cols-2 gap-2 text-sm"><div className="rounded-lg bg-indigo-50 p-3"><span className="text-slate-500 block">Rate / 1K</span><b className="text-indigo-700">${Number(s.pricePer1k).toFixed(4)}</b></div><div className="rounded-lg bg-slate-50 p-3"><span className="text-slate-500 block">Min / Max</span><b>{s.minQuantity.toLocaleString()} / {s.maxQuantity.toLocaleString()}</b></div></div><Link to="/" className="mt-4 block text-center px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium">Create account to order</Link></article>)}</div></section>)}
-    </main>
-  </div>;
+
+  const categories = (data?.categories || [])
+    .map(c => ({ ...c, services: c.services.filter(s => !q || s.name.toLowerCase().includes(q.toLowerCase())) }))
+    .filter(c => c.services.length > 0);
+
+  return (
+    <PublicPageShell title={t('publicServices.title')}>
+      <p>{t('publicServices.subtitle')}</p>
+
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+        <input
+          value={q}
+          onChange={e => setQ(e.target.value)}
+          placeholder={t('publicServices.searchPlaceholder')}
+          className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-lg outline-none text-slate-100 focus:border-amber-400/50 text-sm"
+        />
+      </div>
+
+      {isLoading && <div className="text-slate-500 text-sm">{t('common.loading')}</div>}
+
+      {!isLoading && categories.length === 0 && (
+        <div className="text-slate-500 text-sm">{t('publicServices.empty')}</div>
+      )}
+
+      <div className="space-y-10">
+        {categories.map(cat => (
+          <div key={cat.id}>
+            <h2 className="text-lg font-bold text-white mb-3" style={{ fontFamily: "'Manrope', sans-serif" }}>{cat.name}</h2>
+            <div className="overflow-hidden rounded-2xl border border-white/10">
+              <table className="w-full text-sm">
+                <tbody>
+                  {cat.services.map((s, i) => (
+                    <tr key={s.id} className={i !== cat.services.length - 1 ? 'border-b border-white/[0.06]' : ''}>
+                      <td className="px-5 py-3.5">
+                        <div className="text-slate-100">{s.name}</div>
+                        {s.description && <div className="text-slate-500 text-xs mt-0.5">{s.description}</div>}
+                        <div className="text-slate-600 text-xs mt-1 tabular-nums">{t('publicServices.minMax', { min: s.min, max: s.max })}</div>
+                      </td>
+                      <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                        <div className="text-slate-100 font-medium tabular-nums">{Number(s.rate).toFixed(2)}</div>
+                        <div className="text-slate-500 text-xs">{t('publicServices.rateLabel')}</div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="pt-4">
+        <Link to="/" className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold text-[#0B0F17] bg-amber-400 rounded-xl hover:bg-amber-300 transition-colors">
+          {t('publicServices.orderNow')}
+        </Link>
+      </div>
+    </PublicPageShell>
+  );
 }

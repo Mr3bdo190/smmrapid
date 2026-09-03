@@ -13,7 +13,7 @@ import {
   users, orders, payments, tickets, ticketMessages, services, categories, settings,
   providers, shortlinks, shortlinkClaims, shortlinkTokens, raffles, raffleTickets,
   mysteryBoxTiers, walletLedger, referralClicks, affiliateCommissions, auditLogs,
-  systemReports
+  systemReports, contactMessages
 } from './src/db/schema';
 import { adminAuth } from './src/lib/firebase-admin';
 import { ProviderClient, placeOrderToProvider, startProviderWorker, checkOrderStatus } from './src/lib/provider-engine';
@@ -56,6 +56,7 @@ app.use(express.urlencoded({ extended: true, limit: '64kb' }));
 const globalLimiter = rateLimit({ windowMs: 60_000, limit: 180, standardHeaders: true, legacyHeaders: false });
 const authLimiter = rateLimit({ windowMs: 15 * 60_000, limit: 30, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many authentication attempts', code: 'RATE_LIMITED' } });
 const apiLimiter = rateLimit({ windowMs: 60_000, limit: 120, standardHeaders: true, legacyHeaders: false, message: { error: 'API rate limit exceeded', code: 'RATE_LIMITED' } });
+const contactLimiter = rateLimit({ windowMs: 15 * 60_000, limit: 5, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many messages sent — please try again later', code: 'RATE_LIMITED' } });
 app.use(globalLimiter);
 
 const apiError = (res: express.Response, status: number, message: string, code = 'ERROR') =>
@@ -171,7 +172,63 @@ app.get('/api/health', async (_req, res) => {
 app.get('/api/client/config', async (_req, res) => {
   const rows = await db.select().from(settings);
   const s = Object.fromEntries(rows.map(x => [x.key, x.value]));
-  res.json({ siteName: s.site_name || 'RapidSMM', currencySymbol: s.currency_symbol || '$', vodafoneCashNumber: s.vodafone_cash_number || '', siteDescription: s.site_description || '', supportEmail: s.support_email || process.env.SUPPORT_EMAIL || 'support@smmrapid.store', siteLogo: s.site_logo || '' });
+  res.json({ siteName: s.site_name || 'RapidSMM', currencySymbol: s.currency_symbol || '$', vodafoneCashNumber: s.vodafone_cash_number || '', siteDescription: s.site_description || '', supportEmail: s.support_email || '', siteLogo: s.site_logo || '' });
+});
+
+// Public, read-only preview used by the landing page — no pricing/account secrets, safe to expose logged-out.
+app.get('/api/public/showcase', async (_req, res) => {
+  const [[catRow], [svcRow]] = await Promise.all([
+    db.select({ count: sql<number>`count(*)` }).from(categories).where(eq(categories.status, 'active')),
+    db.select({ count: sql<number>`count(*)` }).from(services).where(eq(services.status, 'active')),
+  ]);
+  const preview = await db.query.services.findMany({ where: eq(services.status, 'active'), with: { category: true }, orderBy: [asc(services.sortOrder)], limit: 8 });
+  res.json({
+    categoryCount: Number(catRow?.count || 0),
+    serviceCount: Number(svcRow?.count || 0),
+    services: preview.filter(s => s.category?.status === 'active').map(s => ({ id: s.id, name: s.name, category: s.category?.name || '', rate: s.pricePer1k, min: s.minQuantity, max: s.maxQuantity })),
+  });
+});
+
+// Full public catalog of everything for sale, grouped by category — required so anonymous
+// visitors (including payment-processor reviewers) can see the actual goods/services on offer
+// without needing to create an account first.
+app.get('/api/public/services', async (_req, res) => {
+  const cats = await db.select().from(categories).where(eq(categories.status, 'active')).orderBy(categories.sortOrder);
+  const svcs = await db.query.services.findMany({ where: eq(services.status, 'active'), orderBy: [asc(services.sortOrder)] });
+  const grouped = cats.map(c => ({
+    id: c.id,
+    name: c.name,
+    services: svcs.filter(s => s.categoryId === c.id).map(s => ({ id: s.id, name: s.name, description: s.description, rate: s.pricePer1k, min: s.minQuantity, max: s.maxQuantity })),
+  })).filter(c => c.services.length > 0);
+  res.json({ categories: grouped });
+});
+
+// Public contact form — no login required. Anyone (including a payment-processor reviewer)
+// needs a working way to reach support before they have an account.
+app.post('/api/public/contact', contactLimiter, async (req, res) => {
+  try {
+    const name = String(req.body?.name || '').trim();
+    const email = String(req.body?.email || '').trim();
+    const subject = String(req.body?.subject || '').trim();
+    const message = String(req.body?.message || '').trim();
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    if (name.length < 2 || name.length > 100) return apiError(res, 400, 'Please enter your name', 'INVALID_NAME');
+    if (!emailOk || email.length > 200) return apiError(res, 400, 'Please enter a valid email address', 'INVALID_EMAIL');
+    if (subject.length < 3 || subject.length > 200) return apiError(res, 400, 'Please enter a subject', 'INVALID_SUBJECT');
+    if (message.length < 10 || message.length > 5000) return apiError(res, 400, 'Message must be between 10 and 5000 characters', 'INVALID_MESSAGE');
+    await db.insert(contactMessages).values({ name, email, subject, message });
+    res.status(201).json({ success: true });
+  } catch (e: any) { apiError(res, 400, e.message || 'Failed to send message', 'CONTACT_ERROR'); }
+});
+
+app.get('/api/admin/contact-messages', requireAuth, requireAdmin, async (_req, res) => {
+  res.json(await db.select().from(contactMessages).orderBy(desc(contactMessages.createdAt)).limit(500));
+});
+app.put('/api/admin/contact-messages/:id/status', requireAuth, requireAdmin, async (req, res) => {
+  if (!['New', 'Read', 'Replied'].includes(req.body?.status)) return apiError(res, 400, 'Invalid status');
+  const [m] = await db.update(contactMessages).set({ status: req.body.status }).where(eq(contactMessages.id, req.params.id)).returning();
+  if (!m) return apiError(res, 404, 'Message not found', 'NOT_FOUND');
+  res.json(m);
 });
 
 app.post('/api/auth/sync', authLimiter, requireAuth, async (req: any, res) => {
@@ -202,23 +259,6 @@ app.post('/api/client/api-key/generate', requireAuth, async (req: any, res) => {
 app.get('/api/client/dashboard', requireAuth, async (req: any, res) => {
   const rows = await db.select().from(orders).where(eq(orders.userId, req.dbUser.id));
   res.json({ totalOrders: rows.length, totalSpent: money(rows.reduce((a, o) => a + num(o.charge), 0)).toFixed(2), balance: req.dbUser.balance });
-});
-
-app.get('/api/public/services', async (_req, res) => {
-  try {
-    const rows = await db.select({
-      id: services.id, name: services.name, pricePer1k: services.pricePer1k,
-      minQuantity: services.minQuantity, maxQuantity: services.maxQuantity,
-      description: services.description, categoryId: categories.id, categoryName: categories.name,
-      categorySortOrder: categories.sortOrder, serviceSortOrder: services.sortOrder
-    }).from(services).innerJoin(categories, eq(services.categoryId, categories.id))
-      .where(and(eq(services.status, 'active'), eq(categories.status, 'active')))
-      .orderBy(asc(categories.sortOrder), asc(services.sortOrder), asc(services.name));
-    res.json(rows);
-  } catch (e:any) {
-    console.error('public services error', e);
-    res.status(500).json({ error: 'Unable to load service catalog' });
-  }
 });
 
 app.get('/api/client/services', requireAuth, async (_req, res) => {

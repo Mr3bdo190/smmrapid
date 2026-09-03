@@ -90,8 +90,11 @@ export default function AdminSettings() {
             <input type="text" value={currencySymbol} onChange={e => setCurrencySymbol(e.target.value)} className="input-primary w-full" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Support Email</label>
-            <input type="email" value={supportEmail} onChange={e => setSupportEmail(e.target.value)} className="input-primary w-full" />
+            <label className="block text-sm font-medium text-gray-700 mb-1">Support Email <span className="text-red-500">*</span></label>
+            <input type="email" value={supportEmail} onChange={e => setSupportEmail(e.target.value)} className="input-primary w-full" placeholder="support@yourdomain.com" />
+            {!supportEmail && (
+              <p className="text-xs text-amber-600 mt-1">Required for payment processors (e.g. Heleket, Kashier) — set a real, monitored email here so it appears on your public Contact page.</p>
+            )}
           </div>
         </div>
         <div>

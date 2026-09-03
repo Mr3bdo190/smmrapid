@@ -1,6 +1,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiFetch } from '../../lib/api';
 import { useState } from 'react';
 import { Plus, Link2 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -15,7 +16,8 @@ export default function AdminShortlinks() {
     queryKey: ['admin-shortlinks'],
     queryFn: async () => {
       const token = await user?.getIdToken();
-      const res = await fetch('/api/admin/shortlinks', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await apiFetch('/api/admin/shortlinks', user, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error('Failed to load data');
       return res.json();
     },
     enabled: !!user,
@@ -24,7 +26,7 @@ export default function AdminShortlinks() {
   const saveMutation = useMutation({
     mutationFn: async (data: any) => {
       const token = await user?.getIdToken();
-      const res = await fetch('/api/admin/shortlinks', {
+      const res = await apiFetch('/api/admin/shortlinks', user, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(data)
@@ -45,6 +47,7 @@ export default function AdminShortlinks() {
         <button onClick={() => setIsModalOpen(true)} className="btn-primary"><Plus className="w-4 h-4 mr-2" /> Add Link</button>
       </div>
       <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden w-full">
+        <div className="overflow-x-auto w-full">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -62,11 +65,12 @@ export default function AdminShortlinks() {
                 <td className="px-6 py-4 text-sm text-gray-500 truncate max-w-[200px]">{s.url}</td>
                 <td className="px-6 py-4 text-sm font-bold text-emerald-600">${Number(s.rewardAmount).toFixed(4)}</td>
                 <td className="px-6 py-4 text-sm"><span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">{s.status}</span></td>
-                <td className="px-6 py-4 text-sm"><button onClick={async()=>{const token=await user?.getIdToken();const res=await fetch(`/api/admin/shortlinks/${s.id}`,{method:'DELETE',headers:{Authorization:`Bearer ${token}`}});if(res.ok){toast.success('Shortlink deactivated');queryClient.invalidateQueries({queryKey:['admin-shortlinks']});}else toast.error('Action failed')}} className="text-red-600 hover:underline">Deactivate</button></td>
+                <td className="px-6 py-4 text-sm"><button onClick={async()=>{const token=await user?.getIdToken();const res=await apiFetch(`/api/admin/shortlinks/${s.id}`, user,{method:'DELETE',headers:{Authorization:`Bearer ${token}`}});if(res.ok){toast.success('Shortlink deactivated');queryClient.invalidateQueries({queryKey:['admin-shortlinks']});}else toast.error('Action failed')}} className="text-red-600 hover:underline">Deactivate</button></td>
               </tr>
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       {isModalOpen && (

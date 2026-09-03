@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiFetch } from '../../lib/api';
 import { Ticket, Plus, Play, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -14,7 +15,7 @@ export default function AdminRaffles() {
     queryKey: ['admin-raffles'],
     queryFn: async () => {
       const token = await user?.getIdToken();
-      const res = await fetch('/api/admin/raffles', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await apiFetch('/api/admin/raffles', user, { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) throw new Error('Failed to load raffles');
       return res.json();
     },
@@ -29,7 +30,7 @@ export default function AdminRaffles() {
         maxTickets: data.maxTickets ? parseInt(data.maxTickets) : null,
         maxTicketsPerUser: data.maxTicketsPerUser ? parseInt(data.maxTicketsPerUser) : null,
       };
-      const res = await fetch('/api/admin/raffles', {
+      const res = await apiFetch('/api/admin/raffles', user, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload)
@@ -49,7 +50,7 @@ export default function AdminRaffles() {
   const actionMutation = useMutation({
     mutationFn: async ({ id, action }: { id: string, action: 'close' | 'draw' }) => {
       const token = await user?.getIdToken();
-      const res = await fetch(`/api/admin/raffles/${id}/${action}`, {
+      const res = await apiFetch(`/api/admin/raffles/${id}/${action}`, user, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}` }
       });

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiFetch } from '../../lib/api';
 import { Wallet, CreditCard } from 'lucide-react';
 
 export default function ClientAddFunds() {
@@ -13,7 +14,7 @@ export default function ClientAddFunds() {
   const { data: config } = useQuery({
     queryKey: ['client-config'],
     queryFn: async () => {
-      const res = await fetch('/api/client/config');
+      const res = await apiFetch('/api/client/config', user);
       return res.ok ? res.json() : {};
     }
   });
@@ -22,7 +23,7 @@ export default function ClientAddFunds() {
     mutationFn: async (payload: any) => {
       const token = await user?.getIdToken();
       if (paymentMethod === 'heleket') {
-        const res = await fetch('/api/heleket/create', {
+        const res = await apiFetch('/api/heleket/create', user, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({ amount: payload.amount })
@@ -30,7 +31,7 @@ export default function ClientAddFunds() {
         if (!res.ok) throw new Error((await res.json()).error || 'Heleket payment init failed');
         return res.json();
       } else if (paymentMethod === 'kashier') {
-        const res = await fetch('/api/kashier/create', {
+        const res = await apiFetch('/api/kashier/create', user, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({ amount: payload.amount })
@@ -38,7 +39,7 @@ export default function ClientAddFunds() {
         if (!res.ok) throw new Error((await res.json()).error || 'Payment init failed');
         return res.json();
       } else {
-        const res = await fetch('/api/client/payments', {
+        const res = await apiFetch('/api/client/payments', user, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify(payload)

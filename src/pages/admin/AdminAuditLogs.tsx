@@ -1,6 +1,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiFetch } from '../../lib/api';
 import { History } from 'lucide-react';
 
 export default function AdminAuditLogs() {
@@ -10,7 +11,7 @@ export default function AdminAuditLogs() {
     queryKey: ['admin-audit-logs'],
     queryFn: async () => {
       const token = await user?.getIdToken();
-      const res = await fetch('/api/admin/audit', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await apiFetch('/api/admin/audit', user, { headers: { Authorization: `Bearer ${token}` } });
       return res.ok ? res.json() : [];
     },
     enabled: !!user,
@@ -22,6 +23,7 @@ export default function AdminAuditLogs() {
         <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2"><History className="w-5 h-5"/> Audit Logs</h3>
       </div>
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="overflow-x-auto w-full">
         <table className="min-w-full divide-y divide-gray-100">
           <thead className="bg-gray-50">
             <tr>
@@ -45,6 +47,7 @@ export default function AdminAuditLogs() {
             {logs.length === 0 && <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-500">No audit logs found.</td></tr>}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

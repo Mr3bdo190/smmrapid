@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiFetch } from '../../lib/api';
 import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -14,7 +15,8 @@ export default function AdminCategories() {
     queryKey: ['admin-categories'],
     queryFn: async () => {
       const token = await user?.getIdToken();
-      const res = await fetch(`/api/admin/categories`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await apiFetch(`/api/admin/categories`, user, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error('Failed to load data');
       return res.json();
     },
     enabled: !!user,
@@ -23,7 +25,7 @@ export default function AdminCategories() {
   const saveMutation = useMutation({
     mutationFn: async (data: any) => {
       const token = await user?.getIdToken();
-      const res = await fetch('/api/admin/categories', {
+      const res = await apiFetch('/api/admin/categories', user, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(data)
@@ -44,6 +46,7 @@ export default function AdminCategories() {
         <button onClick={() => setIsModalOpen(true)} className="btn-primary"><Plus className="w-4 h-4 mr-2" /> Add Category</button>
       </div>
       <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden w-full">
+        <div className="overflow-x-auto w-full">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -59,11 +62,12 @@ export default function AdminCategories() {
                 <td className="px-6 py-4 text-sm text-gray-500">{c.sortOrder}</td>
                 <td className="px-6 py-4 text-sm font-medium text-gray-900">{c.name}</td>
                 <td className="px-6 py-4 text-sm text-gray-500">{c.status}</td>
-                <td className="px-6 py-4 text-sm"><button onClick={async()=>{const token=await user?.getIdToken();const res=await fetch(`/api/admin/categories/${c.id}`,{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({...c,status:c.status==='active'?'inactive':'active'})});if(res.ok){toast.success('Category updated');queryClient.invalidateQueries({queryKey:['admin-categories']});}else toast.error('Update failed')}} className="text-indigo-600 hover:underline">{c.status==='active'?'Deactivate':'Activate'}</button></td>
+                <td className="px-6 py-4 text-sm"><button onClick={async()=>{const token=await user?.getIdToken();const res=await apiFetch(`/api/admin/categories/${c.id}`, user,{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({...c,status:c.status==='active'?'inactive':'active'})});if(res.ok){toast.success('Category updated');queryClient.invalidateQueries({queryKey:['admin-categories']});}else toast.error('Update failed')}} className="text-indigo-600 hover:underline">{c.status==='active'?'Deactivate':'Activate'}</button></td>
               </tr>
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       {isModalOpen && (

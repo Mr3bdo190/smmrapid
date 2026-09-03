@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiFetch } from '../../lib/api';
 import { Ticket, Trophy, Clock, Users, Tag } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -13,7 +14,7 @@ export default function ClientLottery() {
     queryKey: ['client-raffles'],
     queryFn: async () => {
       const token = await user?.getIdToken();
-      const res = await fetch('/api/client/raffles', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await apiFetch('/api/client/raffles', user, { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) throw new Error('Failed to load raffles');
       return res.json();
     },
@@ -24,7 +25,7 @@ export default function ClientLottery() {
   const buyMutation = useMutation({
     mutationFn: async ({ id, qty }: { id: string, qty: number }) => {
       const token = await user?.getIdToken();
-      const res = await fetch(`/api/client/raffles/${id}/buy`, {
+      const res = await apiFetch(`/api/client/raffles/${id}/buy`, user, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ qty })

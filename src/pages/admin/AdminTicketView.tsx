@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiFetch } from '../../lib/api';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Send, CheckCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -16,7 +17,7 @@ export default function AdminTicketView() {
     queryKey: ['admin-ticket', id],
     queryFn: async () => {
       const token = await user?.getIdToken();
-      const res = await fetch(`/api/admin/tickets/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await apiFetch(`/api/admin/tickets/${id}`, user, { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) throw new Error('Failed to load ticket');
       return res.json();
     },
@@ -26,7 +27,7 @@ export default function AdminTicketView() {
   const replyMutation = useMutation({
     mutationFn: async (msg: string) => {
       const token = await user?.getIdToken();
-      const res = await fetch(`/api/admin/tickets/${id}/messages`, {
+      const res = await apiFetch(`/api/admin/tickets/${id}/messages`, user, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ message: msg })
@@ -43,7 +44,7 @@ export default function AdminTicketView() {
   const statusMutation = useMutation({
     mutationFn: async (newStatus: string) => {
       const token = await user?.getIdToken();
-      const res = await fetch(`/api/admin/tickets/${id}/status`, {
+      const res = await apiFetch(`/api/admin/tickets/${id}/status`, user, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status: newStatus })

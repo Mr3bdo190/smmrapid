@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiFetch } from '../../lib/api';
 
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -20,7 +21,7 @@ export default function ClientTickets() {
   const createMutation = useMutation({
     mutationFn: async () => {
       const token = await user?.getIdToken();
-      const res = await fetch('/api/client/tickets', {
+      const res = await apiFetch('/api/client/tickets', user, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ subject, message })
@@ -42,7 +43,7 @@ export default function ClientTickets() {
     queryKey: ['client-tickets'],
     queryFn: async () => {
       const token = await user?.getIdToken();
-      const res = await fetch('/api/client/tickets', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await apiFetch('/api/client/tickets', user, { headers: { Authorization: `Bearer ${token}` } });
       return res.ok ? res.json() : [];
     },
     enabled: !!user,
@@ -55,6 +56,7 @@ export default function ClientTickets() {
         <button onClick={() => setIsModalOpen(true)} className="btn-primary">New Ticket</button>
       </div>
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="overflow-x-auto w-full">
         <table className="min-w-full divide-y divide-gray-100">
           <thead className="bg-gray-50">
             <tr>
@@ -78,6 +80,7 @@ export default function ClientTickets() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
     
       {isModalOpen && (

@@ -1,6 +1,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiFetch } from '../../lib/api';
 import { Gift } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -12,7 +13,8 @@ export default function ClientMysteryBoxes() {
     queryKey: ['client-user-info'],
     queryFn: async () => {
       const token = await user?.getIdToken();
-      const res = await fetch('/api/auth/sync', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+      const res = await apiFetch('/api/auth/sync', user, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error('Failed to load data');
       return res.json();
     },
     enabled: !!user,
@@ -21,7 +23,7 @@ export default function ClientMysteryBoxes() {
   const openMutation = useMutation({
     mutationFn: async () => {
       const token = await user?.getIdToken();
-      const res = await fetch(`/api/client/mystery-boxes/open`, {
+      const res = await apiFetch(`/api/client/mystery-boxes/open`, user, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` }
       });

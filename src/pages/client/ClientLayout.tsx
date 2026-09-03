@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useLocation, Link, Outlet } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiFetch } from '../../lib/api';
 import { LayoutDashboard, ShoppingCart, ListOrdered, Wallet, LogOut, Menu, X, User, Ticket, LifeBuoy, Tags, Link2, Code, Users, Gift, Gamepad2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -35,7 +36,7 @@ export default function ClientLayout() {
   const { data: config } = useQuery({
     queryKey: ['client-config'],
     queryFn: async () => {
-      const res = await fetch('/api/client/config');
+      const res = await apiFetch('/api/client/config', user);
       return res.ok ? res.json() : {};
     }
   });
@@ -44,7 +45,7 @@ export default function ClientLayout() {
     queryKey: ['client-me'],
     queryFn: async () => {
       const token = await user?.getIdToken();
-      const res = await fetch('/api/client/me', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await apiFetch('/api/client/me', user, { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) throw new Error('Unable to load account');
       return res.json();
     },

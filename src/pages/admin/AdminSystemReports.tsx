@@ -1,6 +1,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiFetch } from '../../lib/api';
 import { ShieldAlert } from 'lucide-react';
 
 export default function AdminSystemReports() {
@@ -10,7 +11,7 @@ export default function AdminSystemReports() {
     queryKey: ['admin-reports'],
     queryFn: async () => {
       const token = await user?.getIdToken();
-      const res = await fetch('/api/admin/reports', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await apiFetch('/api/admin/reports', user, { headers: { Authorization: `Bearer ${token}` } });
       return res.ok ? res.json() : [];
     },
     enabled: !!user,
@@ -22,6 +23,7 @@ export default function AdminSystemReports() {
         <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2"><ShieldAlert className="w-5 h-5"/> System Reports</h3>
       </div>
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="overflow-x-auto w-full">
         <table className="min-w-full divide-y divide-gray-100">
           <thead className="bg-gray-50">
             <tr>
@@ -45,6 +47,7 @@ export default function AdminSystemReports() {
             {reports.length === 0 && <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-500">No system reports found.</td></tr>}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

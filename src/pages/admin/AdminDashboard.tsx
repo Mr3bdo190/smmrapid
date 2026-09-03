@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiFetch } from '../../lib/api';
 import { Users, ShoppingCart, Wallet, RefreshCw, AlertCircle } from 'lucide-react';
 
 export default function AdminDashboard() {
@@ -9,7 +10,7 @@ export default function AdminDashboard() {
     queryKey: ['admin-dashboard'],
     queryFn: async () => {
       const token = await user?.getIdToken();
-      const res = await fetch('/api/admin/stats', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await apiFetch('/api/admin/stats', user, { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) throw new Error('API Error');
       return res.json();
     },

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiFetch } from '../../lib/api';
 import { Wallet, ShoppingCart, TrendingUp, RefreshCw, AlertCircle, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -10,7 +11,7 @@ export default function ClientDashboard() {
     queryKey: ['client-dashboard'],
     queryFn: async () => {
       const token = await user?.getIdToken();
-      const res = await fetch('/api/client/dashboard', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await apiFetch('/api/client/dashboard', user, { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) throw new Error('Failed to fetch dashboard data');
       return res.json();
     },

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiFetch } from '../../lib/api';
 
 export default function ClientTransactions() {
   const { user } = useAuth();
@@ -8,7 +9,8 @@ export default function ClientTransactions() {
     queryKey: ['client-transactions'],
     queryFn: async () => {
       const token = await user?.getIdToken();
-      const res = await fetch('/api/client/transactions', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await apiFetch('/api/client/transactions', user, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error('Failed to load data');
       return res.json();
     },
     enabled: !!user,
@@ -39,8 +41,8 @@ export default function ClientTransactions() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
-      </div>
     </div>
   );
 }

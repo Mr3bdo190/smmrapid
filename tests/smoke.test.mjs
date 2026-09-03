@@ -82,3 +82,27 @@ test('provider and API key hardening is present', () => {
   assert.ok(server.includes('hashApiKey'));
   assert.ok(fs.readFileSync(path.join(src,'db/schema.ts'),'utf8').includes('apiKeyHash'));
 });
+
+test('wallet ledger inserts are resilient and payment UI has working actions', () => {
+  const server = fs.readFileSync(path.join(root, 'server.ts'), 'utf8');
+  const payments = fs.readFileSync(path.join(root, 'src/pages/admin/AdminPayments.tsx'), 'utf8');
+  assert.match(server, /id:\s*crypto\.randomUUID\(\).*createdAt:\s*new Date\(\)/s);
+  assert.match(payments, /payments\/\$\{id\}\/\$\{action\}/);
+  assert.match(payments, /action: 'approve'/);
+  assert.match(payments, /action: 'reject'/);
+});
+
+test('referral links are generated for legacy accounts and referral URLs open registration', () => {
+  const server = fs.readFileSync(path.join(root, 'server.ts'), 'utf8');
+  const landing = fs.readFileSync(path.join(root, 'src/pages/LandingPage.tsx'), 'utf8');
+  assert.match(server, /if\s*\(!u\.referralCode\)/);
+  assert.match(landing, /setIsRegister\(true\)/);
+});
+
+test('provider sync returns useful provider errors and supports common response shapes', () => {
+  const server = fs.readFileSync(path.join(root, 'server.ts'), 'utf8');
+  assert.match(server, /Provider error:/);
+  assert.match(server, /Array\.isArray\(data\.services\)/);
+  assert.match(server, /Array\.isArray\(data\.data\)/);
+  assert.match(server, /Array\.isArray\(data\.result\)/);
+});

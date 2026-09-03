@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiFetch } from '../../lib/api';
 
 export default function AdminOrders() {
   const { user } = useAuth();
@@ -8,7 +9,8 @@ export default function AdminOrders() {
     queryKey: ['admin-orders'],
     queryFn: async () => {
       const token = await user?.getIdToken();
-      const res = await fetch('/api/admin/orders', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await apiFetch('/api/admin/orders', user, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error('Failed to load data');
       return res.json();
     }
   });

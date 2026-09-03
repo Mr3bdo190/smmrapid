@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiFetch } from '../../lib/api';
 import { LifeBuoy, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -10,7 +11,7 @@ export default function AdminTickets() {
     queryKey: ['admin-tickets'],
     queryFn: async () => {
       const token = await user?.getIdToken();
-      const res = await fetch('/api/admin/tickets', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await apiFetch('/api/admin/tickets', user, { headers: { Authorization: `Bearer ${token}` } });
       return res.ok ? res.json() : [];
     },
     enabled: !!user,
@@ -20,6 +21,7 @@ export default function AdminTickets() {
     <div className="space-y-6">
       <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2"><LifeBuoy className="w-5 h-5"/> Support Tickets</h3>
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="overflow-x-auto w-full">
         <table className="min-w-full divide-y divide-gray-100">
           <thead className="bg-gray-50">
             <tr>
@@ -45,6 +47,7 @@ export default function AdminTickets() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

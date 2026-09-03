@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiFetch } from '../../lib/api';
 import { Code, Key } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -12,7 +13,7 @@ export default function ClientApi() {
     queryKey: ['client-api-key'],
     queryFn: async () => {
       const token = await user?.getIdToken();
-      const res = await fetch('/api/client/me', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await apiFetch('/api/client/me', user, { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) throw new Error('Failed to load account');
       return res.json();
     },
@@ -22,7 +23,7 @@ export default function ClientApi() {
   const generateApiKey = async () => {
     try {
       const token = await user?.getIdToken();
-      const res = await fetch('/api/client/api-key/generate', {
+      const res = await apiFetch('/api/client/api-key/generate', user, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` }
       });

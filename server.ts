@@ -105,7 +105,7 @@ async function creditWallet(tx: any, userId: string, amount: number, description
   if (!u) throw new Error('User not found');
   const next = money(num(u.balance) + a);
   await tx.update(users).set({ balance: next.toFixed(4) }).where(eq(users.id, userId));
-  await tx.insert(walletLedger).values({ userId, amount: a.toFixed(4), type: 'credit', description, referenceId });
+  await tx.insert(walletLedger).values({ id: crypto.randomUUID(), userId, amount: a.toFixed(4), type: 'credit', description, referenceId: referenceId ?? null, createdAt: new Date() });
 }
 
 async function debitWallet(tx: any, userId: string, amount: number, description: string, referenceId?: string) {
@@ -117,7 +117,7 @@ async function debitWallet(tx: any, userId: string, amount: number, description:
   if (current < a) throw new Error('Insufficient balance');
   const next = money(current - a);
   await tx.update(users).set({ balance: next.toFixed(4) }).where(eq(users.id, userId));
-  await tx.insert(walletLedger).values({ userId, amount: (-a).toFixed(4), type: 'debit', description, referenceId });
+  await tx.insert(walletLedger).values({ id: crypto.randomUUID(), userId, amount: (-a).toFixed(4), type: 'debit', description, referenceId: referenceId ?? null, createdAt: new Date() });
 }
 
 const requireAuth = async (req: any, res: any, next: any) => {
@@ -188,7 +188,16 @@ app.post('/api/auth/sync', authLimiter, requireAuth, async (req: any, res) => {
 });
 
 // Client profile/dashboard
-app.get('/api/client/me', requireAuth, (req: any, res) => res.json(req.dbUser));
+app.get('/api/client/me', requireAuth, async (req: any, res) => {
+  let u = req.dbUser;
+  if (!u.referralCode) {
+    for (let i = 0; i < 5 && !u.referralCode; i++) {
+      const code = crypto.randomBytes(6).toString('hex').toUpperCase();
+      try { const [updated] = await db.update(users).set({ referralCode: code }).where(and(eq(users.id, u.id), isNull(users.referralCode))).returning(); if (updated) u = updated; else u = (await db.query.users.findFirst({ where: eq(users.id, u.id) })) || u; } catch { /* retry a unique code */ }
+    }
+  }
+  res.json(u);
+});
 app.post('/api/client/api-key/generate', requireAuth, async (req: any, res) => { const key = `smm_${crypto.randomBytes(24).toString('hex')}`; const [u] = await db.update(users).set({ apiKey: key }).where(eq(users.id, req.dbUser.id)).returning({ apiKey: users.apiKey }); res.json({ success: true, apiKey: u.apiKey }); });
 app.get('/api/client/dashboard', requireAuth, async (req: any, res) => {
   const rows = await db.select().from(orders).where(eq(orders.userId, req.dbUser.id));
@@ -459,7 +468,7 @@ app.post('/api/client/tickets/:id/messages', requireAuth, async (req: any, res) 
 
 // Affiliate
 app.post('/api/client/affiliates/click', async (req,res)=>{ const code=String(req.body?.referralCode||'').trim().toUpperCase(); if(!code||code.length>32)return apiError(res,400,'Invalid referral code','VALIDATION_ERROR'); const ref=await db.query.users.findFirst({where:eq(users.referralCode,code)}); if(!ref)return res.status(404).json({error:'Referral code not found'}); await db.insert(referralClicks).values({referralCode:code}); res.json({success:true}); });
-app.get('/api/client/affiliates/stats', requireAuth, async (req:any,res)=>{ const u=req.dbUser; const [clicks] = await db.select({count:sql<number>`count(*)`}).from(referralClicks).where(eq(referralClicks.referralCode,u.referralCode||'')); const [signups]=await db.select({count:sql<number>`count(*)`}).from(users).where(eq(users.referredBy,u.id)); const commissions=await db.select().from(affiliateCommissions).where(eq(affiliateCommissions.affiliateId,u.id)); res.json({referralCode:u.referralCode,clicks:Number(clicks?.count||0),signups:Number(signups?.count||0),totalCommission:money(commissions.reduce((a,c)=>a+num(c.amount),0))}); });
+app.get('/api/client/affiliates/stats', requireAuth, async (req:any,res)=>{ let u=req.dbUser; if(!u.referralCode){ for(let i=0;i<5 && !u.referralCode;i++){ const code=crypto.randomBytes(6).toString('hex').toUpperCase(); try{ const [updated]=await db.update(users).set({referralCode:code}).where(and(eq(users.id,u.id),isNull(users.referralCode))).returning(); if(updated)u=updated; else u=(await db.query.users.findFirst({where:eq(users.id,u.id)}))||u; }catch{} } }  const [clicks] = await db.select({count:sql<number>`count(*)`}).from(referralClicks).where(eq(referralClicks.referralCode,u.referralCode||'')); const [signups]=await db.select({count:sql<number>`count(*)`}).from(users).where(eq(users.referredBy,u.id)); const commissions=await db.select().from(affiliateCommissions).where(eq(affiliateCommissions.affiliateId,u.id)); res.json({referralCode:u.referralCode,clicks:Number(clicks?.count||0),signups:Number(signups?.count||0),totalCommission:money(commissions.reduce((a,c)=>a+num(c.amount),0))}); });
 
 // Game/rewards
 app.post('/api/client/game/claim', requireAuth, async (req:any,res)=>{ try { let result:any; await db.transaction(async tx=>{ const [u]=await tx.select().from(users).where(eq(users.id,req.dbUser.id)).for('update'); const now=new Date(); if(u.lastClaimDate && now.getTime()-new Date(u.lastClaimDate).getTime()<24*60*60*1000)throw new Error('Daily claim is not available yet'); const last=u.lastClaimDate?new Date(u.lastClaimDate):null; const within=last && now.getTime()-last.getTime()<=48*60*60*1000; const streak=within?(u.currentStreak+1):1; const points=10+Math.min(streak,30)*2; await tx.update(users).set({gamePoints:u.gamePoints+points,currentStreak:streak,lastClaimDate:now}).where(eq(users.id,u.id)); result={points,currentStreak:streak}; }); res.json(result); } catch(e:any){apiError(res,400,e.message);} });
@@ -542,8 +551,8 @@ app.post('/api/admin/providers/:id/sync',requireAuth,requireAdmin,async(req:any,
     if(!p)return apiError(res,404,'Provider not found');
     await assertSafeProviderUrl(p.apiUrl);
     const data=await new ProviderClient(p.apiUrl,p.apiKey).services();
-    if(data.error)return apiError(res,502,'Provider request failed');
-    const incoming=Array.isArray(data) ? data : (Array.isArray(data.services) ? data.services : []);
+    if(data.error)return apiError(res,502,`Provider error: ${String(data.error)}`,'PROVIDER_SYNC_FAILED');
+    const incoming=Array.isArray(data) ? data : (Array.isArray(data.services) ? data.services : Array.isArray(data.data) ? data.data : Array.isArray(data.result) ? data.result : []);
     if(!incoming.length)return res.json({success:true,synced:0,created:0,updated:0});
     const defaultCategoryName=`${p.name} Services`;
     let created=0,updated=0;

@@ -20,6 +20,7 @@ export default function LandingPage() {
   const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  useEffect(() => { if (new URLSearchParams(window.location.search).get('ref')) { setIsRegister(true); setShowAuthModal(true); } }, []);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();

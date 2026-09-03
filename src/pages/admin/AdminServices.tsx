@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiFetch } from '../../lib/api';
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -14,7 +15,8 @@ export default function AdminServices() {
     queryKey: ['admin-services'],
     queryFn: async () => {
       const token = await user?.getIdToken();
-      const res = await fetch(`/api/client/services`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await apiFetch(`/api/admin/services`, user, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error('Failed to load services');
       return res.json();
     },
     enabled: !!user,
@@ -24,7 +26,7 @@ export default function AdminServices() {
     queryKey: ['admin-categories'],
     queryFn: async () => {
       const token = await user?.getIdToken();
-      const res = await fetch(`/api/admin/categories`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await apiFetch(`/api/admin/categories`, user, { headers: { Authorization: `Bearer ${token}` } });
       const json = await res.json();
       return json.data || json;
     },
@@ -34,13 +36,15 @@ export default function AdminServices() {
   const saveMutation = useMutation({
     mutationFn: async (data: any) => {
       const token = await user?.getIdToken();
-      const res = await fetch('/api/admin/services', {
+      const res = await apiFetch('/api/admin/services', user, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(data)
       });
+      if (!res.ok) { const body = await res.json().catch(() => ({})); throw new Error(body?.error || 'Failed to save service'); }
       return res.json();
     },
+    onError: (err: any) => toast.error(err.message),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-services'] });
       setIsModalOpen(false);
@@ -55,6 +59,7 @@ export default function AdminServices() {
         <button onClick={() => setIsModalOpen(true)} className="btn-primary"><Plus className="w-4 h-4 mr-2" /> Add Service</button>
       </div>
       <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden w-full">
+        <div className="overflow-x-auto w-full">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -72,11 +77,12 @@ export default function AdminServices() {
                 <td className="px-6 py-4 text-sm text-gray-500">{s.category?.name}</td>
                 <td className="px-6 py-4 text-sm text-gray-500">${Number(s.pricePer1k).toFixed(4)}</td>
                 <td className="px-6 py-4 text-sm">{s.status}</td>
-                <td className="px-6 py-4 text-sm"><button onClick={async()=>{const token=await user?.getIdToken();const res=await fetch(`/api/admin/services/${s.id}`,{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({...s,status:s.status==='active'?'inactive':'active',categoryId:s.categoryId,pricePer1k:s.pricePer1k,minQuantity:s.minQuantity,maxQuantity:s.maxQuantity})});if(res.ok){toast.success('Service updated');queryClient.invalidateQueries({queryKey:['admin-services']});}else toast.error('Update failed')}} className="text-indigo-600 hover:underline">{s.status==='active'?'Deactivate':'Activate'}</button></td>
+                <td className="px-6 py-4 text-sm"><button onClick={async()=>{const token=await user?.getIdToken();const res=await apiFetch(`/api/admin/services/${s.id}`, user,{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({...s,status:s.status==='active'?'inactive':'active',categoryId:s.categoryId,pricePer1k:s.pricePer1k,minQuantity:s.minQuantity,maxQuantity:s.maxQuantity})});if(res.ok){toast.success('Service updated');queryClient.invalidateQueries({queryKey:['admin-services']});}else toast.error('Update failed')}} className="text-indigo-600 hover:underline">{s.status==='active'?'Deactivate':'Activate'}</button></td>
               </tr>
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       {isModalOpen && (

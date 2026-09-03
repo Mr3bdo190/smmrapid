@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiFetch } from '../../lib/api';
 
 export default function ClientOrders() {
   const { user } = useAuth();
@@ -11,7 +12,8 @@ export default function ClientOrders() {
     queryKey: ['client-orders'],
     queryFn: async () => {
       const token = await user?.getIdToken();
-      const res = await fetch('/api/client/orders', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await apiFetch('/api/client/orders', user, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error('Failed to load data');
       return res.json();
     },
     enabled: !!user,
@@ -48,8 +50,8 @@ export default function ClientOrders() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
-      </div>
     </div>
   );
 }

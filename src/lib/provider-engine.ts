@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { eq, inArray } from 'drizzle-orm';
 import dns from 'node:dns';
 import net from 'node:net';
@@ -51,7 +52,7 @@ export async function refundOrderOnce(orderId:string, amount:number, reason:stri
     const [u]=await tx.select().from(users).where(eq(users.id,o.userId)).for('update'); if(!u)throw new Error('User not found');
     const next=money(Number(u.balance)+amount);
     await tx.update(users).set({balance:next.toFixed(4)}).where(eq(users.id,u.id));
-    await tx.insert(walletLedger).values({userId:u.id,amount:amount.toFixed(4),type:'credit',description:`Order refund: ${reason}`,referenceId:o.id});
+    await tx.insert(walletLedger).values({id:crypto.randomUUID(),userId:u.id,amount:amount.toFixed(4),type:'credit',description:`Order refund: ${reason}`,referenceId:o.id,createdAt:new Date()});
     await tx.update(orders).set({status:'Refunded',providerError:reason,updatedAt:new Date()}).where(eq(orders.id,o.id));
     return true;
   });
@@ -79,8 +80,8 @@ export async function checkOrderStatus(orderId:string){
   await db.transaction(async tx=>{
     const [locked]=await tx.select().from(orders).where(eq(orders.id,o.id)).for('update');if(!locked||['Completed','Canceled','Refunded','Partial'].includes(locked.status))return;
     if(status==='Canceled'){
-      const [u]=await tx.select().from(users).where(eq(users.id,locked.userId)).for('update');if(!u)throw new Error('User not found');const next=money(Number(u.balance)+Number(locked.charge));await tx.update(users).set({balance:next.toFixed(4)}).where(eq(users.id,u.id));await tx.insert(walletLedger).values({userId:u.id,amount:Number(locked.charge).toFixed(4),type:'credit',description:'Order canceled refund',referenceId:locked.id});
-    }else if(status==='Partial' && locked.quantity>0){const refund=money(Number(locked.charge)*(remains/locked.quantity));if(refund>0){const[u]=await tx.select().from(users).where(eq(users.id,locked.userId)).for('update');if(u){const next=money(Number(u.balance)+refund);await tx.update(users).set({balance:next.toFixed(4)}).where(eq(users.id,u.id));await tx.insert(walletLedger).values({userId:u.id,amount:refund.toFixed(4),type:'credit',description:'Partial order refund',referenceId:locked.id});}}}
+      const [u]=await tx.select().from(users).where(eq(users.id,locked.userId)).for('update');if(!u)throw new Error('User not found');const next=money(Number(u.balance)+Number(locked.charge));await tx.update(users).set({balance:next.toFixed(4)}).where(eq(users.id,u.id));await tx.insert(walletLedger).values({id:crypto.randomUUID(),userId:u.id,amount:Number(locked.charge).toFixed(4),type:'credit',description:'Order canceled refund',referenceId:locked.id,createdAt:new Date()});
+    }else if(status==='Partial' && locked.quantity>0){const refund=money(Number(locked.charge)*(remains/locked.quantity));if(refund>0){const[u]=await tx.select().from(users).where(eq(users.id,locked.userId)).for('update');if(u){const next=money(Number(u.balance)+refund);await tx.update(users).set({balance:next.toFixed(4)}).where(eq(users.id,u.id));await tx.insert(walletLedger).values({id:crypto.randomUUID(),userId:u.id,amount:refund.toFixed(4),type:'credit',description:'Partial order refund',referenceId:locked.id,createdAt:new Date()});}}}
     await tx.update(orders).set({status:status||locked.status,remains,startCount:start,updatedAt:new Date()}).where(eq(orders.id,locked.id));
   });
 }

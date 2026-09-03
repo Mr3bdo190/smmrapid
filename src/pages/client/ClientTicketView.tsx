@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiFetch } from '../../lib/api';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -16,7 +17,7 @@ export default function ClientTicketView() {
     queryKey: ['client-ticket', id],
     queryFn: async () => {
       const token = await user?.getIdToken();
-      const res = await fetch(`/api/client/tickets/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await apiFetch(`/api/client/tickets/${id}`, user, { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) throw new Error('Failed to load ticket');
       return res.json();
     },
@@ -26,7 +27,7 @@ export default function ClientTicketView() {
   const replyMutation = useMutation({
     mutationFn: async (msg: string) => {
       const token = await user?.getIdToken();
-      const res = await fetch(`/api/client/tickets/${id}/messages`, {
+      const res = await apiFetch(`/api/client/tickets/${id}/messages`, user, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ message: msg })

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiFetch } from '../../lib/api';
 import { Users, Copy } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -10,7 +11,7 @@ export default function ClientAffiliates() {
     queryKey: ['client-affiliates-stats'],
     queryFn: async () => {
       const token = await user?.getIdToken();
-      const res = await fetch('/api/client/affiliates/stats', {
+      const res = await apiFetch('/api/client/affiliates/stats', user, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (!res.ok) throw new Error('Failed to load stats');
@@ -32,11 +33,11 @@ export default function ClientAffiliates() {
           <input 
             type="text" 
             readOnly 
-            value={isLoading ? 'Loading...' : refLink} 
+            value={isLoading ? 'Loading...' : (refLink || 'Generating your referral link...')} 
             className="input-field w-full font-mono text-sm bg-gray-50 flex-1"
           />
           <button 
-            onClick={() => { navigator.clipboard.writeText(refLink); toast.success('Copied!'); }}
+            onClick={async () => { if (!refLink) return toast.error('Referral link is not ready yet'); try { await navigator.clipboard.writeText(refLink); toast.success('Copied!'); } catch { toast.error('Copy failed'); } }}
             className="btn-primary whitespace-nowrap flex items-center gap-2"
           >
             <Copy className="w-4 h-4"/> Copy Link

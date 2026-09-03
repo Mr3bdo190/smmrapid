@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiFetch } from '../../lib/api';
 import { Link2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -14,7 +15,8 @@ export default function ClientShortlinks() {
     queryKey: ['client-shortlinks'],
     queryFn: async () => {
       const token = await user?.getIdToken();
-      const res = await fetch('/api/client/shortlinks', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await apiFetch('/api/client/shortlinks', user, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error('Failed to load data');
       return res.json();
     },
     enabled: !!user,
@@ -23,7 +25,7 @@ export default function ClientShortlinks() {
   const startMutation = useMutation({
     mutationFn: async (id: string) => {
       const token = await user?.getIdToken();
-      const res = await fetch(`/api/client/shortlinks/${id}/start`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+      const res = await apiFetch(`/api/client/shortlinks/${id}/start`, user, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to start');
       window.open(data.url, '_blank', 'noopener,noreferrer');
@@ -36,7 +38,7 @@ export default function ClientShortlinks() {
   const claimMutation = useMutation({
     mutationFn: async ({ id, token: claimToken }: { id: string; token: string }) => {
       const token = await user?.getIdToken();
-      const res = await fetch(`/api/client/shortlinks/${id}/claim`, {
+      const res = await apiFetch(`/api/client/shortlinks/${id}/claim`, user, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ token: claimToken })

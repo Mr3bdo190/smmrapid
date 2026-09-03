@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiFetch } from '../../lib/api';
 import toast from 'react-hot-toast';
 import { Save } from 'lucide-react';
 
@@ -19,7 +20,8 @@ export default function AdminSettings() {
     queryKey: ['admin-settings'],
     queryFn: async () => {
       const token = await user?.getIdToken();
-      const res = await fetch('/api/admin/settings', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await apiFetch('/api/admin/settings', user, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error('Failed to load data');
       return res.json();
     },
     enabled: !!user,
@@ -40,7 +42,7 @@ export default function AdminSettings() {
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
       const token = await user?.getIdToken();
-      const res = await fetch('/api/admin/settings', {
+      const res = await apiFetch('/api/admin/settings', user, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(data)

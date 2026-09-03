@@ -1,6 +1,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiFetch } from '../../lib/api';
 import { Gamepad2, Coins, Key } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -12,7 +13,8 @@ export default function ClientGame() {
     queryKey: ['client-user-info'],
     queryFn: async () => {
       const token = await user?.getIdToken();
-      const res = await fetch('/api/auth/sync', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+      const res = await apiFetch('/api/auth/sync', user, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error('Failed to load data');
       return res.json();
     },
     enabled: !!user,
@@ -21,7 +23,7 @@ export default function ClientGame() {
   const claimMutation = useMutation({
     mutationFn: async () => {
       const token = await user?.getIdToken();
-      const res = await fetch('/api/client/game/claim', {
+      const res = await apiFetch('/api/client/game/claim', user, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -39,7 +41,7 @@ export default function ClientGame() {
   const exchangeMutation = useMutation({
     mutationFn: async () => {
       const token = await user?.getIdToken();
-      const res = await fetch('/api/client/game/exchange', {
+      const res = await apiFetch('/api/client/game/exchange', user, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` }
       });

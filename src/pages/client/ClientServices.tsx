@@ -1,6 +1,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiFetch } from '../../lib/api';
 import { Tags } from 'lucide-react';
 
 export default function ClientServices() {
@@ -10,7 +11,8 @@ export default function ClientServices() {
     queryKey: ['client-services-list'],
     queryFn: async () => {
       const token = await user?.getIdToken();
-      const res = await fetch('/api/client/services', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await apiFetch('/api/client/services', user, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error('Failed to load data');
       return res.json();
     },
     enabled: !!user,
@@ -20,6 +22,7 @@ export default function ClientServices() {
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><Tags className="text-indigo-600"/> Services List</h2>
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="overflow-x-auto w-full">
         <table className="min-w-full divide-y divide-gray-100">
           <thead className="bg-gray-50">
             <tr>
@@ -42,6 +45,7 @@ export default function ClientServices() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

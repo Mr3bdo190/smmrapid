@@ -171,21 +171,7 @@ app.get('/api/health', async (_req, res) => {
 app.get('/api/client/config', async (_req, res) => {
   const rows = await db.select().from(settings);
   const s = Object.fromEntries(rows.map(x => [x.key, x.value]));
-  res.json({ siteName: s.site_name || 'RapidSMM', currencySymbol: s.currency_symbol || '$', vodafoneCashNumber: s.vodafone_cash_number || '', siteDescription: s.site_description || '', supportEmail: s.support_email || '', siteLogo: s.site_logo || '' });
-});
-
-// Public, read-only preview used by the landing page — no pricing/account secrets, safe to expose logged-out.
-app.get('/api/public/showcase', async (_req, res) => {
-  const [[catRow], [svcRow]] = await Promise.all([
-    db.select({ count: sql<number>`count(*)` }).from(categories).where(eq(categories.status, 'active')),
-    db.select({ count: sql<number>`count(*)` }).from(services).where(eq(services.status, 'active')),
-  ]);
-  const preview = await db.query.services.findMany({ where: eq(services.status, 'active'), with: { category: true }, orderBy: [asc(services.sortOrder)], limit: 8 });
-  res.json({
-    categoryCount: Number(catRow?.count || 0),
-    serviceCount: Number(svcRow?.count || 0),
-    services: preview.filter(s => s.category?.status === 'active').map(s => ({ id: s.id, name: s.name, category: s.category?.name || '', rate: s.pricePer1k, min: s.minQuantity, max: s.maxQuantity })),
-  });
+  res.json({ siteName: s.site_name || 'RapidSMM', currencySymbol: s.currency_symbol || '$', vodafoneCashNumber: s.vodafone_cash_number || '', siteDescription: s.site_description || '', supportEmail: s.support_email || process.env.SUPPORT_EMAIL || 'support@smmrapid.store', siteLogo: s.site_logo || '' });
 });
 
 app.post('/api/auth/sync', authLimiter, requireAuth, async (req: any, res) => {
@@ -216,6 +202,23 @@ app.post('/api/client/api-key/generate', requireAuth, async (req: any, res) => {
 app.get('/api/client/dashboard', requireAuth, async (req: any, res) => {
   const rows = await db.select().from(orders).where(eq(orders.userId, req.dbUser.id));
   res.json({ totalOrders: rows.length, totalSpent: money(rows.reduce((a, o) => a + num(o.charge), 0)).toFixed(2), balance: req.dbUser.balance });
+});
+
+app.get('/api/public/services', async (_req, res) => {
+  try {
+    const rows = await db.select({
+      id: services.id, name: services.name, pricePer1k: services.pricePer1k,
+      minQuantity: services.minQuantity, maxQuantity: services.maxQuantity,
+      description: services.description, categoryId: categories.id, categoryName: categories.name,
+      categorySortOrder: categories.sortOrder, serviceSortOrder: services.sortOrder
+    }).from(services).innerJoin(categories, eq(services.categoryId, categories.id))
+      .where(and(eq(services.status, 'active'), eq(categories.status, 'active')))
+      .orderBy(asc(categories.sortOrder), asc(services.sortOrder), asc(services.name));
+    res.json(rows);
+  } catch (e:any) {
+    console.error('public services error', e);
+    res.status(500).json({ error: 'Unable to load service catalog' });
+  }
 });
 
 app.get('/api/client/services', requireAuth, async (_req, res) => {

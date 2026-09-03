@@ -92,3 +92,7 @@ The panel supports Heleket invoice payments. Configure `HELEKET_MERCHANT_ID`, `H
 - Added provider connection test and clearer provider HTTP/API error messages.
 - Added provider service control center with bulk activate/deactivate and bulk selling-price adjustment.
 - Provider service list and bulk management endpoints are available under `/api/admin/providers/:id/services`.
+
+## Commercial starter catalog
+
+`drizzle/0006_moderation_starter_catalog.sql` adds a small, idempotent starter catalog for public commercial content. Only publish services you can actually fulfill; connect a real provider or use a genuine manual fulfillment workflow.

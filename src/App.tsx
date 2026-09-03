@@ -1,6 +1,9 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 import LandingPage from './pages/LandingPage';
+import PublicServices from './pages/PublicServices';
+import PublicSupport from './pages/PublicSupport';
+import { Terms, Refunds } from './pages/PublicPolicy';
 import AdminLayout from './pages/admin/AdminLayout';
 import ClientLayout from './pages/client/ClientLayout';
 
@@ -66,6 +69,10 @@ export default function App() {
       <Suspense fallback={<Fallback />}>
         <Routes>
           <Route path="/" element={<LandingPage />} />
+          <Route path="/services" element={<PublicServices />} />
+          <Route path="/support" element={<PublicSupport />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/refund-policy" element={<Refunds />} />
           <Route path="/dashboard" element={<ClientLayout />}>
             <Route index element={<ClientDashboard />} />
             <Route path="new-order" element={<ClientNewOrder />} />

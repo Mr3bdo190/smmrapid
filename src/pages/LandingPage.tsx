@@ -8,7 +8,6 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTranslation, LanguageSwitcher } from '../lib/i18n';
-import SEO, { SITE } from '../components/SEO';
 
 const PLATFORMS = ['Instagram', 'TikTok', 'YouTube', 'Facebook', 'X / Twitter', 'Telegram', 'Spotify', 'Threads'];
 
@@ -142,8 +141,6 @@ function FaqItem({ q, a }: { q: string; a: string }) {
   );
 }
 
-function langFromDocument(): 'ar' | 'en' { return document.documentElement.lang === 'ar' ? 'ar' : 'en'; }
-
 export default function LandingPage() {
   const { t } = useTranslation();
   const { data: config } = useQuery({
@@ -168,9 +165,6 @@ export default function LandingPage() {
   useEffect(() => { if (new URLSearchParams(window.location.search).get('ref')) { setIsRegister(true); setShowAuthModal(true); } }, []);
 
   const siteName = config?.siteName || 'RapidSMM';
-  const homeTitle = t('landing.seoTitle');
-  const homeDescription = t('landing.seoDescription');
-  const homeKeywords = t('landing.seoKeywords').split('|');
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -185,12 +179,6 @@ export default function LandingPage() {
   };
 
   return (
-    <>
-      <SEO title={homeTitle} description={homeDescription} path="/" keywords={homeKeywords} lang={langFromDocument()} alternates={{ ar:'/ar', en:'/en', xDefault:'/en' }} jsonLd={[
-        { '@context':'https://schema.org', '@type':'WebSite', name:siteName, url:SITE, description:homeDescription },
-        { '@context':'https://schema.org', '@type':'Organization', name:siteName, url:SITE },
-        { '@context':'https://schema.org', '@type':'FAQPage', mainEntity: FAQS.map(f => ({ '@type':'Question', name:t(f.qKey), acceptedAnswer:{ '@type':'Answer', text:t(f.aKey) } })) }
-      ]} />
     <div className="min-h-screen bg-[#0B0F17] text-slate-100" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
       {showAuthModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[100] p-4">
@@ -302,7 +290,7 @@ export default function LandingPage() {
         <section className="border-y border-white/10 bg-white/[0.02]">
           <div className="max-w-6xl mx-auto px-6 py-5 flex flex-wrap items-center gap-x-8 gap-y-2 text-sm text-slate-500">
             <span className="text-slate-600">{t('landing.platformsLabel')}</span>
-            {PLATFORMS.map((p, i) => { const slug = ['instagram','tiktok','youtube','facebook','twitter','telegram','spotify','threads'][i]; return <Link key={p} to={`/en/${slug}-services`} className="hover:text-slate-200 hover:underline">{p}</Link>; })}
+            {PLATFORMS.map(p => <span key={p}>{p}</span>)}
           </div>
         </section>
 
@@ -438,6 +426,5 @@ export default function LandingPage() {
         </div>
       </footer>
     </div>
-    </>
   );
 }

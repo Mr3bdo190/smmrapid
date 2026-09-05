@@ -1,6 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
-import { useTranslation } from './lib/i18n';
 import LandingPage from './pages/LandingPage';
 import AdminLayout from './pages/admin/AdminLayout';
 import ClientLayout from './pages/client/ClientLayout';
@@ -9,7 +8,6 @@ import Contact from './pages/Contact';
 import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
 import RefundPolicy from './pages/RefundPolicy';
-import PlatformSEO from './pages/PlatformSEO';
 
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'));
@@ -51,8 +49,6 @@ const Fallback = () => <div className="flex h-screen w-full items-center justify
 import { useEffect } from 'react';
 
 export default function App() {
-  const { setLang } = useTranslation();
-  const pathLang = window.location.pathname.startsWith('/ar/') || window.location.pathname === '/ar' ? 'ar' : window.location.pathname.startsWith('/en/') || window.location.pathname === '/en' ? 'en' : null;
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const ref = params.get('ref');
@@ -70,23 +66,17 @@ export default function App() {
       }
     }
   }, []);
-  useEffect(() => {
-    if (pathLang) { setLang(pathLang); document.documentElement.lang = pathLang; document.documentElement.dir = pathLang === 'ar' ? 'rtl' : 'ltr'; }
-  }, [pathLang, setLang]);
 
   return (
     <BrowserRouter>
       <Suspense fallback={<Fallback />}>
         <Routes>
           <Route path="/" element={<LandingPage />} />
-          <Route path="/ar" element={<LandingPage />} />
-          <Route path="/en" element={<LandingPage />} />
           <Route path="/services" element={<PublicServices />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/refund-policy" element={<RefundPolicy />} />
-          <Route path="/:lang/:slug-services" element={<PlatformSEO />} />
           <Route path="/dashboard" element={<ClientLayout />}>
             <Route index element={<ClientDashboard />} />
             <Route path="new-order" element={<ClientNewOrder />} />

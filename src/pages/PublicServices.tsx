@@ -4,13 +4,12 @@ import { useQuery } from '@tanstack/react-query';
 import { Search } from 'lucide-react';
 import PublicPageShell from './PublicPageShell';
 import { useTranslation } from '../lib/i18n';
-import SEO, { SITE } from '../components/SEO';
 
 interface SvcRow { id: string; name: string; description: string | null; rate: string; min: number; max: number; }
 interface CatRow { id: string; name: string; services: SvcRow[]; }
 
 export default function PublicServices() {
-  const { t, lang } = useTranslation();
+  const { t } = useTranslation();
   const [q, setQ] = useState('');
   const { data, isLoading } = useQuery({
     queryKey: ['public-services'],
@@ -22,8 +21,6 @@ export default function PublicServices() {
     .filter(c => c.services.length > 0);
 
   return (
-    <>
-      <SEO title={lang === 'ar' ? 'الخدمات والأسعار | RapidSMM' : 'SMM Services & Pricing | RapidSMM'} description={lang === 'ar' ? 'تصفح خدمات SMM المتاحة لإنستجرام وتيك توك ويوتيوب وفيسبوك وتيليجرام وسبوتيفاي وX وThreads مع الأسعار وحدود الطلب.' : 'Browse available SMM services for Instagram, TikTok, YouTube, Facebook, Telegram, Spotify, X and Threads with pricing and order limits.'} path="/services" lang={lang} keywords={lang === 'ar' ? ['خدمات SMM','أسعار SMM','خدمات السوشيال ميديا','متابعين','لايكات','مشاهدات','انستجرام','تيك توك','يوتيوب'] : ['SMM services','SMM pricing','social media marketing services','instagram','tiktok','youtube','facebook','telegram','spotify']} jsonLd={{ '@context':'https://schema.org', '@type':'ItemList', name:'SMM Services', url:`${SITE}/services`, numberOfItems:categories.reduce((n,c)=>n+c.services.length,0), itemListElement:categories.flatMap(c=>c.services).slice(0,50).map((s,i)=>({ '@type':'ListItem', position:i+1, name:s.name, url:`${SITE}/services` })) }} />
     <PublicPageShell title={t('publicServices.title')}>
       <p>{t('publicServices.subtitle')}</p>
 
@@ -76,6 +73,5 @@ export default function PublicServices() {
         </Link>
       </div>
     </PublicPageShell>
-    </>
   );
 }

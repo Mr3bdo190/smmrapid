@@ -84,6 +84,9 @@ export const translations: Dict = {
   'nav.admin.title': { en: 'Admin', ar: 'الإدارة' },
 
   // Landing page
+  'landing.seoTitle': { en: 'RapidSMM | SMM Panel for Instagram, TikTok, YouTube & Social Media', ar: 'RapidSMM | لوحة SMM لخدمات إنستجرام وتيك توك ويوتيوب والسوشيال ميديا' },
+  'landing.seoDescription': { en: 'Social media marketing services for Instagram, TikTok, YouTube, Facebook, Telegram, Spotify, X and Threads. Browse services, pricing, order limits and API tools.', ar: 'خدمات تسويق السوشيال ميديا لإنستجرام وتيك توك ويوتيوب وفيسبوك وتيليجرام وسبوتيفاي وX وThreads، مع الأسعار وحدود الطلب وواجهة API.' },
+  'landing.seoKeywords': { en: 'smm panel|social media marketing|instagram smm|tiktok smm|youtube smm|facebook marketing|telegram marketing|spotify promotion|twitter smm|x smm|threads marketing|buy followers|buy likes|buy views|social media promotion|SMM services|SMM provider|reseller panel|SMM API', ar: 'لوحة SMM|تسويق السوشيال ميديا|خدمات انستجرام|SMM انستجرام|خدمات تيك توك|SMM تيك توك|خدمات يوتيوب|SMM يوتيوب|تسويق فيسبوك|تسويق تيليجرام|ترويج سبوتيفاي|خدمات تويتر|خدمات X|تسويق ثريدز|متابعين|لايكات|مشاهدات|خدمات SMM|لوحة إعادة بيع|SMM API' },
   'landing.defaultTagline': { en: 'Automated social media growth, dispatched instantly', ar: 'نمو تلقائي لحساباتك على السوشيال ميديا، يبدأ فوراً' },
   'landing.navFeatures': { en: 'Features', ar: 'المميزات' },
   'landing.navPricing': { en: 'Pricing', ar: 'الأسعار' },

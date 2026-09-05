@@ -4,6 +4,7 @@ import net from 'node:net';
 dns.setDefaultResultOrder('ipv4first');
 import crypto from 'node:crypto';
 import path from 'node:path';
+import fs from 'node:fs';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { createServer as createViteServer } from 'vite';
@@ -901,7 +902,67 @@ async function startServer(){
   // JSON 404 for unmatched API routes — must be registered before the SPA/static fallback
   // so a typo'd or unknown /api/* path returns JSON instead of index.html.
   app.use('/api', (_req, res) => apiError(res, 404, 'Not found', 'NOT_FOUND'));
-  if(!isProd){const vite=await createViteServer({server:{middlewareMode:true},appType:'spa'});app.use(vite.middlewares);}else{const distPath=path.join(process.cwd(),'dist');app.use(express.static(distPath));app.get('*',(_req,res)=>res.sendFile(path.join(distPath,'index.html')));}
+  app.get('/sitemap.xml', async (_req, res) => {
+  const now = new Date().toISOString().slice(0,10);
+  const platformSlugs = ['instagram','tiktok','youtube','facebook','telegram','spotify','twitter','threads'];
+  const urls = [
+    '/', '/en', '/ar', '/services', '/contact', '/terms', '/privacy', '/refund-policy',
+    ...platformSlugs.flatMap(slug => [`/en/${slug}-services`, `/ar/${slug}-services`])
+  ];
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+${urls.map(u => {
+    const alt = u.match(/^\/(en|ar)\/(.+)$/);
+    const alternates = alt ? `\n    <xhtml:link rel="alternate" hreflang="en" href="https://smmrapid.store/en/${alt[2]}" />\n    <xhtml:link rel="alternate" hreflang="ar" href="https://smmrapid.store/ar/${alt[2]}" />\n    <xhtml:link rel="alternate" hreflang="x-default" href="https://smmrapid.store/en/${alt[2]}" />` : '';
+    return `  <url><loc>https://smmrapid.store${u}</loc><lastmod>${now}</lastmod>${alternates}</url>`;
+  }).join('\n')}
+</urlset>`;
+  res.type('application/xml').send(xml);
+});
+
+if(!isProd){const vite=await createViteServer({server:{middlewareMode:true},appType:'spa'});app.use(vite.middlewares);}else{
+    const distPath=path.join(process.cwd(),'dist');
+    app.use(express.static(distPath));
+    app.get('*',(_req,res)=>{
+      const file = path.join(distPath,'index.html');
+      let html = fs.readFileSync(file,'utf8');
+      const p = _req.path;
+      const m = p.match(/^\/(ar|en)\/([a-z-]+)-services$/);
+      const titles: Record<string, {en:string;ar:string;descEn:string;descAr:string}> = {
+        instagram:{en:'Instagram SMM Services | Followers, Likes & Views | RapidSMM',ar:'خدمات إنستجرام SMM | متابعين ولايكات ومشاهدات | RapidSMM',descEn:'Instagram SMM services for followers, likes, views and engagement. Browse pricing and order limits.',descAr:'خدمات تسويق إنستجرام للمتابعين واللايكات والمشاهدات والتفاعل مع أسعار وحدود طلب واضحة.'},
+        tiktok:{en:'TikTok SMM Services | Followers, Likes & Views | RapidSMM',ar:'خدمات تيك توك SMM | متابعين ولايكات ومشاهدات | RapidSMM',descEn:'TikTok SMM services for followers, likes and views with transparent pricing and order limits.',descAr:'خدمات SMM لتيك توك للمتابعين واللايكات والمشاهدات بأسعار وحدود طلب واضحة.'},
+        youtube:{en:'YouTube SMM Services | Views, Likes & Subscribers | RapidSMM',ar:'خدمات يوتيوب SMM | مشاهدات ولايكات ومشتركين | RapidSMM',descEn:'YouTube marketing services for views, likes and subscribers with available pricing and limits.',descAr:'خدمات تسويق يوتيوب للمشاهدات واللايكات والمشتركين مع الأسعار والحدود المتاحة.'},
+        facebook:{en:'Facebook SMM Services | Likes, Followers & Engagement | RapidSMM',ar:'خدمات فيسبوك SMM | لايكات ومتابعين وتفاعل | RapidSMM',descEn:'Facebook SMM services for page likes, followers and post engagement.',descAr:'خدمات SMM لفيسبوك للايكات والمتابعين وتفاعل المنشورات.'},
+        telegram:{en:'Telegram SMM Services | Members, Views & Engagement | RapidSMM',ar:'خدمات تيليجرام SMM | أعضاء ومشاهدات وتفاعل | RapidSMM',descEn:'Telegram marketing services for members, post views and engagement.',descAr:'خدمات تسويق تيليجرام للأعضاء ومشاهدات المنشورات والتفاعل.'},
+        spotify:{en:'Spotify Promotion & SMM Services | Plays & Followers | RapidSMM',ar:'خدمات ترويج سبوتيفاي SMM | تشغيلات ومتابعين | RapidSMM',descEn:'Spotify promotion services for plays, followers and music engagement.',descAr:'خدمات ترويج سبوتيفاي للتشغيلات والمتابعين والتفاعل الموسيقي.'},
+        twitter:{en:'X Twitter SMM Services | Followers, Likes & Views | RapidSMM',ar:'خدمات X وتويتر SMM | متابعين ولايكات ومشاهدات | RapidSMM',descEn:'X and Twitter SMM services for followers, likes, views and engagement.',descAr:'خدمات SMM لمنصة X وتويتر للمتابعين واللايكات والمشاهدات والتفاعل.'},
+        threads:{en:'Threads SMM Services | Followers, Likes & Views | RapidSMM',ar:'خدمات ثريدز SMM | متابعين ولايكات ومشاهدات | RapidSMM',descEn:'Threads social media marketing services for followers, likes, views and engagement.',descAr:'خدمات تسويق ثريدز للمتابعين واللايكات والمشاهدات والتفاعل.'}
+      };
+      const info = m ? titles[m[2]] : null;
+      const homeLang = p === '/ar' ? 'ar' : p === '/en' ? 'en' : null;
+      if(homeLang){
+        const title = homeLang === 'ar' ? 'RapidSMM | لوحة SMM لخدمات إنستجرام وتيك توك ويوتيوب والسوشيال ميديا' : 'RapidSMM | SMM Panel for Instagram, TikTok, YouTube & Social Media';
+        const desc = homeLang === 'ar' ? 'خدمات تسويق السوشيال ميديا لإنستجرام وتيك توك ويوتيوب وفيسبوك وتيليجرام وسبوتيفاي وX وThreads، مع الأسعار وحدود الطلب وواجهة API.' : 'Social media marketing services for Instagram, TikTok, YouTube, Facebook, Telegram, Spotify, X and Threads. Browse services, pricing, order limits and API tools.';
+        const canonical = `https://smmrapid.store${p}`;
+        const safeTitle = title.replaceAll('\"', '&quot;');
+        const safeDesc = desc.replaceAll('\"', '&quot;');
+        html = html.replace(/<html lang="[^"]*">/, `<html lang="${homeLang}">`);
+        html = html.replace(/<title>[^<]*<\/title>/, `<title>${safeTitle}</title>`);
+        html = html.replace(/<meta name="description" content="[^"]*" \/>/, `<meta name="description" content="${safeDesc}" />`);
+        html = html.replace(/<link rel="canonical" href="[^"]*" \/>/, `<link rel="canonical" href="${canonical}" />`);
+        const lang = m![1] as 'en'|'ar';
+        const title = lang==='ar' ? info.ar : info.en;
+        const desc = lang==='ar' ? info.descAr : info.descEn;
+        const canonical = `https://smmrapid.store${p}`;
+        html = html.replace(/<html lang="[^"]*">/, `<html lang="${lang}">`);
+        html = html.replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`);
+        html = html.replace(/<meta name="description" content="[^"]*" \/>/, `<meta name="description" content="${desc.replace(/"/g,'&quot;')}" />`);
+        html = html.replace(/<link rel="canonical" href="[^"]*" \/>/, `<link rel="canonical" href="${canonical}" />`);
+        html = html.replace('</head>', `<meta property="og:title" content="${title.replace(/"/g,'&quot;')}" /> <meta property="og:description" content="${desc.replace(/"/g,'&quot;')}" /> <meta property="og:url" content="${canonical}" /> <link rel="alternate" hreflang="en" href="https://smmrapid.store/en/${m![2]}-services" /> <link rel="alternate" hreflang="ar" href="https://smmrapid.store/ar/${m![2]}-services" /> <link rel="alternate" hreflang="x-default" href="https://smmrapid.store/en/${m![2]}-services" /> </head>`);
+      }
+      res.send(html);
+    });
+  }
   app.use((err:any,_req:any,res:any,_next:any)=>{console.error(err);if(!res.headersSent)apiError(res,500,'Internal server error','INTERNAL_ERROR');});
   const server = app.listen(PORT,'0.0.0.0',()=>{console.log(`Server listening on ${PORT}`);startProviderWorker();});
 

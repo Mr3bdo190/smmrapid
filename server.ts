@@ -7,7 +7,7 @@ import path from 'node:path';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { createServer as createViteServer } from 'vite';
-import { eq, desc, asc, and, inArray, isNull, sql } from 'drizzle-orm';
+import { eq, desc, asc, and, inArray, isNull, sql, ilike, or } from 'drizzle-orm';
 import { db } from './src/db/index';
 import {
   users, orders, payments, tickets, ticketMessages, services, categories, settings,
@@ -172,7 +172,7 @@ app.get('/api/health', async (_req, res) => {
 app.get('/api/client/config', async (_req, res) => {
   const rows = await db.select().from(settings);
   const s = Object.fromEntries(rows.map(x => [x.key, x.value]));
-  res.json({ siteName: s.site_name || 'RapidSMM', currencySymbol: s.currency_symbol || '$', vodafoneCashNumber: s.vodafone_cash_number || '', siteDescription: s.site_description || '', supportEmail: s.support_email || '', siteLogo: s.site_logo || '' });
+  res.json({ siteName: s.site_name || 'RapidSMM', currencySymbol: s.currency_symbol || '$', vodafoneCashNumber: s.vodafone_cash_number || '', siteDescription: s.site_description || '', supportEmail: s.support_email || process.env.SUPPORT_EMAIL || 'support@smmrapid.store', siteLogo: s.site_logo || '' });
 });
 
 // Public, read-only preview used by the landing page — no pricing/account secrets, safe to expose logged-out.
@@ -296,6 +296,41 @@ app.post('/api/client/orders', requireAuth, async (req: any, res) => {
   } catch (e: any) { apiError(res, 400, e.message || 'Invalid order', 'ORDER_ERROR'); }
 });
 
+app.post('/api/client/orders/:id/cancel', requireAuth, async (req:any,res)=>{
+  try {
+    let canceled=false;
+    await db.transaction(async tx=>{
+      const [o]=await tx.select({order:orders,service:services}).from(orders).innerJoin(services,eq(orders.serviceId,services.id)).where(and(eq(orders.id,req.params.id),eq(orders.userId,req.dbUser.id))).for('update');
+      if(!o) throw new Error('Order not found');
+      if(!o.service.cancelable) throw new Error('This service does not support cancellation');
+      if(!['Pending','Processing','In Progress'].includes(o.order.status)) throw new Error('This order can no longer be canceled');
+      if(o.order.providerOrderId && o.service.providerId){
+        const [pr]=await tx.select().from(providers).where(eq(providers.id,o.service.providerId));
+        if(pr){ const r=await new ProviderClient(pr.apiUrl,pr.apiKey).cancel(o.order.providerOrderId); if(r.error) throw new Error(r.error); }
+      }
+      await tx.update(orders).set({status:'Canceled',updatedAt:new Date(),providerError:null}).where(eq(orders.id,o.order.id));
+      const [u]=await tx.select().from(users).where(eq(users.id,o.order.userId)).for('update');
+      if(u){ const next=money(num(u.balance)+num(o.order.charge)); await tx.update(users).set({balance:next.toFixed(4)}).where(eq(users.id,u.id)); await tx.insert(walletLedger).values({id:crypto.randomUUID(),userId:u.id,amount:num(o.order.charge).toFixed(4),type:'credit',description:'Order cancellation refund',referenceId:o.order.id,createdAt:new Date()}); }
+      canceled=true;
+    });
+    res.json({success:canceled});
+  } catch(e:any){apiError(res,400,e.message||'Cancellation failed','CANCEL_FAILED');}
+});
+app.post('/api/client/orders/:id/refill', requireAuth, async (req:any,res)=>{
+  try {
+    const [row]=await db.select({order:orders,service:services}).from(orders).innerJoin(services,eq(orders.serviceId,services.id)).where(and(eq(orders.id,req.params.id),eq(orders.userId,req.dbUser.id)));
+    if(!row) return apiError(res,404,'Order not found','NOT_FOUND');
+    if(!row.service.refillable) return apiError(res,409,'This service does not support refill','REFILL_UNAVAILABLE');
+    if(!row.order.providerOrderId||!row.service.providerId) return apiError(res,409,'Provider refill is not configured','REFILL_UNAVAILABLE');
+    const [pr]=await db.select().from(providers).where(eq(providers.id,row.service.providerId));
+    if(!pr) return apiError(res,409,'Provider unavailable','REFILL_UNAVAILABLE');
+    const r=await new ProviderClient(pr.apiUrl,pr.apiKey).refill(row.order.providerOrderId);
+    if(r.error) return apiError(res,502,String(r.error),'REFILL_FAILED');
+    await db.update(orders).set({providerError:null,updatedAt:new Date()}).where(eq(orders.id,row.order.id));
+    res.json({success:true,result:r});
+  }catch(e:any){apiError(res,400,e.message||'Refill failed','REFILL_FAILED');}
+});
+
 app.post('/api/client/orders/mass', requireAuth, async (req: any, res) => {
   try {
     if (typeof req.body?.ordersText !== 'string') throw new Error('No orders provided');
@@ -366,6 +401,13 @@ app.put('/api/admin/payments/:id/reject', requireAuth, requireAdmin, async (req:
 // API authentication: MD5(base64(JSON body) + payment API key).
 const heleketJson = (value: any) => JSON.stringify(value).replace(/\\\//g, '\\/');
 const heleketSign = (body: string, apiKey: string) => crypto.createHash('md5').update(Buffer.from(body).toString('base64') + apiKey).digest('hex');
+const walletCurrency = () => process.env.CURRENCY || 'EGP';
+const heleketWalletRate = () => {
+  const rate = Number(process.env.HELEKET_TO_WALLET_RATE || '');
+  if (!Number.isFinite(rate) || rate <= 0) throw Object.assign(new Error('HELEKET_TO_WALLET_RATE is not configured'), { code: 'FX_RATE_NOT_CONFIGURED' });
+  return rate;
+};
+
 const heleketApiPost = async (pathName: string, payload: any) => {
   const merchant = process.env.HELEKET_MERCHANT_ID;
   const apiKey = process.env.HELEKET_PAYMENT_API_KEY;
@@ -390,18 +432,21 @@ app.post('/api/heleket/create', requireAuth, async (req: any, res) => {
     const apiKey = process.env.HELEKET_PAYMENT_API_KEY;
     const merchant = process.env.HELEKET_MERCHANT_ID;
     if (!apiKey || !merchant) return apiError(res, 503, 'Heleket is not configured', 'GATEWAY_NOT_CONFIGURED');
-    const currency = process.env.HELEKET_CURRENCY || process.env.CURRENCY || 'USD';
+    const currency = process.env.HELEKET_CURRENCY || 'USD';
+    const walletCur = walletCurrency();
+    const gatewayAmount = currency === walletCur ? amount : money(amount / heleketWalletRate());
+    if (gatewayAmount <= 0) return apiError(res, 400, 'Invalid gateway amount', 'INVALID_AMOUNT');
     const baseUrl = process.env.PUBLIC_APP_URL || `${req.protocol}://${req.get('host')}`;
     const [p] = await db.insert(payments).values({
       userId: req.dbUser.id,
       amount: money(amount).toFixed(4),
       method: 'Heleket',
       status: 'Pending',
-      transactionDetails: { gateway: 'heleket', currency },
+      transactionDetails: { gateway: 'heleket', gatewayCurrency: currency, walletCurrency: walletCur, walletAmount: money(amount), gatewayAmount, conversionRate: currency === walletCur ? 1 : heleketWalletRate() },
     }).returning();
     const orderId = `PAY-${p.id}`;
     const result = await heleketApiPost('/v1/payment', {
-      amount: money(amount).toFixed(4),
+      amount: gatewayAmount.toFixed(4),
       currency,
       order_id: orderId,
       url_return: `${baseUrl}/dashboard/add-funds?payment=return`,
@@ -442,7 +487,9 @@ app.post('/api/heleket/webhook', async (req, res) => {
     if (!paymentId) return apiError(res, 400, 'Invalid payment reference', 'INVALID_PAYMENT');
     const [p] = await db.select().from(payments).where(eq(payments.id, paymentId));
     if (!p || p.method !== 'Heleket') return apiError(res, 404, 'Payment not found', 'PAYMENT_NOT_FOUND');
-    if (money(num(payload.amount)) !== money(num(p.amount))) return apiError(res, 400, 'Payment amount mismatch', 'PAYMENT_MISMATCH');
+    const paymentMeta:any = p.transactionDetails || {};
+    const expectedGatewayAmount = Number(paymentMeta.gatewayAmount ?? p.amount);
+    if (money(num(payload.amount)) !== money(expectedGatewayAmount)) return apiError(res, 400, 'Payment amount mismatch', 'PAYMENT_MISMATCH');
 
     const status = String(payload.status || '').toLowerCase();
     const finalCreditStatuses = new Set(['paid', 'paid_over']);
@@ -614,13 +661,13 @@ app.post('/api/client/raffles/:id/buy', requireAuth, async(req:any,res)=>{try{co
 const secretKeys = new Set(['KASHIER_API_KEY','KASHIER_WEBHOOK_SECRET','provider_api_key']);
 app.get('/api/admin/settings',requireAuth,requireAdmin,async(_req,res)=>{const rows=await db.select().from(settings); const out:any={}; for(const r of rows)out[r.key]=secretKeys.has(r.key)?'********':r.value; res.json(out);});
 app.put('/api/admin/settings',requireAuth,requireAdmin,async(req:any,res)=>{const allowed=new Set(['site_name','currency_symbol','vodafone_cash_number','site_description','support_email','site_logo','affiliate_commission_percentage']); for(const [key,val] of Object.entries(req.body||{})){if(!allowed.has(key))return apiError(res,400,`Setting not allowed: ${key}`,'INVALID_SETTING'); const value=String(val).trim(); if(key==='affiliate_commission_percentage'&&(!Number.isFinite(num(value))||num(value)<0||num(value)>100))return apiError(res,400,'Invalid commission percentage','INVALID_SETTING'); await db.insert(settings).values({key,value}).onConflictDoUpdate({target:settings.key,set:{value}});} await audit(req.dbUser.id,'UPDATE_SETTINGS','SETTINGS','settings'); res.json({success:true});});
-app.get('/api/admin/users',requireAuth,requireAdmin,async(_req,res)=>{
-  const rows=await db.select({
-    id:users.id,uid:users.uid,name:users.name,email:users.email,role:users.role,status:users.status,
-    balance:users.balance,gamePoints:users.gamePoints,currentStreak:users.currentStreak,keys:users.keys,
-    referralCode:users.referralCode,referredBy:users.referredBy,createdAt:users.createdAt
-  }).from(users).orderBy(desc(users.createdAt));
-  res.json(rows);
+app.get('/api/admin/users',requireAuth,requireAdmin,async(req,res)=>{
+  const page=Math.max(1,Number(req.query.page)||1),pageSize=Math.min(100,Math.max(10,Number(req.query.pageSize)||25));
+  const q=String(req.query.q||'').trim(), status=String(req.query.status||'all');
+  const filters:any[]=[]; if(status!=='all')filters.push(eq(users.status,status as any)); if(q)filters.push(or(ilike(users.email,`%${q}%`),ilike(users.name,`%${q}%`),ilike(users.role,`%${q}%`)));
+  const where=filters.length===1?filters[0]:filters.length?and(...filters):undefined;
+  const [items,countRows]=await Promise.all([db.select().from(users).where(where).orderBy(desc(users.createdAt)).limit(pageSize).offset((page-1)*pageSize),db.select({count:sql<number>`count(*)`}).from(users).where(where)]);
+  const total=Number(countRows[0]?.count||0); res.json({items,total,page,pageSize,totalPages:Math.max(1,Math.ceil(total/pageSize))});
 });
 app.get('/api/admin/users/:id',requireAuth,requireAdmin,async(req,res)=>{const u=await db.select({
     id:users.id,uid:users.uid,name:users.name,email:users.email,role:users.role,status:users.status,
@@ -641,8 +688,8 @@ app.put('/api/admin/categories/:id',requireAuth,requireAdmin,async(req:any,res)=
 app.delete('/api/admin/categories/:id',requireAuth,requireAdmin,async(req:any,res)=>{const used=await db.query.services.findFirst({where:eq(services.categoryId,req.params.id)});if(used)return apiError(res,409,'Category has services; deactivate it instead');await db.delete(categories).where(eq(categories.id,req.params.id));res.json({success:true});});
 
 app.get('/api/admin/services',requireAuth,requireAdmin,async(_req,res)=>res.json(await db.query.services.findMany({with:{category:true,provider:true},orderBy:[asc(services.sortOrder)]})));
-app.post('/api/admin/services',requireAuth,requireAdmin,async(req:any,res)=>{const d=req.body||{};const min=Number(d.minQuantity),max=Number(d.maxQuantity),price=num(d.pricePer1k);if(!uuidLike(d.categoryId)||!d.name||!positiveMoney(price)||!Number.isInteger(min)||!Number.isInteger(max)||min<1||max<min)return apiError(res,400,'Invalid service data');const cat=await db.query.categories.findFirst({where:eq(categories.id,d.categoryId)});if(!cat)return apiError(res,404,'Category not found');if(d.providerId&&uuidLike(d.providerId)){const pr=await db.query.providers.findFirst({where:and(eq(providers.id,d.providerId),eq(providers.isDeleted,false))});if(!pr)return apiError(res,404,'Provider not found');}const [s]=await db.insert(services).values({categoryId:d.categoryId,name:String(d.name).trim(),pricePer1k:money(price).toFixed(4),minQuantity:min,maxQuantity:max,providerId:uuidLike(d.providerId)?d.providerId:null,providerServiceId:d.providerServiceId||null,providerPrice:positiveMoney(d.providerPrice)?money(num(d.providerPrice)).toFixed(4):'0.0000',description:d.description||null,sortOrder:Number(d.sortOrder||0),cashbackPercentage:Math.max(0,Math.min(100,Number(d.cashbackPercentage||0))),status:d.status==='inactive'?'inactive':'active'}).returning();res.status(201).json(s);});
-app.put('/api/admin/services/:id',requireAuth,requireAdmin,async(req:any,res)=>{const d=req.body||{};const [s]=await db.update(services).set({name:d.name,categoryId:d.categoryId,pricePer1k:String(d.pricePer1k),minQuantity:Number(d.minQuantity),maxQuantity:Number(d.maxQuantity),providerId:d.providerId||null,providerServiceId:d.providerServiceId||null,providerPrice:d.providerPrice?String(d.providerPrice):'0.0000',description:d.description||null,sortOrder:Number(d.sortOrder||0),cashbackPercentage:Number(d.cashbackPercentage||0),status:d.status==='inactive'?'inactive':'active'}).where(eq(services.id,req.params.id)).returning();if(!s)return apiError(res,404,'Service not found');res.json(s);});
+app.post('/api/admin/services',requireAuth,requireAdmin,async(req:any,res)=>{const d=req.body||{};const min=Number(d.minQuantity),max=Number(d.maxQuantity),price=num(d.pricePer1k);if(!uuidLike(d.categoryId)||!d.name||!positiveMoney(price)||!Number.isInteger(min)||!Number.isInteger(max)||min<1||max<min)return apiError(res,400,'Invalid service data');const cat=await db.query.categories.findFirst({where:eq(categories.id,d.categoryId)});if(!cat)return apiError(res,404,'Category not found');if(d.providerId&&uuidLike(d.providerId)){const pr=await db.query.providers.findFirst({where:and(eq(providers.id,d.providerId),eq(providers.isDeleted,false))});if(!pr)return apiError(res,404,'Provider not found');}const [s]=await db.insert(services).values({categoryId:d.categoryId,name:String(d.name).trim(),pricePer1k:money(price).toFixed(4),minQuantity:min,maxQuantity:max,providerId:uuidLike(d.providerId)?d.providerId:null,providerServiceId:d.providerServiceId||null,providerPrice:positiveMoney(d.providerPrice)?money(num(d.providerPrice)).toFixed(4):'0.0000',description:d.description||null,sortOrder:Number(d.sortOrder||0),cashbackPercentage:Math.max(0,Math.min(100,Number(d.cashbackPercentage||0))),refillable:!!d.refillable,cancelable:!!d.cancelable,status:d.status==='inactive'?'inactive':'active'}).returning();res.status(201).json(s);});
+app.put('/api/admin/services/:id',requireAuth,requireAdmin,async(req:any,res)=>{const d=req.body||{};const [s]=await db.update(services).set({name:d.name,categoryId:d.categoryId,pricePer1k:String(d.pricePer1k),minQuantity:Number(d.minQuantity),maxQuantity:Number(d.maxQuantity),providerId:d.providerId||null,providerServiceId:d.providerServiceId||null,providerPrice:d.providerPrice?String(d.providerPrice):'0.0000',description:d.description||null,sortOrder:Number(d.sortOrder||0),cashbackPercentage:Number(d.cashbackPercentage||0),refillable:!!d.refillable,cancelable:!!d.cancelable,status:d.status==='inactive'?'inactive':'active'}).where(eq(services.id,req.params.id)).returning();if(!s)return apiError(res,404,'Service not found');res.json(s);});
 app.delete('/api/admin/services/:id',requireAuth,requireAdmin,async(req,res)=>{const [s]=await db.update(services).set({status:'inactive'}).where(eq(services.id,req.params.id)).returning();if(!s)return apiError(res,404,'Service not found');res.json({success:true});});
 app.put('/api/admin/services/bulk',requireAuth,requireAdmin,async(req:any,res)=>{try{const ids=Array.isArray(req.body?.serviceIds)?req.body.serviceIds.filter(uuidLike):[];if(!ids.length)return apiError(res,400,'No services selected');const status=req.body?.status;if(!['active','inactive'].includes(status))return apiError(res,400,'Invalid status');const changed=await db.update(services).set({status}).where(inArray(services.id,ids)).returning({id:services.id});await audit(req.dbUser.id,'BULK_UPDATE_SERVICES','SERVICE','bulk',undefined,undefined,`${changed.length} services -> ${status}`);res.json({success:true,changed:changed.length});}catch(e:any){apiError(res,400,e.message||'Bulk update failed');}});
 
@@ -722,16 +769,13 @@ app.post('/api/admin/providers/:id/sync',requireAuth,requireAdmin,async(req:any,
     if(data.error)return apiError(res,502,`Provider error: ${String(data.error)}`,'PROVIDER_SYNC_FAILED');
     const incoming=Array.isArray(data) ? data : (Array.isArray(data.services) ? data.services : Array.isArray(data.data) ? data.data : Array.isArray(data.result) ? data.result : []);
     if(!incoming.length)return res.json({success:true,synced:0,created:0,updated:0});
-    const defaultCategoryName=`${p.name} Services`;
     let created=0,updated=0;
     await db.transaction(async tx=>{
-      const categoryRows=await tx.select().from(categories).where(eq(categories.name,defaultCategoryName)).limit(1); let category=categoryRows[0];
-      if(!category){
-        const [c]=await tx.insert(categories).values({name:defaultCategoryName,status:'active'}).returning();
-        category=c;
-      }
       for(const raw of incoming.slice(0,2000)){
         const providerServiceId=String(raw.service ?? raw.id ?? '').trim();
+        const categoryName=String(raw.category ?? raw.category_name ?? raw.categoryName ?? raw.type ?? 'Uncategorized').trim().slice(0,100) || 'Uncategorized';
+        let category=(await tx.select().from(categories).where(eq(categories.name,categoryName)).limit(1))[0];
+        if(!category){ const [c]=await tx.insert(categories).values({name:categoryName,status:'active'}).returning(); category=c; }
         const name=String(raw.name ?? `Service ${providerServiceId}`).trim().slice(0,150);
         const providerPrice=Number(raw.rate ?? raw.price ?? raw.pricePer1k);
         const min=Number(raw.min ?? raw.minQuantity ?? 1);
@@ -753,15 +797,15 @@ app.post('/api/admin/providers/:id/sync',requireAuth,requireAdmin,async(req:any,
   }catch(e:any){apiError(res,502,e.message||'Provider synchronization failed','PROVIDER_SYNC_FAILED');}
 });
 
-app.get('/api/admin/orders',requireAuth,requireAdmin,async(_req,res)=>res.json(await db.query.orders.findMany({orderBy:[desc(orders.createdAt)],with:{user:true,service:true},limit:500})));
+app.get('/api/admin/orders',requireAuth,requireAdmin,async(req,res)=>{const page=Math.max(1,Number(req.query.page)||1),pageSize=Math.min(100,Math.max(10,Number(req.query.pageSize)||25)),q=String(req.query.q||'').trim(),status=String(req.query.status||'all');const filters:any[]=[];if(status!=='all')filters.push(eq(orders.status,status as any));if(q)filters.push(or(ilike(orders.id,`%${q}%`),ilike(orders.link,`%${q}%`)));const where=filters.length===1?filters[0]:filters.length?and(...filters):undefined;const [items,c]=await Promise.all([db.query.orders.findMany({where,orderBy:[desc(orders.createdAt)],with:{user:true,service:true},limit:pageSize,offset:(page-1)*pageSize}),db.select({count:sql<number>`count(*)`}).from(orders).where(where)]);const total=Number(c[0]?.count||0);res.json({items,total,page,pageSize,totalPages:Math.max(1,Math.ceil(total/pageSize))});});
 app.post('/api/admin/orders/:id/refresh',requireAuth,requireAdmin,async(req:any,res)=>{try{const [o]=await db.select().from(orders).where(eq(orders.id,req.params.id));if(!o)return apiError(res,404,'Order not found');if(!o.providerOrderId)return apiError(res,409,'Order has no provider order ID');await checkOrderStatus(o.id);const [updated]=await db.select().from(orders).where(eq(orders.id,o.id));await audit(req.dbUser.id,'REFRESH_ORDER_STATUS','ORDER',o.id,undefined,o.status,updated?.status||o.status);res.json(updated||o);}catch(e:any){apiError(res,400,e.message||'Failed to refresh order');}});
-app.get('/api/admin/payments',requireAuth,requireAdmin,async(_req,res)=>res.json(await db.query.payments.findMany({orderBy:[desc(payments.createdAt)],with:{user:true},limit:500})));
+app.get('/api/admin/payments',requireAuth,requireAdmin,async(req,res)=>{const page=Math.max(1,Number(req.query.page)||1),pageSize=Math.min(100,Math.max(10,Number(req.query.pageSize)||25)),q=String(req.query.q||'').trim(),status=String(req.query.status||'all');const filters:any[]=[];if(status!=='all')filters.push(eq(payments.status,status as any));if(q)filters.push(or(ilike(payments.method,`%${q}%`),ilike(payments.transactionId,`%${q}%`)));const where=filters.length===1?filters[0]:filters.length?and(...filters):undefined;const [items,c]=await Promise.all([db.query.payments.findMany({where,orderBy:[desc(payments.createdAt)],with:{user:true},limit:pageSize,offset:(page-1)*pageSize}),db.select({count:sql<number>`count(*)`}).from(payments).where(where)]);const total=Number(c[0]?.count||0);res.json({items,total,page,pageSize,totalPages:Math.max(1,Math.ceil(total/pageSize))});});
 app.get('/api/admin/tickets',requireAuth,requireAdmin,async(_req,res)=>res.json(await db.query.tickets.findMany({orderBy:[desc(tickets.createdAt)],with:{user:true},limit:500})));
 app.get('/api/admin/tickets/:id',requireAuth,requireAdmin,async(req,res)=>{const t=await db.query.tickets.findFirst({where:eq(tickets.id,req.params.id),with:{user:true}});if(!t)return apiError(res,404,'Ticket not found');res.json({ticket:t,messages:await db.query.ticketMessages.findMany({where:eq(ticketMessages.ticketId,t.id),orderBy:[desc(ticketMessages.createdAt)]})});});
 app.post('/api/admin/tickets/:id/messages',requireAuth,requireAdmin,async(req:any,res)=>{const m=String(req.body?.message||'').trim();const t=await db.query.tickets.findFirst({where:eq(tickets.id,req.params.id)});if(!t)return apiError(res,404,'Ticket not found');if(!m||m.length>5000)return apiError(res,400,'Invalid message');const [msg]=await db.insert(ticketMessages).values({ticketId:t.id,senderId:req.dbUser.id,message:m,isAdmin:true}).returning();await db.update(tickets).set({status:'Answered'}).where(eq(tickets.id,t.id));res.status(201).json(msg);});
 app.put('/api/admin/tickets/:id/status',requireAuth,requireAdmin,async(req,res)=>{if(!['Open','Answered','Closed'].includes(req.body?.status))return apiError(res,400,'Invalid status');const [t]=await db.update(tickets).set({status:req.body.status}).where(eq(tickets.id,req.params.id)).returning();if(!t)return apiError(res,404,'Ticket not found');res.json(t);});
-app.get('/api/admin/audit',requireAuth,requireAdmin,async(_req,res)=>res.json(await db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt)).limit(500)));
-app.get('/api/admin/reports',requireAuth,requireAdmin,async(_req,res)=>res.json(await db.select().from(systemReports).orderBy(desc(systemReports.createdAt)).limit(500)));
+app.get('/api/admin/audit',requireAuth,requireAdmin,async(req,res)=>{const page=Math.max(1,Number(req.query.page)||1),pageSize=Math.min(100,Math.max(10,Number(req.query.pageSize)||25));const [items,c]=await Promise.all([db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt)).limit(pageSize).offset((page-1)*pageSize),db.select({count:sql<number>`count(*)`}).from(auditLogs)]);const total=Number(c[0]?.count||0);res.json({items,total,page,pageSize,totalPages:Math.max(1,Math.ceil(total/pageSize))});});
+app.get('/api/admin/reports',requireAuth,requireAdmin,async(req,res)=>{const page=Math.max(1,Number(req.query.page)||1),pageSize=Math.min(100,Math.max(10,Number(req.query.pageSize)||25));const [items,c]=await Promise.all([db.select().from(systemReports).orderBy(desc(systemReports.createdAt)).limit(pageSize).offset((page-1)*pageSize),db.select({count:sql<number>`count(*)`}).from(systemReports)]);const total=Number(c[0]?.count||0);res.json({items,total,page,pageSize,totalPages:Math.max(1,Math.ceil(total/pageSize))});});
 app.put('/api/admin/reports/:id/status',requireAuth,requireAdmin,async(req:any,res)=>{if(!['Unresolved','Resolved'].includes(req.body?.status))return apiError(res,400,'Invalid report status');const [r]=await db.update(systemReports).set({status:req.body.status}).where(eq(systemReports.id,req.params.id)).returning();if(!r)return apiError(res,404,'Report not found');await audit(req.dbUser.id,'UPDATE_REPORT_STATUS','REPORT',r.id,undefined,undefined,r.status);res.json(r);});
 
 app.get('/api/admin/shortlinks',requireAuth,requireAdmin,async(_req,res)=>res.json(await db.select().from(shortlinks).orderBy(desc(shortlinks.createdAt))));
@@ -804,10 +848,14 @@ app.delete('/api/admin/mystery-boxes/:id',requireAuth,requireAdmin,async(req:any
 app.post('/api/client/mystery-boxes/open',requireAuth,async(req:any,res)=>{try{let result:any;await db.transaction(async tx=>{const [u]=await tx.select().from(users).where(eq(users.id,req.dbUser.id)).for('update');if(u.keys<1)throw new Error('You need a key');const tiers=await tx.select().from(mysteryBoxTiers).where(eq(mysteryBoxTiers.status,'active'));const total=tiers.reduce((a,t)=>a+t.probability,0);if(!tiers.length||total<=0)throw new Error('Mystery box is unavailable');let n=crypto.randomInt(0,total),chosen=tiers[tiers.length-1];for(const t of tiers){if(n<t.probability){chosen=t;break;}n-=t.probability;}const reward=money(num(chosen.minAmount)+Math.random()*(num(chosen.maxAmount)-num(chosen.minAmount)));await tx.update(users).set({keys:u.keys-1}).where(eq(users.id,u.id));await creditWallet(tx,u.id,reward,`Mystery Box: ${chosen.name}` ,chosen.id);result={tier:chosen.name,reward};});res.json(result);}catch(e:any){apiError(res,400,e.message);}});
 
 // Public SMM API
-app.post('/api/v1', apiLimiter, async (req,res)=>{try{const key=String(req.body?.key||'');if(!key)return apiError(res,401,'Invalid API key','INVALID_API_KEY');const u=await db.query.users.findFirst({where:and(eq(users.status,'active'),sql`(${users.apiKeyHash} = ${hashApiKey(key)} OR ${users.apiKey} = ${key})`)});if(!u)return apiError(res,401,'Invalid API key','INVALID_API_KEY');
+const publicApiHandler = async (req:any,res:any)=>{try{const key=String(req.body?.key||'');if(!key)return apiError(res,401,'Invalid API key','INVALID_API_KEY');const u=await db.query.users.findFirst({where:and(eq(users.status,'active'),sql`(${users.apiKeyHash} = ${hashApiKey(key)} OR ${users.apiKey} = ${key})`)});if(!u)return apiError(res,401,'Invalid API key','INVALID_API_KEY');
 if (!u.apiKeyHash && u.apiKey === key) {
   await db.update(users).set({ apiKey: null, apiKeyHash: hashApiKey(key) }).where(eq(users.id, u.id));
-}const action=String(req.body?.action||'');if(action==='balance')return res.json({balance:u.balance,currency:(process.env.CURRENCY||'EGP')});if(action==='services'){const rows=await db.query.services.findMany({where:eq(services.status,'active'),with:{category:true}});return res.json(rows.filter(s=>s.category?.status==='active').map(s=>({service:s.id,name:s.name,rate:s.pricePer1k,min:s.minQuantity,max:s.maxQuantity,category:s.category?.name||''})));}if(action==='status'){const o=await db.query.orders.findFirst({where:and(eq(orders.id,String(req.body.order||'')),eq(orders.userId,u.id))});if(!o)return apiError(res,404,'Order not found','NOT_FOUND');return res.json({order:o.id,status:o.status,charge:o.charge,start_count:o.startCount,remains:o.remains});}if(action==='add'){const link=typeof req.body.link==='string'?req.body.link.trim():req.body.link;const {service,q,charge}=await validateOrderInput(req.body.service,link,req.body.quantity);let id='';await db.transaction(async tx=>{await debitWallet(tx,u.id,charge,'API order',undefined);const [o]=await tx.insert(orders).values({userId:u.id,serviceId:service.id,link,quantity:q,charge:charge.toFixed(4),cost:money(num(service.providerPrice)*q/1000).toFixed(4),status:'Pending'}).returning();id=o.id;});placeOrderToProvider(id).catch(console.error);return res.json({order:id});}return apiError(res,400,'Invalid action','INVALID_ACTION');}catch(e:any){apiError(res,400,e.message||'API error','API_ERROR');}});
+}const action=String(req.body?.action||'');if(action==='balance')return res.json({balance:u.balance,currency:(process.env.CURRENCY||'EGP')});if(action==='services'){const rows=await db.query.services.findMany({where:eq(services.status,'active'),with:{category:true}});return res.json(rows.filter(s=>s.category?.status==='active').map(s=>({service:s.id,name:s.name,rate:s.pricePer1k,min:s.minQuantity,max:s.maxQuantity,category:s.category?.name||''})));}if(action==='status'){const o=await db.query.orders.findFirst({where:and(eq(orders.id,String(req.body.order||'')),eq(orders.userId,u.id))});if(!o)return apiError(res,404,'Order not found','NOT_FOUND');return res.json({order:o.id,status:o.status,charge:o.charge,start_count:o.startCount,remains:o.remains});}if(action==='add'){const link=typeof req.body.link==='string'?req.body.link.trim():req.body.link;const {service,q,charge}=await validateOrderInput(req.body.service,link,req.body.quantity);let id='';await db.transaction(async tx=>{await debitWallet(tx,u.id,charge,'API order',undefined);const [o]=await tx.insert(orders).values({userId:u.id,serviceId:service.id,link,quantity:q,charge:charge.toFixed(4),cost:money(num(service.providerPrice)*q/1000).toFixed(4),status:'Pending'}).returning();id=o.id;});placeOrderToProvider(id).catch(console.error);return res.json({order:id});}return apiError(res,400,'Invalid action','INVALID_ACTION');}catch(e:any){apiError(res,400,e.message||'API error','API_ERROR');}};
+
+// API v2 is a compatibility alias for the same reseller API contract.
+app.post('/api/v1', apiLimiter, publicApiHandler);
+app.post('/api/v2', apiLimiter, publicApiHandler);
 
 // Auto-close raffles safely; no fake system audit user.
 setInterval(async()=>{try{await db.update(raffles).set({status:'Closed'}).where(and(eq(raffles.status,'Open'),sql`${raffles.endDate} <= now()`));}catch(e){console.error('raffle close job',e);}},60_000);

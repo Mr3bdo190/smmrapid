@@ -44,6 +44,7 @@ export const translations: Dict = {
   'common.send': { en: 'Send', ar: 'إرسال' },
   'common.viewAll': { en: 'View all', ar: 'عرض الكل' },
   'common.balance': { en: 'Balance', ar: 'الرصيد' },
+  'common.currency': { en: 'EGP', ar: 'ج.م' },
 
   // Nav (also used as section headers)
   'nav.dashboard': { en: 'Dashboard', ar: 'لوحة التحكم' },

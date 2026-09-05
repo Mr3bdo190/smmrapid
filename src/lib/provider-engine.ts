@@ -53,6 +53,8 @@ export class ProviderClient {
   services(){return this.request({action:'services'});}
   addOrder(service:string,link:string,quantity:number){return this.request({action:'add',service,link,quantity:String(quantity)});}
   status(orderId:string){return this.request({action:'status',order:orderId});}
+  refill(orderId:string){return this.request({action:'refill',order:orderId},1);}
+  cancel(orderId:string){return this.request({action:'cancel',order:orderId},1);}
 }
 
 export async function refundOrderOnce(orderId:string, amount:number, reason:string){
@@ -73,7 +75,7 @@ export async function refundOrderOnce(orderId:string, amount:number, reason:stri
 export async function placeOrderToProvider(orderId:string){
   const [order]=await db.select().from(orders).where(eq(orders.id,orderId)); if(!order||order.status!=='Pending'||order.providerOrderId)return;
   const [service]=await db.select().from(services).where(eq(services.id,order.serviceId));
-  if(!service?.providerId||!service.providerServiceId)return refundOrderOnce(orderId,Number(order.charge),'No provider configured');
+  if(!service?.providerId||!service.providerServiceId){ if(process.env.MANUAL_FULFILLMENT==='true'){ await db.update(orders).set({status:'Pending',providerError:'Awaiting manual fulfillment',updatedAt:new Date()}).where(eq(orders.id,orderId)); return; } return refundOrderOnce(orderId,Number(order.charge),'No provider configured'); }
   const [provider]=await db.select().from(providers).where(eq(providers.id,service.providerId));
   if(!provider||provider.status!=='active'||provider.isDeleted)return refundOrderOnce(orderId,Number(order.charge),'Provider inactive');
   const client=new ProviderClient(provider.apiUrl,provider.apiKey); const r=await client.addOrder(service.providerServiceId,order.link,order.quantity);

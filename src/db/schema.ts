@@ -62,6 +62,8 @@ export const services = pgTable('services', {
   description: text('description'),
   sortOrder: integer('sort_order').default(0).notNull(),
   cashbackPercentage: integer('cashback_percentage').default(0).notNull(),
+  refillable: boolean('refillable').default(false).notNull(),
+  cancelable: boolean('cancelable').default(false).notNull(),
   status: serviceStatusEnum('status').default('active').notNull(),
 });
 

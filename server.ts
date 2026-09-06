@@ -7,16 +7,16 @@ import path from 'node:path';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { createServer as createViteServer } from 'vite';
-import { eq, desc, asc, and, inArray, isNull, sql, ilike, or } from 'drizzle-orm';
+import { eq, desc, asc, and, inArray, isNull, sql } from 'drizzle-orm';
 import { db } from './src/db/index';
 import {
   users, orders, payments, tickets, ticketMessages, services, categories, settings,
   providers, shortlinks, shortlinkClaims, shortlinkTokens, raffles, raffleTickets,
   mysteryBoxTiers, walletLedger, referralClicks, affiliateCommissions, auditLogs,
-  systemReports, contactMessages
+  systemReports, contactMessages, refillRequests
 } from './src/db/schema';
 import { adminAuth } from './src/lib/firebase-admin';
-import { ProviderClient, placeOrderToProvider, startProviderWorker, checkOrderStatus } from './src/lib/provider-engine';
+import { ProviderClient, placeOrderToProvider, startProviderWorker, checkOrderStatus, refundOrderOnce } from './src/lib/provider-engine';
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
@@ -41,9 +41,10 @@ app.use((req, res, next) => {
   next();
 });
 
-// The public SMM API (/api/v1) is meant to be called from third-party servers/scripts
-// that pass an API key in the body, so it is safe to allow cross-origin requests to it.
-app.use('/api/v1', (req, res, next) => {
+// The public SMM API is meant to be called from third-party servers/scripts that pass
+// an API key in the body (like JAP's /api/v2), so it is safe to allow cross-origin requests.
+// /api/v2 is the primary, documented path; /api/v1 is kept as a permanent alias for older integrations.
+app.use(['/api/v1', '/api/v2'], (req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -172,7 +173,7 @@ app.get('/api/health', async (_req, res) => {
 app.get('/api/client/config', async (_req, res) => {
   const rows = await db.select().from(settings);
   const s = Object.fromEntries(rows.map(x => [x.key, x.value]));
-  res.json({ siteName: s.site_name || 'RapidSMM', currencySymbol: s.currency_symbol || '$', vodafoneCashNumber: s.vodafone_cash_number || '', siteDescription: s.site_description || '', supportEmail: s.support_email || process.env.SUPPORT_EMAIL || 'support@smmrapid.store', siteLogo: s.site_logo || '' });
+  res.json({ siteName: s.site_name || 'RapidSMM', currencySymbol: s.currency_symbol || '$', vodafoneCashNumber: s.vodafone_cash_number || '', siteDescription: s.site_description || '', supportEmail: s.support_email || '', siteLogo: s.site_logo || '', usdExchangeRate: num(s.usd_exchange_rate || '50'), heleketCurrency: process.env.HELEKET_CURRENCY || 'USD' });
 });
 
 // Public, read-only preview used by the landing page — no pricing/account secrets, safe to expose logged-out.
@@ -271,6 +272,61 @@ app.get('/api/client/orders', requireAuth, async (req: any, res) => {
   res.json(rows);
 });
 
+// Refill: allowed once an order has run (Completed/Partial) and the service supports it.
+// Shared by the client UI route and the public API's `refill` action.
+async function requestRefillForOrder(orderId: string, userId: string) {
+  const o = await db.query.orders.findFirst({ where: eq(orders.id, orderId), with: { service: true } });
+  if (!o || o.userId !== userId) { const e: any = new Error('Order not found'); e.status = 404; e.code = 'NOT_FOUND'; throw e; }
+  if (!o.service?.refillable) { const e: any = new Error('This service does not support refill'); e.status = 400; e.code = 'NOT_REFILLABLE'; throw e; }
+  if (!['Completed', 'Partial'].includes(o.status)) { const e: any = new Error('Order is not eligible for refill yet'); e.status = 400; e.code = 'NOT_ELIGIBLE'; throw e; }
+  if (!o.providerOrderId) { const e: any = new Error('Order has no provider reference'); e.status = 400; e.code = 'NOT_ELIGIBLE'; throw e; }
+  const existing = await db.query.refillRequests.findFirst({ where: and(eq(refillRequests.orderId, o.id), eq(refillRequests.status, 'Pending')) });
+  if (existing) { const e: any = new Error('A refill request is already pending for this order'); e.status = 409; e.code = 'ALREADY_REQUESTED'; throw e; }
+  const [service] = await db.select().from(services).where(eq(services.id, o.serviceId));
+  if (!service?.providerId) { const e: any = new Error('No provider configured for this service'); e.status = 400; e.code = 'NOT_ELIGIBLE'; throw e; }
+  const [provider] = await db.select().from(providers).where(and(eq(providers.id, service.providerId), eq(providers.isDeleted, false)));
+  if (!provider || provider.status !== 'active') { const e: any = new Error('Provider unavailable'); e.status = 503; e.code = 'PROVIDER_UNAVAILABLE'; throw e; }
+  const result = await new ProviderClient(provider.apiUrl, provider.apiKey).refill(o.providerOrderId);
+  if (result?.error || !result?.refill) { const e: any = new Error(result?.error || 'Provider refused the refill request'); e.status = 502; e.code = 'PROVIDER_ERROR'; throw e; }
+  const [r] = await db.insert(refillRequests).values({ orderId: o.id, userId, providerRefillId: String(result.refill), status: 'Pending' }).returning();
+  return r;
+}
+app.post('/api/client/orders/:id/refill', requireAuth, async (req: any, res) => {
+  try { const r = await requestRefillForOrder(req.params.id, req.dbUser.id); res.status(201).json({ success: true, refillRequest: r }); }
+  catch (e: any) { apiError(res, e.status || 400, e.message || 'Refill request failed', e.code || 'REFILL_ERROR'); }
+});
+
+// Cancel: only while an order has not finished running, and only if the service supports it.
+// Shared by the client UI route and the public API's `cancel` action.
+async function requestCancelForOrder(orderId: string, userId: string) {
+  const o = await db.query.orders.findFirst({ where: eq(orders.id, orderId), with: { service: true } });
+  if (!o || o.userId !== userId) { const e: any = new Error('Order not found'); e.status = 404; e.code = 'NOT_FOUND'; throw e; }
+  if (!o.service?.cancelable) { const e: any = new Error('This service does not support cancellation'); e.status = 400; e.code = 'NOT_CANCELABLE'; throw e; }
+  if (!['Pending', 'Processing', 'In Progress'].includes(o.status)) { const e: any = new Error('Order can no longer be canceled'); e.status = 400; e.code = 'NOT_ELIGIBLE'; throw e; }
+  if (o.cancelRequested) { const e: any = new Error('Cancellation already requested'); e.status = 409; e.code = 'ALREADY_REQUESTED'; throw e; }
+  if (!o.providerOrderId) {
+    const refunded = await refundOrderOnce(o.id, num(o.charge), 'Canceled before dispatch');
+    if (!refunded) { const e: any = new Error('Order already resolved'); e.status = 409; e.code = 'ALREADY_RESOLVED'; throw e; }
+    return { refunded: true };
+  }
+  const [service] = await db.select().from(services).where(eq(services.id, o.serviceId));
+  if (!service?.providerId) { const e: any = new Error('No provider configured for this service'); e.status = 400; e.code = 'NOT_ELIGIBLE'; throw e; }
+  const [provider] = await db.select().from(providers).where(and(eq(providers.id, service.providerId), eq(providers.isDeleted, false)));
+  if (!provider) { const e: any = new Error('Provider unavailable'); e.status = 503; e.code = 'PROVIDER_UNAVAILABLE'; throw e; }
+  await db.update(orders).set({ cancelRequested: true }).where(eq(orders.id, o.id));
+  const result = await new ProviderClient(provider.apiUrl, provider.apiKey).cancel(o.providerOrderId);
+  if (result?.error) {
+    await db.update(orders).set({ cancelRequested: false }).where(eq(orders.id, o.id));
+    const e: any = new Error(result.error); e.status = 502; e.code = 'PROVIDER_ERROR'; throw e;
+  }
+  const refunded = await refundOrderOnce(o.id, num(o.charge), 'Canceled by provider');
+  return { refunded };
+}
+app.post('/api/client/orders/:id/cancel', requireAuth, async (req: any, res) => {
+  try { const r = await requestCancelForOrder(req.params.id, req.dbUser.id); res.json({ success: true, ...r }); }
+  catch (e: any) { apiError(res, e.status || 400, e.message || 'Cancel request failed', e.code || 'CANCEL_ERROR'); }
+});
+
 async function validateOrderInput(serviceId: unknown, link: unknown, quantity: unknown) {
   if (!uuidLike(serviceId) || typeof link !== 'string' || link.length < 3 || link.length > 2048 || !validUrl(link)) throw new Error('Invalid order data');
   const q = Number(quantity);
@@ -294,41 +350,6 @@ app.post('/api/client/orders', requireAuth, async (req: any, res) => {
     placeOrderToProvider(orderId).catch(err => console.error('provider order error', err));
     res.status(201).json({ success: true, orderId });
   } catch (e: any) { apiError(res, 400, e.message || 'Invalid order', 'ORDER_ERROR'); }
-});
-
-app.post('/api/client/orders/:id/cancel', requireAuth, async (req:any,res)=>{
-  try {
-    let canceled=false;
-    await db.transaction(async tx=>{
-      const [o]=await tx.select({order:orders,service:services}).from(orders).innerJoin(services,eq(orders.serviceId,services.id)).where(and(eq(orders.id,req.params.id),eq(orders.userId,req.dbUser.id))).for('update');
-      if(!o) throw new Error('Order not found');
-      if(!o.service.cancelable) throw new Error('This service does not support cancellation');
-      if(!['Pending','Processing','In Progress'].includes(o.order.status)) throw new Error('This order can no longer be canceled');
-      if(o.order.providerOrderId && o.service.providerId){
-        const [pr]=await tx.select().from(providers).where(eq(providers.id,o.service.providerId));
-        if(pr){ const r=await new ProviderClient(pr.apiUrl,pr.apiKey).cancel(o.order.providerOrderId); if(r.error) throw new Error(r.error); }
-      }
-      await tx.update(orders).set({status:'Canceled',updatedAt:new Date(),providerError:null}).where(eq(orders.id,o.order.id));
-      const [u]=await tx.select().from(users).where(eq(users.id,o.order.userId)).for('update');
-      if(u){ const next=money(num(u.balance)+num(o.order.charge)); await tx.update(users).set({balance:next.toFixed(4)}).where(eq(users.id,u.id)); await tx.insert(walletLedger).values({id:crypto.randomUUID(),userId:u.id,amount:num(o.order.charge).toFixed(4),type:'credit',description:'Order cancellation refund',referenceId:o.order.id,createdAt:new Date()}); }
-      canceled=true;
-    });
-    res.json({success:canceled});
-  } catch(e:any){apiError(res,400,e.message||'Cancellation failed','CANCEL_FAILED');}
-});
-app.post('/api/client/orders/:id/refill', requireAuth, async (req:any,res)=>{
-  try {
-    const [row]=await db.select({order:orders,service:services}).from(orders).innerJoin(services,eq(orders.serviceId,services.id)).where(and(eq(orders.id,req.params.id),eq(orders.userId,req.dbUser.id)));
-    if(!row) return apiError(res,404,'Order not found','NOT_FOUND');
-    if(!row.service.refillable) return apiError(res,409,'This service does not support refill','REFILL_UNAVAILABLE');
-    if(!row.order.providerOrderId||!row.service.providerId) return apiError(res,409,'Provider refill is not configured','REFILL_UNAVAILABLE');
-    const [pr]=await db.select().from(providers).where(eq(providers.id,row.service.providerId));
-    if(!pr) return apiError(res,409,'Provider unavailable','REFILL_UNAVAILABLE');
-    const r=await new ProviderClient(pr.apiUrl,pr.apiKey).refill(row.order.providerOrderId);
-    if(r.error) return apiError(res,502,String(r.error),'REFILL_FAILED');
-    await db.update(orders).set({providerError:null,updatedAt:new Date()}).where(eq(orders.id,row.order.id));
-    res.json({success:true,result:r});
-  }catch(e:any){apiError(res,400,e.message||'Refill failed','REFILL_FAILED');}
 });
 
 app.post('/api/client/orders/mass', requireAuth, async (req: any, res) => {
@@ -399,19 +420,28 @@ app.put('/api/admin/payments/:id/reject', requireAuth, requireAdmin, async (req:
 
 // Heleket crypto payment gateway.
 // API authentication: MD5(base64(JSON body) + payment API key).
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const heleketJson = (value: any) => JSON.stringify(value).replace(/\\\//g, '\\/');
 const heleketSign = (body: string, apiKey: string) => crypto.createHash('md5').update(Buffer.from(body).toString('base64') + apiKey).digest('hex');
-const walletCurrency = () => process.env.CURRENCY || 'EGP';
-const heleketWalletRate = () => {
-  const rate = Number(process.env.HELEKET_TO_WALLET_RATE || '');
-  if (!Number.isFinite(rate) || rate <= 0) throw Object.assign(new Error('HELEKET_TO_WALLET_RATE is not configured'), { code: 'FX_RATE_NOT_CONFIGURED' });
-  return rate;
-};
-
+// Reads + validates the Heleket credentials once per call so a bad/placeholder value in
+// Render's env vars fails fast with a message that says exactly what to fix, instead of a
+// confusing raw "Merchant unknown" round-trip to Heleket's servers.
+function getHeleketCredentials() {
+  const merchant = (process.env.HELEKET_MERCHANT_ID || '').trim();
+  const apiKey = (process.env.HELEKET_PAYMENT_API_KEY || '').trim();
+  if (!merchant || !apiKey) {
+    throw Object.assign(new Error('Heleket is not configured — set HELEKET_MERCHANT_ID and HELEKET_PAYMENT_API_KEY'), { code: 'GATEWAY_NOT_CONFIGURED' });
+  }
+  if (!UUID_RE.test(merchant)) {
+    // This is almost always the cause of a "Merchant unknown" error from Heleket: HELEKET_MERCHANT_ID
+    // is missing, still the .env.example placeholder, or the API key was pasted into the wrong field.
+    // Fix: Heleket dashboard → Settings → copy the "Merchant ID" (a UUID) into HELEKET_MERCHANT_ID on Render.
+    throw Object.assign(new Error("Heleket merchant ID is not a valid UUID — check HELEKET_MERCHANT_ID in your Render environment variables against your Heleket dashboard's Settings page"), { code: 'INVALID_MERCHANT_ID' });
+  }
+  return { merchant, apiKey };
+}
 const heleketApiPost = async (pathName: string, payload: any) => {
-  const merchant = process.env.HELEKET_MERCHANT_ID;
-  const apiKey = process.env.HELEKET_PAYMENT_API_KEY;
-  if (!merchant || !apiKey) throw Object.assign(new Error('Heleket gateway is not configured'), { code: 'GATEWAY_NOT_CONFIGURED' });
+  const { merchant, apiKey } = getHeleketCredentials();
   const body = heleketJson(payload);
   const response = await fetch(`https://api.heleket.com${pathName}`, {
     method: 'POST',
@@ -420,60 +450,97 @@ const heleketApiPost = async (pathName: string, payload: any) => {
   });
   const data = await response.json().catch(() => null);
   if (!response.ok || !data || Number(data.state) !== 0) {
-    throw new Error(data?.message || data?.result?.message || `Heleket API error (${response.status})`);
+    const rawMessage = data?.message || data?.result?.message || `Heleket API error (${response.status})`;
+    console.error('Heleket API rejected the request:', rawMessage, '— full response:', JSON.stringify(data));
+    // "Merchant unknown" / similar auth-layer messages mean Heleket doesn't recognize the merchant
+    // UUID at all — that's a dashboard/env-var mismatch, not something a retry will fix.
+    if (/merchant/i.test(rawMessage) && /unknown|not found|invalid/i.test(rawMessage)) {
+      throw Object.assign(new Error('Heleket does not recognize this merchant account. Double-check HELEKET_MERCHANT_ID matches the "Merchant ID" shown in your Heleket dashboard exactly, and that the merchant has been activated by Heleket.'), { code: 'MERCHANT_UNKNOWN' });
+    }
+    throw new Error(rawMessage);
   }
   return data.result;
 };
 
+// Lets the admin verify Heleket credentials are correct without leaving the dashboard —
+// calls Heleket's own "list of services" endpoint (requires auth, no side effects) as a live test.
+app.get('/api/admin/heleket/status', requireAuth, requireAdmin, async (_req, res) => {
+  const merchantRaw = (process.env.HELEKET_MERCHANT_ID || '').trim();
+  const apiKeyRaw = (process.env.HELEKET_PAYMENT_API_KEY || '').trim();
+  const configured = !!merchantRaw && !!apiKeyRaw;
+  const merchantLooksValid = UUID_RE.test(merchantRaw);
+  const maskedMerchant = merchantRaw ? `${merchantRaw.slice(0, 8)}...${merchantRaw.slice(-4)}` : null;
+  if (!configured) return res.json({ configured: false, merchantLooksValid: false, maskedMerchant, connectionOk: false, error: 'HELEKET_MERCHANT_ID or HELEKET_PAYMENT_API_KEY is not set' });
+  if (!merchantLooksValid) return res.json({ configured: true, merchantLooksValid: false, maskedMerchant, connectionOk: false, error: 'HELEKET_MERCHANT_ID is not a valid UUID — copy the "Merchant ID" from your Heleket dashboard Settings page exactly' });
+  try {
+    await heleketApiPost('/v1/payment/services', {});
+    res.json({ configured: true, merchantLooksValid: true, maskedMerchant, connectionOk: true });
+  } catch (e: any) {
+    res.json({ configured: true, merchantLooksValid: true, maskedMerchant, connectionOk: false, error: e?.message || 'Heleket rejected the test request' });
+  }
+});
+
 app.post('/api/heleket/create', requireAuth, async (req: any, res) => {
   try {
-    const amount = num(req.body?.amount);
-    if (!positiveMoney(amount) || amount < 1 || amount > 1000000) return apiError(res, 400, 'Invalid amount', 'INVALID_AMOUNT');
-    const apiKey = process.env.HELEKET_PAYMENT_API_KEY;
-    const merchant = process.env.HELEKET_MERCHANT_ID;
-    if (!apiKey || !merchant) return apiError(res, 503, 'Heleket is not configured', 'GATEWAY_NOT_CONFIGURED');
-    const currency = process.env.HELEKET_CURRENCY || 'USD';
-    const walletCur = walletCurrency();
-    const gatewayAmount = currency === walletCur ? amount : money(amount / heleketWalletRate());
-    if (gatewayAmount <= 0) return apiError(res, 400, 'Invalid gateway amount', 'INVALID_AMOUNT');
+    // "amount" is always in the site's own currency (same field used for Kashier/Vodafone Cash),
+    // so wallets stay in one consistent unit. We convert to Heleket's currency using an
+    // admin-configured exchange rate purely for the invoice — the wallet credit stays in local currency.
+    const amountLocal = num(req.body?.amount);
+    if (!positiveMoney(amountLocal) || amountLocal < 1 || amountLocal > 1000000) return apiError(res, 400, 'Invalid amount', 'INVALID_AMOUNT');
+    getHeleketCredentials(); // fails fast with a clear message if HELEKET_MERCHANT_ID/HELEKET_PAYMENT_API_KEY are missing or malformed
+    const localCurrency = process.env.CURRENCY || 'EGP';
+    const foreignCurrency = process.env.HELEKET_CURRENCY || 'USD';
+    const settingsRows = await db.select().from(settings);
+    const rate = num(settingsRows.find(s => s.key === 'usd_exchange_rate')?.value ?? '50');
+    if (!Number.isFinite(rate) || rate <= 0) return apiError(res, 503, 'Exchange rate is not configured — set it in Admin Settings', 'RATE_NOT_CONFIGURED');
     const baseUrl = process.env.PUBLIC_APP_URL || `${req.protocol}://${req.get('host')}`;
     const [p] = await db.insert(payments).values({
       userId: req.dbUser.id,
-      amount: money(amount).toFixed(4),
+      amount: money(amountLocal).toFixed(4),
       method: 'Heleket',
       status: 'Pending',
-      transactionDetails: { gateway: 'heleket', gatewayCurrency: currency, walletCurrency: walletCur, walletAmount: money(amount), gatewayAmount, conversionRate: currency === walletCur ? 1 : heleketWalletRate() },
+      transactionDetails: { gateway: 'heleket', localCurrency, foreignCurrency, foreignAmount: foreignAmount.toFixed(4), rate },
     }).returning();
-    const orderId = `PAY-${p.id}`;
-    const result = await heleketApiPost('/v1/payment', {
-      amount: gatewayAmount.toFixed(4),
-      currency,
-      order_id: orderId,
-      url_return: `${baseUrl}/dashboard/add-funds?payment=return`,
-      url_success: `${baseUrl}/dashboard/add-funds?payment=success`,
-      url_callback: `${baseUrl}/api/heleket/webhook`,
-      is_payment_multiple: false,
-      lifetime: Number(process.env.HELEKET_INVOICE_LIFETIME || 3600),
-      payer_email: req.dbUser.email || null,
-      additional_data: p.id,
-      theme: 'light',
-    });
-    await db.update(payments).set({
-      transactionId: String(result?.uuid || orderId),
-      transactionDetails: { gateway: 'heleket', currency, invoiceUuid: result?.uuid || null, orderId, response: result },
-    }).where(eq(payments.id, p.id));
-    res.json({ paymentId: p.id, orderId, invoiceUuid: result?.uuid, paymentUrl: result?.url, expiresAt: result?.expired_at || null });
+    try {
+      const orderId = `PAY-${p.id}`;
+      const result = await heleketApiPost('/v1/payment', {
+        amount: foreignAmount.toFixed(2),
+        currency: foreignCurrency,
+        order_id: orderId,
+        url_return: `${baseUrl}/dashboard/add-funds?payment=return`,
+        url_success: `${baseUrl}/dashboard/add-funds?payment=success`,
+        url_callback: `${baseUrl}/api/heleket/webhook`,
+        is_payment_multiple: false,
+        lifetime: Number(process.env.HELEKET_INVOICE_LIFETIME || 3600),
+        payer_email: req.dbUser.email || null,
+        additional_data: p.id,
+        theme: 'light',
+      });
+      await db.update(payments).set({
+        transactionId: String(result?.uuid || orderId),
+        transactionDetails: { gateway: 'heleket', localCurrency, foreignCurrency, foreignAmount: foreignAmount.toFixed(4), rate, invoiceUuid: result?.uuid || null, orderId, response: result },
+      }).where(eq(payments.id, p.id));
+      res.json({ paymentId: p.id, orderId, invoiceUuid: result?.uuid, paymentUrl: result?.url, expiresAt: result?.expired_at || null, foreignAmount: foreignAmount.toFixed(2), foreignCurrency });
+    } catch (invoiceErr: any) {
+      // Don't leave an orphaned "Pending" payment row behind if Heleket never actually issued an invoice.
+      await db.update(payments).set({ status: 'Rejected', transactionDetails: { gateway: 'heleket', localCurrency, foreignCurrency, foreignAmount: foreignAmount.toFixed(4), rate, error: invoiceErr?.message || String(invoiceErr) } }).where(eq(payments.id, p.id));
+      throw invoiceErr;
+    }
   } catch (e: any) {
     console.error('Heleket create:', e?.message || e);
-    apiError(res, e?.code === 'GATEWAY_NOT_CONFIGURED' ? 503 : 400, e?.message || 'Heleket payment initialization failed', e?.code || 'HELEKET_CREATE_ERROR');
+    const status = e?.code === 'GATEWAY_NOT_CONFIGURED' || e?.code === 'INVALID_MERCHANT_ID' ? 503 : e?.code === 'MERCHANT_UNKNOWN' ? 502 : 400;
+    const clientMessage = ['GATEWAY_NOT_CONFIGURED', 'INVALID_MERCHANT_ID', 'MERCHANT_UNKNOWN'].includes(e?.code)
+      ? 'Crypto payment is temporarily unavailable. Please try another payment method or contact support.'
+      : (e?.message || 'Heleket payment initialization failed');
+    apiError(res, status, clientMessage, e?.code || 'HELEKET_CREATE_ERROR');
   }
 });
 
 app.post('/api/heleket/webhook', async (req, res) => {
   try {
-    const apiKey = process.env.HELEKET_PAYMENT_API_KEY;
-    const merchant = process.env.HELEKET_MERCHANT_ID;
-    if (!apiKey || !merchant) return apiError(res, 503, 'Heleket is not configured', 'GATEWAY_NOT_CONFIGURED');
+    let merchant: string, apiKey: string;
+    try { ({ merchant, apiKey } = getHeleketCredentials()); }
+    catch { return apiError(res, 503, 'Heleket is not configured', 'GATEWAY_NOT_CONFIGURED'); }
     if (req.headers.merchant && String(req.headers.merchant) !== merchant) return apiError(res, 401, 'Invalid merchant', 'INVALID_MERCHANT');
     const payload = { ...(req.body || {}) };
     const provided = String(payload.sign || '');
@@ -487,9 +554,10 @@ app.post('/api/heleket/webhook', async (req, res) => {
     if (!paymentId) return apiError(res, 400, 'Invalid payment reference', 'INVALID_PAYMENT');
     const [p] = await db.select().from(payments).where(eq(payments.id, paymentId));
     if (!p || p.method !== 'Heleket') return apiError(res, 404, 'Payment not found', 'PAYMENT_NOT_FOUND');
-    const paymentMeta:any = p.transactionDetails || {};
-    const expectedGatewayAmount = Number(paymentMeta.gatewayAmount ?? p.amount);
-    if (money(num(payload.amount)) !== money(expectedGatewayAmount)) return apiError(res, 400, 'Payment amount mismatch', 'PAYMENT_MISMATCH');
+    // Compare against the foreign-currency amount we actually invoiced (falls back to
+    // p.amount for records created before the exchange-rate fix, so old pending invoices still work).
+    const expectedForeign = num((p.transactionDetails as any)?.foreignAmount ?? p.amount);
+    if (money(num(payload.amount)) !== money(expectedForeign)) return apiError(res, 400, 'Payment amount mismatch', 'PAYMENT_MISMATCH');
 
     const status = String(payload.status || '').toLowerCase();
     const finalCreditStatuses = new Set(['paid', 'paid_over']);
@@ -498,8 +566,8 @@ app.post('/api/heleket/webhook', async (req, res) => {
       await db.transaction(async tx => {
         const [locked] = await tx.select().from(payments).where(eq(payments.id, p.id)).for('update');
         if (!locked || locked.status !== 'Pending') return;
-        await tx.update(payments).set({ status: 'Approved', transactionId: String(payload.txid || payload.uuid || locked.transactionId || orderId), transactionDetails: { gateway: 'heleket', webhook: payload }, resolvedAt: new Date() }).where(eq(payments.id, locked.id));
-        // Credit the invoice amount only after a verified final payment webhook.
+        await tx.update(payments).set({ status: 'Approved', transactionId: String(payload.txid || payload.uuid || locked.transactionId || orderId), transactionDetails: { ...(locked.transactionDetails as any || {}), webhook: payload }, resolvedAt: new Date() }).where(eq(payments.id, locked.id));
+        // Credit the invoice amount (already in local/site currency) only after a verified final payment webhook.
         await creditWallet(tx, locked.userId, num(locked.amount), 'Heleket Deposit', locked.id);
         await applyAffiliateCommission(tx, locked);
       });
@@ -660,14 +728,22 @@ app.post('/api/client/raffles/:id/buy', requireAuth, async(req:any,res)=>{try{co
 // Admin settings/users/categories/services/providers/orders/payments/tickets/reports/audit/raffles/mystery
 const secretKeys = new Set(['KASHIER_API_KEY','KASHIER_WEBHOOK_SECRET','provider_api_key']);
 app.get('/api/admin/settings',requireAuth,requireAdmin,async(_req,res)=>{const rows=await db.select().from(settings); const out:any={}; for(const r of rows)out[r.key]=secretKeys.has(r.key)?'********':r.value; res.json(out);});
-app.put('/api/admin/settings',requireAuth,requireAdmin,async(req:any,res)=>{const allowed=new Set(['site_name','currency_symbol','vodafone_cash_number','site_description','support_email','site_logo','affiliate_commission_percentage']); for(const [key,val] of Object.entries(req.body||{})){if(!allowed.has(key))return apiError(res,400,`Setting not allowed: ${key}`,'INVALID_SETTING'); const value=String(val).trim(); if(key==='affiliate_commission_percentage'&&(!Number.isFinite(num(value))||num(value)<0||num(value)>100))return apiError(res,400,'Invalid commission percentage','INVALID_SETTING'); await db.insert(settings).values({key,value}).onConflictDoUpdate({target:settings.key,set:{value}});} await audit(req.dbUser.id,'UPDATE_SETTINGS','SETTINGS','settings'); res.json({success:true});});
-app.get('/api/admin/users',requireAuth,requireAdmin,async(req,res)=>{
-  const page=Math.max(1,Number(req.query.page)||1),pageSize=Math.min(100,Math.max(10,Number(req.query.pageSize)||25));
-  const q=String(req.query.q||'').trim(), status=String(req.query.status||'all');
-  const filters:any[]=[]; if(status!=='all')filters.push(eq(users.status,status as any)); if(q)filters.push(or(ilike(users.email,`%${q}%`),ilike(users.name,`%${q}%`),ilike(users.role,`%${q}%`)));
-  const where=filters.length===1?filters[0]:filters.length?and(...filters):undefined;
-  const [items,countRows]=await Promise.all([db.select().from(users).where(where).orderBy(desc(users.createdAt)).limit(pageSize).offset((page-1)*pageSize),db.select({count:sql<number>`count(*)`}).from(users).where(where)]);
-  const total=Number(countRows[0]?.count||0); res.json({items,total,page,pageSize,totalPages:Math.max(1,Math.ceil(total/pageSize))});
+app.put('/api/admin/settings',requireAuth,requireAdmin,async(req:any,res)=>{const allowed=new Set(['site_name','currency_symbol','vodafone_cash_number','site_description','support_email','site_logo','affiliate_commission_percentage','usd_exchange_rate']); for(const [key,val] of Object.entries(req.body||{})){if(!allowed.has(key))return apiError(res,400,`Setting not allowed: ${key}`,'INVALID_SETTING'); const value=String(val).trim(); if(key==='affiliate_commission_percentage'&&(!Number.isFinite(num(value))||num(value)<0||num(value)>100))return apiError(res,400,'Invalid commission percentage','INVALID_SETTING'); if(key==='usd_exchange_rate'&&(!Number.isFinite(num(value))||num(value)<=0||num(value)>100000))return apiError(res,400,'Invalid exchange rate','INVALID_SETTING'); await db.insert(settings).values({key,value}).onConflictDoUpdate({target:settings.key,set:{value}});} await audit(req.dbUser.id,'UPDATE_SETTINGS','SETTINGS','settings'); res.json({success:true});});
+app.get('/api/admin/users',requireAuth,requireAdmin,async(req:any,res)=>{
+  const page=Math.max(1,parseInt(req.query.page)||1);
+  const pageSize=Math.min(200,Math.max(1,parseInt(req.query.pageSize)||50));
+  const q=typeof req.query.q==='string'?req.query.q.trim():'';
+  const status=typeof req.query.status==='string'&&req.query.status!=='all'?req.query.status:'';
+  const conditions=[];
+  if(status)conditions.push(eq(users.status,status as any));
+  if(q)conditions.push(sql`(${users.email} ILIKE ${'%'+q+'%'} OR ${users.name} ILIKE ${'%'+q+'%'})`);
+  const where=conditions.length?and(...conditions):undefined;
+  const cols={id:users.id,uid:users.uid,name:users.name,email:users.email,role:users.role,status:users.status,balance:users.balance,gamePoints:users.gamePoints,currentStreak:users.currentStreak,keys:users.keys,referralCode:users.referralCode,referredBy:users.referredBy,createdAt:users.createdAt};
+  const [rows,[{count}]]=await Promise.all([
+    (where?db.select(cols).from(users).where(where):db.select(cols).from(users)).orderBy(desc(users.createdAt)).limit(pageSize).offset((page-1)*pageSize),
+    (where?db.select({count:sql<number>`count(*)`}).from(users).where(where):db.select({count:sql<number>`count(*)`}).from(users)),
+  ]);
+  res.json({data:rows,total:Number(count),page,pageSize});
 });
 app.get('/api/admin/users/:id',requireAuth,requireAdmin,async(req,res)=>{const u=await db.select({
     id:users.id,uid:users.uid,name:users.name,email:users.email,role:users.role,status:users.status,
@@ -769,13 +845,16 @@ app.post('/api/admin/providers/:id/sync',requireAuth,requireAdmin,async(req:any,
     if(data.error)return apiError(res,502,`Provider error: ${String(data.error)}`,'PROVIDER_SYNC_FAILED');
     const incoming=Array.isArray(data) ? data : (Array.isArray(data.services) ? data.services : Array.isArray(data.data) ? data.data : Array.isArray(data.result) ? data.result : []);
     if(!incoming.length)return res.json({success:true,synced:0,created:0,updated:0});
+    const defaultCategoryName=`${p.name} Services`;
     let created=0,updated=0;
     await db.transaction(async tx=>{
+      const categoryRows=await tx.select().from(categories).where(eq(categories.name,defaultCategoryName)).limit(1); let category=categoryRows[0];
+      if(!category){
+        const [c]=await tx.insert(categories).values({name:defaultCategoryName,status:'active'}).returning();
+        category=c;
+      }
       for(const raw of incoming.slice(0,2000)){
         const providerServiceId=String(raw.service ?? raw.id ?? '').trim();
-        const categoryName=String(raw.category ?? raw.category_name ?? raw.categoryName ?? raw.type ?? 'Uncategorized').trim().slice(0,100) || 'Uncategorized';
-        let category=(await tx.select().from(categories).where(eq(categories.name,categoryName)).limit(1))[0];
-        if(!category){ const [c]=await tx.insert(categories).values({name:categoryName,status:'active'}).returning(); category=c; }
         const name=String(raw.name ?? `Service ${providerServiceId}`).trim().slice(0,150);
         const providerPrice=Number(raw.rate ?? raw.price ?? raw.pricePer1k);
         const min=Number(raw.min ?? raw.minQuantity ?? 1);
@@ -797,15 +876,57 @@ app.post('/api/admin/providers/:id/sync',requireAuth,requireAdmin,async(req:any,
   }catch(e:any){apiError(res,502,e.message||'Provider synchronization failed','PROVIDER_SYNC_FAILED');}
 });
 
-app.get('/api/admin/orders',requireAuth,requireAdmin,async(req,res)=>{const page=Math.max(1,Number(req.query.page)||1),pageSize=Math.min(100,Math.max(10,Number(req.query.pageSize)||25)),q=String(req.query.q||'').trim(),status=String(req.query.status||'all');const filters:any[]=[];if(status!=='all')filters.push(eq(orders.status,status as any));if(q)filters.push(or(ilike(orders.id,`%${q}%`),ilike(orders.link,`%${q}%`)));const where=filters.length===1?filters[0]:filters.length?and(...filters):undefined;const [items,c]=await Promise.all([db.query.orders.findMany({where,orderBy:[desc(orders.createdAt)],with:{user:true,service:true},limit:pageSize,offset:(page-1)*pageSize}),db.select({count:sql<number>`count(*)`}).from(orders).where(where)]);const total=Number(c[0]?.count||0);res.json({items,total,page,pageSize,totalPages:Math.max(1,Math.ceil(total/pageSize))});});
+app.get('/api/admin/orders',requireAuth,requireAdmin,async(req:any,res)=>{
+  const page=Math.max(1,parseInt(req.query.page)||1);
+  const pageSize=Math.min(200,Math.max(1,parseInt(req.query.pageSize)||100));
+  const q=typeof req.query.q==='string'?req.query.q.trim():'';
+  const status=typeof req.query.status==='string'&&req.query.status!=='all'?req.query.status:'';
+  const conditions=[];
+  if(status)conditions.push(eq(orders.status,status as any));
+  if(q)conditions.push(sql`(${orders.link} ILIKE ${'%'+q+'%'} OR ${orders.providerOrderId} ILIKE ${'%'+q+'%'} OR ${orders.id}::text ILIKE ${'%'+q+'%'})`);
+  const where=conditions.length?and(...conditions):undefined;
+  const [data,[{count}]]=await Promise.all([
+    db.query.orders.findMany({where,orderBy:[desc(orders.createdAt)],with:{user:true,service:true},limit:pageSize,offset:(page-1)*pageSize}),
+    where?db.select({count:sql<number>`count(*)`}).from(orders).where(where):db.select({count:sql<number>`count(*)`}).from(orders),
+  ]);
+  res.json({data,total:Number(count),page,pageSize});
+});
 app.post('/api/admin/orders/:id/refresh',requireAuth,requireAdmin,async(req:any,res)=>{try{const [o]=await db.select().from(orders).where(eq(orders.id,req.params.id));if(!o)return apiError(res,404,'Order not found');if(!o.providerOrderId)return apiError(res,409,'Order has no provider order ID');await checkOrderStatus(o.id);const [updated]=await db.select().from(orders).where(eq(orders.id,o.id));await audit(req.dbUser.id,'REFRESH_ORDER_STATUS','ORDER',o.id,undefined,o.status,updated?.status||o.status);res.json(updated||o);}catch(e:any){apiError(res,400,e.message||'Failed to refresh order');}});
-app.get('/api/admin/payments',requireAuth,requireAdmin,async(req,res)=>{const page=Math.max(1,Number(req.query.page)||1),pageSize=Math.min(100,Math.max(10,Number(req.query.pageSize)||25)),q=String(req.query.q||'').trim(),status=String(req.query.status||'all');const filters:any[]=[];if(status!=='all')filters.push(eq(payments.status,status as any));if(q)filters.push(or(ilike(payments.method,`%${q}%`),ilike(payments.transactionId,`%${q}%`)));const where=filters.length===1?filters[0]:filters.length?and(...filters):undefined;const [items,c]=await Promise.all([db.query.payments.findMany({where,orderBy:[desc(payments.createdAt)],with:{user:true},limit:pageSize,offset:(page-1)*pageSize}),db.select({count:sql<number>`count(*)`}).from(payments).where(where)]);const total=Number(c[0]?.count||0);res.json({items,total,page,pageSize,totalPages:Math.max(1,Math.ceil(total/pageSize))});});
+app.get('/api/admin/payments',requireAuth,requireAdmin,async(req:any,res)=>{
+  const page=Math.max(1,parseInt(req.query.page)||1);
+  const pageSize=Math.min(200,Math.max(1,parseInt(req.query.pageSize)||100));
+  const status=typeof req.query.status==='string'&&req.query.status!=='all'?req.query.status:'';
+  const where=status?eq(payments.status,status as any):undefined;
+  const [data,[{count}]]=await Promise.all([
+    db.query.payments.findMany({where,orderBy:[desc(payments.createdAt)],with:{user:true},limit:pageSize,offset:(page-1)*pageSize}),
+    where?db.select({count:sql<number>`count(*)`}).from(payments).where(where):db.select({count:sql<number>`count(*)`}).from(payments),
+  ]);
+  res.json({data,total:Number(count),page,pageSize});
+});
 app.get('/api/admin/tickets',requireAuth,requireAdmin,async(_req,res)=>res.json(await db.query.tickets.findMany({orderBy:[desc(tickets.createdAt)],with:{user:true},limit:500})));
 app.get('/api/admin/tickets/:id',requireAuth,requireAdmin,async(req,res)=>{const t=await db.query.tickets.findFirst({where:eq(tickets.id,req.params.id),with:{user:true}});if(!t)return apiError(res,404,'Ticket not found');res.json({ticket:t,messages:await db.query.ticketMessages.findMany({where:eq(ticketMessages.ticketId,t.id),orderBy:[desc(ticketMessages.createdAt)]})});});
 app.post('/api/admin/tickets/:id/messages',requireAuth,requireAdmin,async(req:any,res)=>{const m=String(req.body?.message||'').trim();const t=await db.query.tickets.findFirst({where:eq(tickets.id,req.params.id)});if(!t)return apiError(res,404,'Ticket not found');if(!m||m.length>5000)return apiError(res,400,'Invalid message');const [msg]=await db.insert(ticketMessages).values({ticketId:t.id,senderId:req.dbUser.id,message:m,isAdmin:true}).returning();await db.update(tickets).set({status:'Answered'}).where(eq(tickets.id,t.id));res.status(201).json(msg);});
 app.put('/api/admin/tickets/:id/status',requireAuth,requireAdmin,async(req,res)=>{if(!['Open','Answered','Closed'].includes(req.body?.status))return apiError(res,400,'Invalid status');const [t]=await db.update(tickets).set({status:req.body.status}).where(eq(tickets.id,req.params.id)).returning();if(!t)return apiError(res,404,'Ticket not found');res.json(t);});
-app.get('/api/admin/audit',requireAuth,requireAdmin,async(req,res)=>{const page=Math.max(1,Number(req.query.page)||1),pageSize=Math.min(100,Math.max(10,Number(req.query.pageSize)||25));const [items,c]=await Promise.all([db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt)).limit(pageSize).offset((page-1)*pageSize),db.select({count:sql<number>`count(*)`}).from(auditLogs)]);const total=Number(c[0]?.count||0);res.json({items,total,page,pageSize,totalPages:Math.max(1,Math.ceil(total/pageSize))});});
-app.get('/api/admin/reports',requireAuth,requireAdmin,async(req,res)=>{const page=Math.max(1,Number(req.query.page)||1),pageSize=Math.min(100,Math.max(10,Number(req.query.pageSize)||25));const [items,c]=await Promise.all([db.select().from(systemReports).orderBy(desc(systemReports.createdAt)).limit(pageSize).offset((page-1)*pageSize),db.select({count:sql<number>`count(*)`}).from(systemReports)]);const total=Number(c[0]?.count||0);res.json({items,total,page,pageSize,totalPages:Math.max(1,Math.ceil(total/pageSize))});});
+app.get('/api/admin/audit',requireAuth,requireAdmin,async(req:any,res)=>{
+  const page=Math.max(1,parseInt(req.query.page)||1);
+  const pageSize=Math.min(200,Math.max(1,parseInt(req.query.pageSize)||100));
+  const [data,[{count}]]=await Promise.all([
+    db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt)).limit(pageSize).offset((page-1)*pageSize),
+    db.select({count:sql<number>`count(*)`}).from(auditLogs),
+  ]);
+  res.json({data,total:Number(count),page,pageSize});
+});
+app.get('/api/admin/reports',requireAuth,requireAdmin,async(req:any,res)=>{
+  const page=Math.max(1,parseInt(req.query.page)||1);
+  const pageSize=Math.min(200,Math.max(1,parseInt(req.query.pageSize)||100));
+  const status=typeof req.query.status==='string'&&req.query.status!=='all'?req.query.status:'';
+  const where=status?eq(systemReports.status,status as any):undefined;
+  const [data,[{count}]]=await Promise.all([
+    (where?db.select().from(systemReports).where(where):db.select().from(systemReports)).orderBy(desc(systemReports.createdAt)).limit(pageSize).offset((page-1)*pageSize),
+    where?db.select({count:sql<number>`count(*)`}).from(systemReports).where(where):db.select({count:sql<number>`count(*)`}).from(systemReports),
+  ]);
+  res.json({data,total:Number(count),page,pageSize});
+});
 app.put('/api/admin/reports/:id/status',requireAuth,requireAdmin,async(req:any,res)=>{if(!['Unresolved','Resolved'].includes(req.body?.status))return apiError(res,400,'Invalid report status');const [r]=await db.update(systemReports).set({status:req.body.status}).where(eq(systemReports.id,req.params.id)).returning();if(!r)return apiError(res,404,'Report not found');await audit(req.dbUser.id,'UPDATE_REPORT_STATUS','REPORT',r.id,undefined,undefined,r.status);res.json(r);});
 
 app.get('/api/admin/shortlinks',requireAuth,requireAdmin,async(_req,res)=>res.json(await db.select().from(shortlinks).orderBy(desc(shortlinks.createdAt))));
@@ -847,15 +968,48 @@ app.delete('/api/admin/mystery-boxes/:id',requireAuth,requireAdmin,async(req:any
 });
 app.post('/api/client/mystery-boxes/open',requireAuth,async(req:any,res)=>{try{let result:any;await db.transaction(async tx=>{const [u]=await tx.select().from(users).where(eq(users.id,req.dbUser.id)).for('update');if(u.keys<1)throw new Error('You need a key');const tiers=await tx.select().from(mysteryBoxTiers).where(eq(mysteryBoxTiers.status,'active'));const total=tiers.reduce((a,t)=>a+t.probability,0);if(!tiers.length||total<=0)throw new Error('Mystery box is unavailable');let n=crypto.randomInt(0,total),chosen=tiers[tiers.length-1];for(const t of tiers){if(n<t.probability){chosen=t;break;}n-=t.probability;}const reward=money(num(chosen.minAmount)+Math.random()*(num(chosen.maxAmount)-num(chosen.minAmount)));await tx.update(users).set({keys:u.keys-1}).where(eq(users.id,u.id));await creditWallet(tx,u.id,reward,`Mystery Box: ${chosen.name}` ,chosen.id);result={tier:chosen.name,reward};});res.json(result);}catch(e:any){apiError(res,400,e.message);}});
 
-// Public SMM API
-const publicApiHandler = async (req:any,res:any)=>{try{const key=String(req.body?.key||'');if(!key)return apiError(res,401,'Invalid API key','INVALID_API_KEY');const u=await db.query.users.findFirst({where:and(eq(users.status,'active'),sql`(${users.apiKeyHash} = ${hashApiKey(key)} OR ${users.apiKey} = ${key})`)});if(!u)return apiError(res,401,'Invalid API key','INVALID_API_KEY');
+// Public SMM API — served at /api/v2 (the documented, current path) with /api/v1 kept
+// as a permanent alias so existing integrations never break.
+app.post(['/api/v1', '/api/v2'], apiLimiter, async (req,res)=>{try{const key=String(req.body?.key||'');if(!key)return apiError(res,401,'Invalid API key','INVALID_API_KEY');const u=await db.query.users.findFirst({where:and(eq(users.status,'active'),sql`(${users.apiKeyHash} = ${hashApiKey(key)} OR ${users.apiKey} = ${key})`)});if(!u)return apiError(res,401,'Invalid API key','INVALID_API_KEY');
 if (!u.apiKeyHash && u.apiKey === key) {
   await db.update(users).set({ apiKey: null, apiKeyHash: hashApiKey(key) }).where(eq(users.id, u.id));
-}const action=String(req.body?.action||'');if(action==='balance')return res.json({balance:u.balance,currency:(process.env.CURRENCY||'EGP')});if(action==='services'){const rows=await db.query.services.findMany({where:eq(services.status,'active'),with:{category:true}});return res.json(rows.filter(s=>s.category?.status==='active').map(s=>({service:s.id,name:s.name,rate:s.pricePer1k,min:s.minQuantity,max:s.maxQuantity,category:s.category?.name||''})));}if(action==='status'){const o=await db.query.orders.findFirst({where:and(eq(orders.id,String(req.body.order||'')),eq(orders.userId,u.id))});if(!o)return apiError(res,404,'Order not found','NOT_FOUND');return res.json({order:o.id,status:o.status,charge:o.charge,start_count:o.startCount,remains:o.remains});}if(action==='add'){const link=typeof req.body.link==='string'?req.body.link.trim():req.body.link;const {service,q,charge}=await validateOrderInput(req.body.service,link,req.body.quantity);let id='';await db.transaction(async tx=>{await debitWallet(tx,u.id,charge,'API order',undefined);const [o]=await tx.insert(orders).values({userId:u.id,serviceId:service.id,link,quantity:q,charge:charge.toFixed(4),cost:money(num(service.providerPrice)*q/1000).toFixed(4),status:'Pending'}).returning();id=o.id;});placeOrderToProvider(id).catch(console.error);return res.json({order:id});}return apiError(res,400,'Invalid action','INVALID_ACTION');}catch(e:any){apiError(res,400,e.message||'API error','API_ERROR');}};
-
-// API v2 is a compatibility alias for the same reseller API contract.
-app.post('/api/v1', apiLimiter, publicApiHandler);
-app.post('/api/v2', apiLimiter, publicApiHandler);
+}const action=String(req.body?.action||'');if(action==='balance')return res.json({balance:u.balance,currency:(process.env.CURRENCY||'EGP')});if(action==='services'){const rows=await db.query.services.findMany({where:eq(services.status,'active'),with:{category:true}});return res.json(rows.filter(s=>s.category?.status==='active').map(s=>({service:s.id,name:s.name,rate:s.pricePer1k,min:s.minQuantity,max:s.maxQuantity,category:s.category?.name||'',refill:s.refillable,cancel:s.cancelable})));}
+if(action==='status'){
+  const single=req.body?.order!==undefined;
+  if(single){const o=await db.query.orders.findFirst({where:and(eq(orders.id,String(req.body.order||'')),eq(orders.userId,u.id))});if(!o)return apiError(res,404,'Order not found','NOT_FOUND');return res.json({order:o.id,status:o.status,charge:o.charge,start_count:o.startCount,remains:o.remains,currency:(process.env.CURRENCY||'EGP')});}
+  const ids=String(req.body?.orders||'').split(',').map(s=>s.trim()).filter(Boolean).slice(0,100);
+  if(!ids.length)return apiError(res,400,'Provide order or orders','VALIDATION_ERROR');
+  const rows=await db.query.orders.findMany({where:and(inArray(orders.id,ids.filter(uuidLike)),eq(orders.userId,u.id))});
+  const byId=new Map(rows.map(o=>[o.id,o]));
+  const out:Record<string,any>={};
+  for(const id of ids){const o=byId.get(id);out[id]=o?{charge:o.charge,start_count:o.startCount,status:o.status,remains:o.remains,currency:(process.env.CURRENCY||'EGP')}:{error:'Incorrect order ID'};}
+  return res.json(out);
+}
+if(action==='add'){const link=typeof req.body.link==='string'?req.body.link.trim():req.body.link;const {service,q,charge}=await validateOrderInput(req.body.service,link,req.body.quantity);let id='';await db.transaction(async tx=>{await debitWallet(tx,u.id,charge,'API order',undefined);const [o]=await tx.insert(orders).values({userId:u.id,serviceId:service.id,link,quantity:q,charge:charge.toFixed(4),cost:money(num(service.providerPrice)*q/1000).toFixed(4),status:'Pending'}).returning();id=o.id;});placeOrderToProvider(id).catch(console.error);return res.json({order:id});}
+if(action==='refill'){
+  const single=req.body?.order!==undefined;
+  if(single){try{const r=await requestRefillForOrder(String(req.body.order||''),u.id);return res.json({refill:r.id});}catch(e:any){return res.json({error:e.message||'Refill failed'});}}
+  const ids=String(req.body?.orders||'').split(',').map(s=>s.trim()).filter(Boolean).slice(0,100);
+  if(!ids.length)return apiError(res,400,'Provide order or orders','VALIDATION_ERROR');
+  const out=[];for(const id of ids){try{const r=await requestRefillForOrder(id,u.id);out.push({order:id,refill:r.id});}catch(e:any){out.push({order:id,refill:{error:e.message||'Refill failed'}});}}
+  return res.json(out);
+}
+if(action==='refill_status'){
+  const single=req.body?.refill!==undefined;
+  if(single){const r=await db.query.refillRequests.findFirst({where:and(eq(refillRequests.id,String(req.body.refill||'')),eq(refillRequests.userId,u.id))});if(!r)return apiError(res,404,'Refill not found','NOT_FOUND');return res.json({status:r.status});}
+  const ids=String(req.body?.refills||'').split(',').map(s=>s.trim()).filter(Boolean).slice(0,100);
+  if(!ids.length)return apiError(res,400,'Provide refill or refills','VALIDATION_ERROR');
+  const rows=await db.query.refillRequests.findMany({where:and(inArray(refillRequests.id,ids.filter(uuidLike)),eq(refillRequests.userId,u.id))});
+  const byId=new Map(rows.map(r=>[r.id,r]));
+  return res.json(ids.map(id=>{const r=byId.get(id);return {refill:id,status:r?r.status:{error:'Refill not found'}};}));
+}
+if(action==='cancel'){
+  const ids=String(req.body?.orders||req.body?.order||'').split(',').map(s=>s.trim()).filter(Boolean).slice(0,100);
+  if(!ids.length)return apiError(res,400,'Provide orders','VALIDATION_ERROR');
+  const out=[];for(const id of ids){try{await requestCancelForOrder(id,u.id);out.push({order:id,cancel:1});}catch(e:any){out.push({order:id,cancel:{error:e.message||'Cancel failed'}});}}
+  return res.json(out);
+}
+return apiError(res,400,'Invalid action','INVALID_ACTION');}catch(e:any){apiError(res,400,e.message||'API error','API_ERROR');}});
 
 // Auto-close raffles safely; no fake system audit user.
 setInterval(async()=>{try{await db.update(raffles).set({status:'Closed'}).where(and(eq(raffles.status,'Open'),sql`${raffles.endDate} <= now()`));}catch(e){console.error('raffle close job',e);}},60_000);

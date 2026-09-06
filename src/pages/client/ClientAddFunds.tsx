@@ -100,6 +100,11 @@ export default function ClientAddFunds() {
               </div>
             </div>
           )}
+          {paymentMethod === 'heleket' && amount && Number(amount) > 0 && config?.usdExchangeRate > 0 && (
+            <div className="bg-amber-50 border border-amber-100 p-4 rounded-lg text-sm text-amber-800">
+              You'll be charged approximately <strong>{(Number(amount) / config.usdExchangeRate).toFixed(2)} {config?.heleketCurrency || 'USD'}</strong> in crypto for {config?.currencySymbol || ''}{Number(amount).toFixed(2)} added to your wallet. The exact amount is fixed on the next screen.
+            </div>
+          )}
           <button type="submit" disabled={submitPayment.isPending} className="w-full btn-primary py-3">
             {submitPayment.isPending ? 'Processing...' : 'Submit Payment'}
           </button>

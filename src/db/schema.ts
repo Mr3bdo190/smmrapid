@@ -11,6 +11,7 @@ export const paymentStatusEnum = pgEnum('payment_status', ['Pending', 'Approved'
 export const ticketStatusEnum = pgEnum('ticket_status', ['Open', 'Answered', 'Closed']);
 export const reportStatusEnum = pgEnum('report_status', ['Unresolved', 'Resolved']);
 export const raffleStatusEnum = pgEnum('raffle_status', ['Open', 'Closed', 'Drawn']);
+export const refillStatusEnum = pgEnum('refill_status', ['Pending', 'Completed', 'Rejected']);
 
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -80,6 +81,7 @@ export const orders = pgTable('orders', {
   providerError: text('provider_error'),
   startCount: integer('start_count').default(0).notNull(),
   remains: integer('remains').default(0).notNull(),
+  cancelRequested: boolean('cancel_requested').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -309,3 +311,19 @@ export const contactMessages = pgTable('contact_messages', {
   status: contactMessageStatusEnum('status').default('New').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+// A refill re-runs a service that has already delivered (e.g. followers dropped) —
+// tracked separately from the original order since the provider issues a new refill ID.
+export const refillRequests = pgTable('refill_requests', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  orderId: uuid('order_id').references(() => orders.id).notNull(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  providerRefillId: text('provider_refill_id'),
+  status: refillStatusEnum('status').default('Pending').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const refillRequestsRelations = relations(refillRequests, ({ one }) => ({
+  order: one(orders, { fields: [refillRequests.orderId], references: [orders.id] }),
+  user: one(users, { fields: [refillRequests.userId], references: [users.id] }),
+}));

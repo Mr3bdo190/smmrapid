@@ -41,7 +41,7 @@ const FAQS = [
   { qKey: 'landing.faq5Q', aKey: 'landing.faq5A' },
 ];
 
-function LiveFeedPreview() {
+function LiveFeedPreview({ currencySymbol }: { currencySymbol: string }) {
   const { t } = useTranslation();
   const [rows, setRows] = useState(FEED_SAMPLE.slice(0, 3));
   const idx = useRef(3);
@@ -83,7 +83,7 @@ function LiveFeedPreview() {
       </div>
       <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-4 text-sm">
         <span className="text-slate-400">{t('landing.walletBalance')}</span>
-        <span className="text-slate-100 font-medium tabular-nums">128.40 EGP</span>
+        <span className="text-slate-100 font-medium tabular-nums">128.40 {currencySymbol}</span>
       </div>
     </div>
   );
@@ -282,7 +282,7 @@ export default function LandingPage() {
                 <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-400" /> {t('landing.trustApi')}</span>
               </div>
             </div>
-            <LiveFeedPreview />
+            <LiveFeedPreview currencySymbol={config?.currencySymbol || 'EGP'} />
           </div>
         </section>
 

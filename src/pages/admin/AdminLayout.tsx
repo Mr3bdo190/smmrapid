@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useLocation, Link, Outlet } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiFetch } from '../../lib/api';
 import { useTranslation, LanguageSwitcher } from '../../lib/i18n';
 import { LayoutDashboard, Users, ShoppingCart, Settings, Server, Tags, ListOrdered, Wallet, LogOut, Menu, X, Ticket, LifeBuoy, Link2, Gift, ShieldAlert, History, Handshake, Mail } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -27,10 +29,15 @@ const navItems = [
 ];
 
 export default function AdminLayout() {
-  const { dbUser, loading, logOut } = useAuth();
+  const { dbUser, loading, logOut, user } = useAuth();
   const location = useLocation();
   const { t, dir } = useTranslation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const { data: config } = useQuery({
+    queryKey: ['client-config'],
+    queryFn: async () => { const res = await apiFetch('/api/client/config', user); return res.ok ? res.json() : {}; },
+  });
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50">{t('common.loading')}</div>;
   if (!dbUser || dbUser.role !== 'admin') {
@@ -52,7 +59,7 @@ export default function AdminLayout() {
         isMobileMenuOpen ? "translate-x-0" : (dir === 'rtl' ? "translate-x-full" : "-translate-x-full")
       )}>
         <div className="h-16 flex items-center justify-between px-6 border-b border-gray-800">
-          <span className="text-lg font-bold tracking-tight">smmrapid.store {t('nav.admin.title')}</span>
+          <span className="text-lg font-bold tracking-tight">{config?.siteName || 'smmrapid.store'} {t('nav.admin.title')}</span>
           <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden text-gray-400 hover:text-white"><X className="w-6 h-6" /></button>
         </div>
         <nav className="flex-1 overflow-y-auto py-4">

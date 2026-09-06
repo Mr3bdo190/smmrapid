@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
 import toast from 'react-hot-toast';
-import { Save } from 'lucide-react';
+import { Save, PlugZap, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 
 export default function AdminSettings() {
   const { user } = useAuth();
@@ -15,6 +15,7 @@ export default function AdminSettings() {
   const [supportEmail, setSupportEmail] = useState('');
   const [siteLogo, setSiteLogo] = useState('');
   const [affiliateComm, setAffiliateComm] = useState('5');
+  const [usdExchangeRate, setUsdExchangeRate] = useState('50');
 
   const { data: settings } = useQuery({
     queryKey: ['admin-settings'],
@@ -36,6 +37,7 @@ export default function AdminSettings() {
       if (settings.support_email) setSupportEmail(settings.support_email);
       if (settings.site_logo) setSiteLogo(settings.site_logo);
       if (settings.affiliate_commission_percentage) setAffiliateComm(settings.affiliate_commission_percentage);
+      if (settings.usd_exchange_rate) setUsdExchangeRate(settings.usd_exchange_rate);
     }
   }, [settings]);
 
@@ -65,8 +67,19 @@ export default function AdminSettings() {
       support_email: supportEmail,
       site_logo: siteLogo,
       affiliate_commission_percentage: affiliateComm,
+      usd_exchange_rate: usdExchangeRate,
     });
   };
+
+  const heleketStatus = useQuery({
+    queryKey: ['admin-heleket-status'],
+    queryFn: async () => {
+      const token = await user?.getIdToken();
+      const res = await apiFetch('/api/admin/heleket/status', user, { headers: { Authorization: `Bearer ${token}` } });
+      return res.json();
+    },
+    enabled: false,
+  });
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -112,10 +125,42 @@ export default function AdminSettings() {
         </div>
         <div className="border-t pt-6">
           <h4 className="text-sm font-bold text-gray-900 mb-4">Payment Methods Settings</h4>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Vodafone Cash Number</label>
-            <input type="text" value={vodafoneCashNumber} onChange={e => setVodafoneCashNumber(e.target.value)} className="input-primary w-full" placeholder="e.g. 010xxxxxxxx" />
-            <p className="text-xs text-gray-500 mt-1">This number will be displayed to clients when they choose to add funds via Vodafone Cash.</p>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Vodafone Cash Number</label>
+              <input type="text" value={vodafoneCashNumber} onChange={e => setVodafoneCashNumber(e.target.value)} className="input-primary w-full" placeholder="e.g. 010xxxxxxxx" />
+              <p className="text-xs text-gray-500 mt-1">This number will be displayed to clients when they choose to add funds via Vodafone Cash.</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Exchange Rate ({currencySymbol} per 1 Heleket unit)
+              </label>
+              <input type="number" step="0.01" min="0.01" value={usdExchangeRate} onChange={e => setUsdExchangeRate(e.target.value)} className="input-primary w-full max-w-xs" />
+              <p className="text-xs text-gray-500 mt-1">
+                Heleket (crypto) invoices are charged in its own currency. This rate converts a client's requested wallet amount (in {currencySymbol}) into that currency for the invoice — the client's wallet is always credited in {currencySymbol}, never in the foreign amount directly.
+                Update this whenever the real exchange rate moves meaningfully.
+              </p>
+            </div>
+            <div className="border-t pt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Heleket Connection</label>
+              <p className="text-xs text-gray-500 mb-2">Tests HELEKET_MERCHANT_ID / HELEKET_PAYMENT_API_KEY against Heleket's servers directly — this is the fastest way to confirm a "Merchant unknown" or similar error is fixed.</p>
+              <button type="button" onClick={() => heleketStatus.refetch()} disabled={heleketStatus.isFetching} className="btn-secondary inline-flex items-center gap-2">
+                {heleketStatus.isFetching ? <Loader2 className="w-4 h-4 animate-spin" /> : <PlugZap className="w-4 h-4" />}
+                Test Heleket Connection
+              </button>
+              {heleketStatus.data && (
+                <div className={`mt-3 text-sm rounded-lg p-3 flex items-start gap-2 ${heleketStatus.data.connectionOk ? 'bg-emerald-50 text-emerald-800' : 'bg-red-50 text-red-800'}`}>
+                  {heleketStatus.data.connectionOk ? <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" /> : <XCircle className="w-4 h-4 mt-0.5 shrink-0" />}
+                  <div>
+                    {heleketStatus.data.connectionOk ? (
+                      <span>Connected. Merchant {heleketStatus.data.maskedMerchant} is recognized by Heleket — crypto payments should work.</span>
+                    ) : (
+                      <span>{heleketStatus.data.error || 'Connection failed.'}</span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

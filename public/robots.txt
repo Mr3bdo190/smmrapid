@@ -1,6 +1,4 @@
 User-agent: *
 Allow: /
-Disallow: /admin
 Disallow: /dashboard
-Disallow: /api/
-Sitemap: https://smmrapid.store/sitemap.xml
+Disallow: /admin

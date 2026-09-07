@@ -133,12 +133,12 @@ export default function AdminSettings() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Exchange Rate ({currencySymbol} per 1 Heleket unit)
+                Exchange Rate (EGP per 1 USD)
               </label>
               <input type="number" step="0.01" min="0.01" value={usdExchangeRate} onChange={e => setUsdExchangeRate(e.target.value)} className="input-primary w-full max-w-xs" />
               <p className="text-xs text-gray-500 mt-1">
-                Heleket (crypto) invoices are charged in its own currency. This rate converts a client's requested wallet amount (in {currencySymbol}) into that currency for the invoice — the client's wallet is always credited in {currencySymbol}, never in the foreign amount directly.
-                Update this whenever the real exchange rate moves meaningfully.
+                The site's wallet currency is USD. Vodafone Cash and Kashier collect EGP, so this rate converts what a client pays in EGP into the USD amount credited to their wallet. Heleket already charges in USD, so it's credited with no conversion.
+                Update this whenever the real USD/EGP rate moves meaningfully — you control it, not a live market feed.
               </p>
             </div>
             <div className="border-t pt-4">

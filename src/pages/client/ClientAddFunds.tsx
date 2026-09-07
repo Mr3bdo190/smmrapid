@@ -66,43 +66,52 @@ export default function ClientAddFunds() {
     submitPayment.mutate({ amount: Number(amount), method: paymentMethod === 'vodafone' ? 'Vodafone Cash' : 'Kashier', transactionDetails: { sender_phone_number: phoneNumber } });
   };
 
+  const rate = Number(config?.usdExchangeRate || 0);
+  const isEgpMethod = paymentMethod === 'vodafone' || paymentMethod === 'kashier';
+  const usdPreview = isEgpMethod && amount && Number(amount) > 0 && rate > 0 ? (Number(amount) / rate) : null;
+
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <h2 className="text-2xl font-bold text-gray-900">Add Funds</h2>
       <div className="flex gap-4 mb-8">
         <button onClick={() => setPaymentMethod('vodafone')} className={`flex-1 py-4 px-6 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${paymentMethod === 'vodafone' ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-gray-200 hover:bg-gray-50 text-gray-600'}`}>
-          <Wallet className="w-8 h-8" /> <span className="font-semibold">Vodafone Cash</span>
+          <Wallet className="w-8 h-8" /> <span className="font-semibold">Vodafone Cash</span><span className="text-xs opacity-70">Pay in EGP</span>
         </button>
         <button onClick={() => setPaymentMethod('kashier')} className={`flex-1 py-4 px-6 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${paymentMethod === 'kashier' ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-gray-200 hover:bg-gray-50 text-gray-600'}`}>
-          <CreditCard className="w-8 h-8" /> <span className="font-semibold">Credit/Debit (Kashier)</span>
+          <CreditCard className="w-8 h-8" /> <span className="font-semibold">Credit/Debit (Kashier)</span><span className="text-xs opacity-70">Pay in EGP</span>
         </button>
         <button onClick={() => setPaymentMethod('heleket')} className={`flex-1 py-4 px-6 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${paymentMethod === 'heleket' ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-gray-200 hover:bg-gray-50 text-gray-600'}`}>
-          <CreditCard className="w-8 h-8" /> <span className="font-semibold">Crypto (Heleket)</span>
+          <CreditCard className="w-8 h-8" /> <span className="font-semibold">Crypto (Heleket)</span><span className="text-xs opacity-70">Pay in USD</span>
         </button>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Amount</label>
-            <input type="number" required min="1" value={amount} onChange={e => setAmount(Number(e.target.value))} className="input-primary" placeholder="Amount" />
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {isEgpMethod ? 'Amount (EGP)' : 'Amount (USD)'}
+            </label>
+            <input type="number" required min="1" value={amount} onChange={e => setAmount(Number(e.target.value))} className="input-primary" placeholder={isEgpMethod ? 'Amount in EGP' : 'Amount in USD'} />
+            {isEgpMethod && usdPreview !== null && (
+              <p className="text-sm text-emerald-700 mt-2">
+                Your wallet will be credited <strong>${usdPreview.toFixed(2)}</strong> (rate: {rate} EGP = $1).
+              </p>
+            )}
+            {!isEgpMethod && (
+              <p className="text-xs text-gray-500 mt-2">Your wallet is credited exactly this amount in USD — no conversion.</p>
+            )}
           </div>
           {paymentMethod === 'vodafone' && (
             <div className="space-y-4">
               <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-lg">
                 <h4 className="font-semibold text-indigo-800 mb-2">Vodafone Cash Instructions</h4>
-                <p className="text-sm text-indigo-700">1. Transfer the amount you wish to add to this number: <strong className="text-lg bg-white px-2 py-1 rounded ml-2 shadow-sm">{config?.vodafoneCashNumber || 'Not set'}</strong></p>
-                <p className="text-sm text-indigo-700 mt-2">2. Enter the phone number you transferred <strong>from</strong> below, along with the exact amount you sent.</p>
+                <p className="text-sm text-indigo-700">1. Transfer the amount you wish to add (in EGP) to this number: <strong className="text-lg bg-white px-2 py-1 rounded ml-2 shadow-sm">{config?.vodafoneCashNumber || 'Not set'}</strong></p>
+                <p className="text-sm text-indigo-700 mt-2">2. Enter the phone number you transferred <strong>from</strong> below, along with the exact EGP amount you sent.</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Your (Sender) Phone Number</label>
                 <input type="tel" required value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} className="input-primary" placeholder="010XXXXXXXX" />
               </div>
-            </div>
-          )}
-          {paymentMethod === 'heleket' && amount && Number(amount) > 0 && config?.usdExchangeRate > 0 && (
-            <div className="bg-amber-50 border border-amber-100 p-4 rounded-lg text-sm text-amber-800">
-              You'll be charged approximately <strong>{(Number(amount) / config.usdExchangeRate).toFixed(2)} {config?.heleketCurrency || 'USD'}</strong> in crypto for {config?.currencySymbol || ''}{Number(amount).toFixed(2)} added to your wallet. The exact amount is fixed on the next screen.
             </div>
           )}
           <button type="submit" disabled={submitPayment.isPending} className="w-full btn-primary py-3">

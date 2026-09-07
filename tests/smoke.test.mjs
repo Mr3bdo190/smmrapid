@@ -119,8 +119,15 @@ test('provider control center endpoints and ledger compatibility migration exist
 
 test('new client category-driven order UX is wired', () => {
   const page = fs.readFileSync(path.join(root,'src/pages/client/ClientNewOrder.tsx'),'utf8');
-  for (const value of ['Choose a category','Search services in this category','Selected service','favoriteServices','recentServices','Estimated charge']) {
+  const i18n = fs.readFileSync(path.join(root,'src/lib/i18n.tsx'),'utf8');
+  for (const value of ['favoriteServices','recentServices']) {
     assert.ok(page.includes(value), `missing client feature ${value}`);
+  }
+  for (const key of ["t('newOrder.chooseCategory')","t('newOrder.searchInCategory')","t('newOrder.selectedService')","t('newOrder.estimatedCharge')"]) {
+    assert.ok(page.includes(key), `missing translated feature ${key}`);
+  }
+  for (const dictKey of ["'newOrder.chooseCategory'","'newOrder.searchInCategory'","'newOrder.selectedService'","'newOrder.estimatedCharge'"]) {
+    assert.ok(i18n.includes(dictKey), `missing i18n key ${dictKey}`);
   }
 });
 
@@ -143,12 +150,16 @@ test('complete affiliate system is wired', () => {
   const client = fs.readFileSync(path.join(root, 'src/pages/client/ClientAffiliates.tsx'), 'utf8');
   const admin = fs.readFileSync(path.join(root, 'src/pages/admin/AdminAffiliates.tsx'), 'utf8');
   const app = fs.readFileSync(path.join(root, 'src/App.tsx'), 'utf8');
+  const i18n = fs.readFileSync(path.join(root, 'src/lib/i18n.tsx'), 'utf8');
   assert.match(server, /\/api\/client\/affiliates\/stats/);
   assert.match(server, /\/api\/admin\/affiliates/);
   assert.match(server, /ensureReferralCode/);
   assert.match(server, /count\(distinct/);
-  assert.match(client, /Commission History/);
-  assert.match(client, /Referred Users/);
+  assert.match(client, /useTranslation/);
+  assert.match(client, /t\('affiliates\.commissionHistory'\)/);
+  assert.match(client, /t\('affiliates\.referredUsers'\)/);
+  assert.match(i18n, /'affiliates\.commissionHistory':\s*\{\s*en:\s*'Commission History'/);
+  assert.match(i18n, /'affiliates\.referredUsers':\s*\{\s*en:\s*'Referred Users'/);
   assert.match(admin, /Affiliate Control Center/);
   assert.match(app, /ref_click:/);
   assert.ok(fs.existsSync(path.join(root, 'drizzle/0005_affiliate_system.sql')));

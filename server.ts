@@ -4,7 +4,6 @@ import net from 'node:net';
 dns.setDefaultResultOrder('ipv4first');
 import crypto from 'node:crypto';
 import path from 'node:path';
-import { readFileSync } from 'node:fs';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { createServer as createViteServer } from 'vite';
@@ -383,11 +382,25 @@ app.post('/api/client/orders/mass', requireAuth, async (req: any, res) => {
 app.get('/api/client/payments', requireAuth, async (req: any, res) => res.json(await db.query.payments.findMany({ where: eq(payments.userId, req.dbUser.id), orderBy: [desc(payments.createdAt)] })));
 app.get('/api/client/transactions', requireAuth, async (req: any, res) => res.json(await db.select().from(walletLedger).where(eq(walletLedger.userId, req.dbUser.id)).orderBy(desc(walletLedger.createdAt))));
 app.post('/api/client/payments', requireAuth, async (req: any, res) => {
-  const amount = num(req.body?.amount);
-  if (!positiveMoney(amount) || amount < 1 || amount > 1000000) return apiError(res, 400, 'Invalid amount', 'INVALID_AMOUNT');
+  // Manual payment methods (Vodafone Cash) are always entered in EGP and converted to the
+  // site's base currency (USD) using the admin-configured rate, so an admin approving this
+  // later credits the correct USD amount regardless of what exchange rate was set at the time.
+  const amountEgp = num(req.body?.amount);
+  if (!positiveMoney(amountEgp) || amountEgp < 1 || amountEgp > 10000000) return apiError(res, 400, 'Invalid amount', 'INVALID_AMOUNT');
   const method = typeof req.body?.method === 'string' && req.body.method.length <= 50 ? req.body.method : 'Vodafone Cash';
   const details = req.body?.transactionDetails && typeof req.body.transactionDetails === 'object' ? req.body.transactionDetails : {};
-  const [p] = await db.insert(payments).values({ userId: req.dbUser.id, amount: money(amount).toFixed(4), method, status: 'Pending', transactionDetails: details }).returning();
+  const settingsRows = await db.select().from(settings);
+  const rate = num(settingsRows.find(s => s.key === 'usd_exchange_rate')?.value ?? '50');
+  if (!Number.isFinite(rate) || rate <= 0) return apiError(res, 503, 'Exchange rate is not configured — set it in Admin Settings', 'RATE_NOT_CONFIGURED');
+  const usdAmount = money(amountEgp / rate);
+  if (!positiveMoney(usdAmount)) return apiError(res, 400, 'Invalid amount', 'INVALID_AMOUNT');
+  const [p] = await db.insert(payments).values({
+    userId: req.dbUser.id,
+    amount: usdAmount.toFixed(4),
+    method,
+    status: 'Pending',
+    transactionDetails: { ...details, egpAmount: amountEgp.toFixed(2), rate },
+  }).returning();
   res.status(201).json(p);
 });
 
@@ -405,10 +418,12 @@ const applyAffiliateCommission = async (tx:any, payment:any) => {
   }
 };
 
+const GATEWAY_VERIFIED_METHODS = new Set(['Heleket', 'Kashier']);
 const paymentApprove = async (paymentId: string, adminId: string) => {
   return db.transaction(async tx => {
     const [p] = await tx.select().from(payments).where(eq(payments.id, paymentId)).for('update');
     if (!p) throw new Error('Payment not found');
+    if (GATEWAY_VERIFIED_METHODS.has(p.method)) throw Object.assign(new Error(`${p.method} payments are confirmed automatically by their own signed webhook and cannot be approved manually — approving without a real webhook would credit a wallet for a payment that was never verified.`), { status: 400 });
     if (p.status !== 'Pending') return false;
     await tx.update(payments).set({ status: 'Approved', resolvedAt: new Date() }).where(eq(payments.id, p.id));
     await creditWallet(tx, p.userId, num(p.amount), `Funds added via ${p.method}`, p.id);
@@ -416,8 +431,8 @@ const paymentApprove = async (paymentId: string, adminId: string) => {
     return true;
   });
 };
-app.put('/api/admin/payments/:id/approve', requireAuth, requireAdmin, async (req: any, res) => { try { const changed = await paymentApprove(req.params.id, req.dbUser.id); if (!changed) return apiError(res, 409, 'Payment already resolved', 'ALREADY_RESOLVED'); await audit(req.dbUser.id, 'APPROVE_PAYMENT', 'PAYMENT', req.params.id); res.json({ success: true }); } catch (e: any) { apiError(res, 400, e.message); } });
-app.put('/api/admin/payments/:id/reject', requireAuth, requireAdmin, async (req: any, res) => { try { await db.transaction(async tx => { const [p] = await tx.select().from(payments).where(eq(payments.id, req.params.id)).for('update'); if (!p) throw new Error('Payment not found'); if (p.status !== 'Pending') throw new Error('Payment already resolved'); await tx.update(payments).set({ status: 'Rejected', resolvedAt: new Date() }).where(eq(payments.id, p.id)); }); await audit(req.dbUser.id, 'REJECT_PAYMENT', 'PAYMENT', req.params.id); res.json({ success: true }); } catch (e: any) { apiError(res, 400, e.message); } });
+app.put('/api/admin/payments/:id/approve', requireAuth, requireAdmin, async (req: any, res) => { try { const changed = await paymentApprove(req.params.id, req.dbUser.id); if (!changed) return apiError(res, 409, 'Payment already resolved', 'ALREADY_RESOLVED'); await audit(req.dbUser.id, 'APPROVE_PAYMENT', 'PAYMENT', req.params.id); res.json({ success: true }); } catch (e: any) { apiError(res, e.status || 400, e.message); } });
+app.put('/api/admin/payments/:id/reject', requireAuth, requireAdmin, async (req: any, res) => { try { await db.transaction(async tx => { const [p] = await tx.select().from(payments).where(eq(payments.id, req.params.id)).for('update'); if (!p) throw new Error('Payment not found'); if (GATEWAY_VERIFIED_METHODS.has(p.method)) throw Object.assign(new Error(`${p.method} payments are resolved automatically by their own webhook and cannot be rejected manually. If it's genuinely stuck, wait for the invoice to expire.`), { status: 400 }); if (p.status !== 'Pending') throw new Error('Payment already resolved'); await tx.update(payments).set({ status: 'Rejected', resolvedAt: new Date() }).where(eq(payments.id, p.id)); }); await audit(req.dbUser.id, 'REJECT_PAYMENT', 'PAYMENT', req.params.id); res.json({ success: true }); } catch (e: any) { apiError(res, e.status || 400, e.message); } });
 
 // Heleket crypto payment gateway.
 // API authentication: MD5(base64(JSON body) + payment API key).
@@ -483,30 +498,26 @@ app.get('/api/admin/heleket/status', requireAuth, requireAdmin, async (_req, res
 
 app.post('/api/heleket/create', requireAuth, async (req: any, res) => {
   try {
-    // "amount" is always in the site's own currency (same field used for Kashier/Vodafone Cash),
-    // so wallets stay in one consistent unit. We convert to Heleket's currency using an
-    // admin-configured exchange rate purely for the invoice — the wallet credit stays in local currency.
-    const amountLocal = num(req.body?.amount);
-    if (!positiveMoney(amountLocal) || amountLocal < 1 || amountLocal > 1000000) return apiError(res, 400, 'Invalid amount', 'INVALID_AMOUNT');
+    // The site's base currency is USD, and Heleket is charged in USD too — so the amount the
+    // client enters is credited to their wallet at face value, no conversion needed here.
+    // (Vodafone Cash and Kashier take EGP and convert to USD instead — see those handlers.)
+    const amount = num(req.body?.amount);
+    if (!positiveMoney(amount) || amount < 1 || amount > 1000000) return apiError(res, 400, 'Invalid amount', 'INVALID_AMOUNT');
     getHeleketCredentials(); // fails fast with a clear message if HELEKET_MERCHANT_ID/HELEKET_PAYMENT_API_KEY are missing or malformed
-    const localCurrency = process.env.CURRENCY || 'EGP';
-    const foreignCurrency = process.env.HELEKET_CURRENCY || 'USD';
-    const settingsRows = await db.select().from(settings);
-    const rate = num(settingsRows.find(s => s.key === 'usd_exchange_rate')?.value ?? '50');
-    if (!Number.isFinite(rate) || rate <= 0) return apiError(res, 503, 'Exchange rate is not configured — set it in Admin Settings', 'RATE_NOT_CONFIGURED');
+    const currency = process.env.HELEKET_CURRENCY || 'USD';
     const baseUrl = process.env.PUBLIC_APP_URL || `${req.protocol}://${req.get('host')}`;
     const [p] = await db.insert(payments).values({
       userId: req.dbUser.id,
-      amount: money(amountLocal).toFixed(4),
+      amount: money(amount).toFixed(4),
       method: 'Heleket',
       status: 'Pending',
-      transactionDetails: { gateway: 'heleket', localCurrency, foreignCurrency, foreignAmount: foreignAmount.toFixed(4), rate },
+      transactionDetails: { gateway: 'heleket', currency },
     }).returning();
     try {
       const orderId = `PAY-${p.id}`;
       const result = await heleketApiPost('/v1/payment', {
-        amount: foreignAmount.toFixed(2),
-        currency: foreignCurrency,
+        amount: money(amount).toFixed(2),
+        currency,
         order_id: orderId,
         url_return: `${baseUrl}/dashboard/add-funds?payment=return`,
         url_success: `${baseUrl}/dashboard/add-funds?payment=success`,
@@ -519,12 +530,12 @@ app.post('/api/heleket/create', requireAuth, async (req: any, res) => {
       });
       await db.update(payments).set({
         transactionId: String(result?.uuid || orderId),
-        transactionDetails: { gateway: 'heleket', localCurrency, foreignCurrency, foreignAmount: foreignAmount.toFixed(4), rate, invoiceUuid: result?.uuid || null, orderId, response: result },
+        transactionDetails: { gateway: 'heleket', currency, invoiceUuid: result?.uuid || null, orderId, response: result },
       }).where(eq(payments.id, p.id));
-      res.json({ paymentId: p.id, orderId, invoiceUuid: result?.uuid, paymentUrl: result?.url, expiresAt: result?.expired_at || null, foreignAmount: foreignAmount.toFixed(2), foreignCurrency });
+      res.json({ paymentId: p.id, orderId, invoiceUuid: result?.uuid, paymentUrl: result?.url, expiresAt: result?.expired_at || null });
     } catch (invoiceErr: any) {
       // Don't leave an orphaned "Pending" payment row behind if Heleket never actually issued an invoice.
-      await db.update(payments).set({ status: 'Rejected', transactionDetails: { gateway: 'heleket', localCurrency, foreignCurrency, foreignAmount: foreignAmount.toFixed(4), rate, error: invoiceErr?.message || String(invoiceErr) } }).where(eq(payments.id, p.id));
+      await db.update(payments).set({ status: 'Rejected', transactionDetails: { gateway: 'heleket', currency, error: invoiceErr?.message || String(invoiceErr) } }).where(eq(payments.id, p.id));
       throw invoiceErr;
     }
   } catch (e: any) {
@@ -555,10 +566,8 @@ app.post('/api/heleket/webhook', async (req, res) => {
     if (!paymentId) return apiError(res, 400, 'Invalid payment reference', 'INVALID_PAYMENT');
     const [p] = await db.select().from(payments).where(eq(payments.id, paymentId));
     if (!p || p.method !== 'Heleket') return apiError(res, 404, 'Payment not found', 'PAYMENT_NOT_FOUND');
-    // Compare against the foreign-currency amount we actually invoiced (falls back to
-    // p.amount for records created before the exchange-rate fix, so old pending invoices still work).
-    const expectedForeign = num((p.transactionDetails as any)?.foreignAmount ?? p.amount);
-    if (money(num(payload.amount)) !== money(expectedForeign)) return apiError(res, 400, 'Payment amount mismatch', 'PAYMENT_MISMATCH');
+    // Base currency is USD and Heleket bills in USD too, so this compares like-for-like directly.
+    if (money(num(payload.amount)) !== money(num(p.amount))) return apiError(res, 400, 'Payment amount mismatch', 'PAYMENT_MISMATCH');
 
     const status = String(payload.status || '').toLowerCase();
     const finalCreditStatuses = new Set(['paid', 'paid_over']);
@@ -568,7 +577,8 @@ app.post('/api/heleket/webhook', async (req, res) => {
         const [locked] = await tx.select().from(payments).where(eq(payments.id, p.id)).for('update');
         if (!locked || locked.status !== 'Pending') return;
         await tx.update(payments).set({ status: 'Approved', transactionId: String(payload.txid || payload.uuid || locked.transactionId || orderId), transactionDetails: { ...(locked.transactionDetails as any || {}), webhook: payload }, resolvedAt: new Date() }).where(eq(payments.id, locked.id));
-        // Credit the invoice amount (already in local/site currency) only after a verified final payment webhook.
+        // This webhook is the ONLY thing that credits a Heleket payment — admins cannot manually
+        // approve Heleket payments (see the guard in /api/admin/payments/:id/approve).
         await creditWallet(tx, locked.userId, num(locked.amount), 'Heleket Deposit', locked.id);
         await applyAffiliateCommission(tx, locked);
       });
@@ -587,18 +597,26 @@ app.post('/api/heleket/webhook', async (req, res) => {
 // Kashier integration. Signature verification must be configured for live mode.
 app.post('/api/kashier/create', requireAuth, async (req: any, res) => {
   try {
-    const amount = num(req.body?.amount);
-    if (!positiveMoney(amount) || amount < 1 || amount > 1000000) throw new Error('Invalid amount');
+    // Kashier charges Egyptian cards in EGP — the client enters the EGP amount they want to
+    // pay, and we convert it to the site's base currency (USD) for the wallet credit using the
+    // admin-configured rate. Kashier itself is still invoiced in EGP (that's what the card sees).
+    const amountEgp = num(req.body?.amount);
+    if (!positiveMoney(amountEgp) || amountEgp < 1 || amountEgp > 10000000) throw new Error('Invalid amount');
     const merchantId = process.env.KASHIER_MERCHANT_ID;
     const apiKey = process.env.KASHIER_API_KEY;
     if (!merchantId || !apiKey) return apiError(res, 503, 'Payment gateway is not configured', 'GATEWAY_NOT_CONFIGURED');
     const currency = process.env.KASHIER_CURRENCY || 'EGP';
-    const [p] = await db.insert(payments).values({ userId: req.dbUser.id, amount: money(amount).toFixed(4), method: 'Kashier', status: 'Pending' }).returning();
+    const settingsRows = await db.select().from(settings);
+    const rate = num(settingsRows.find(s => s.key === 'usd_exchange_rate')?.value ?? '50');
+    if (!Number.isFinite(rate) || rate <= 0) return apiError(res, 503, 'Exchange rate is not configured — set it in Admin Settings', 'RATE_NOT_CONFIGURED');
+    const usdAmount = money(amountEgp / rate);
+    if (!positiveMoney(usdAmount)) throw new Error('Invalid amount');
+    const [p] = await db.insert(payments).values({ userId: req.dbUser.id, amount: usdAmount.toFixed(4), method: 'Kashier', status: 'Pending', transactionDetails: { egpAmount: amountEgp.toFixed(2), rate, currency } }).returning();
     const mode = process.env.KASHIER_MODE === 'live' ? 'live' : 'test'; if (isProd && mode !== 'live') return apiError(res,503,'Live payment gateway is not enabled','GATEWAY_NOT_LIVE');
     const baseUrl = process.env.KASHIER_CHECKOUT_URL || 'https://checkout.kashier.io/';
-    const pathToSign = `/?payment=${merchantId}.${p.id}.${amount}.${currency}`;
+    const pathToSign = `/?payment=${merchantId}.${p.id}.${amountEgp}.${currency}`;
     const hash = crypto.createHmac('sha256', apiKey).update(pathToSign).digest('hex');
-    res.json({ orderId: p.id, amount, currency, merchantId, paymentUrl: `${baseUrl}?merchantId=${encodeURIComponent(merchantId)}&orderId=${encodeURIComponent(p.id)}&amount=${encodeURIComponent(amount)}&currency=${encodeURIComponent(currency)}&hash=${encodeURIComponent(hash)}` });
+    res.json({ orderId: p.id, amount: amountEgp, usdAmount: usdAmount.toFixed(2), currency, merchantId, paymentUrl: `${baseUrl}?merchantId=${encodeURIComponent(merchantId)}&orderId=${encodeURIComponent(p.id)}&amount=${encodeURIComponent(amountEgp)}&currency=${encodeURIComponent(currency)}&hash=${encodeURIComponent(hash)}` });
   } catch (e: any) { apiError(res, 400, e.message); }
 });
 app.post('/api/kashier/webhook', async (req, res) => {
@@ -612,17 +630,23 @@ app.post('/api/kashier/webhook', async (req, res) => {
     const { merchantOrderId, amount, merchantId, paymentStatus, transactionId } = req.body || {};
     if (!merchantOrderId || merchantId !== process.env.KASHIER_MERCHANT_ID) return apiError(res, 400, 'Invalid payment', 'INVALID_PAYMENT');
     const [p] = await db.select().from(payments).where(eq(payments.id, String(merchantOrderId)));
-    if (!p || num(p.amount) !== num(amount)) return apiError(res, 400, 'Payment mismatch', 'PAYMENT_MISMATCH');
+    if (!p) return apiError(res, 404, 'Payment not found', 'PAYMENT_NOT_FOUND');
+    // Kashier reports back the EGP amount it actually charged — compare against the EGP amount
+    // we invoiced (stored separately from payments.amount, which now holds the USD credit).
+    const expectedEgp = num((p.transactionDetails as any)?.egpAmount ?? p.amount);
+    if (money(num(amount)) !== money(expectedEgp)) return apiError(res, 400, 'Payment mismatch', 'PAYMENT_MISMATCH');
     if (paymentStatus === 'SUCCESS') {
       await db.transaction(async tx => {
         const [locked] = await tx.select().from(payments).where(eq(payments.id, p.id)).for('update');
         if (!locked || locked.status !== 'Pending') return;
-        await tx.update(payments).set({ status: 'Approved', transactionId: transactionId ? String(transactionId) : null, transactionDetails: req.body, resolvedAt: new Date() }).where(eq(payments.id, locked.id));
+        await tx.update(payments).set({ status: 'Approved', transactionId: transactionId ? String(transactionId) : null, transactionDetails: { ...(locked.transactionDetails as any || {}), webhook: req.body }, resolvedAt: new Date() }).where(eq(payments.id, locked.id));
+        // This webhook is the ONLY thing that credits a Kashier payment — admins cannot manually
+        // approve Kashier payments (see the guard in /api/admin/payments/:id/approve).
         await creditWallet(tx, locked.userId, num(locked.amount), 'Kashier Deposit', locked.id);
         await applyAffiliateCommission(tx, locked);
       });
     } else if (['FAILED', 'CANCELLED'].includes(paymentStatus)) {
-      await db.update(payments).set({ status: 'Rejected', transactionId: transactionId ? String(transactionId) : null, transactionDetails: req.body, resolvedAt: new Date() }).where(and(eq(payments.id, p.id), eq(payments.status, 'Pending')));
+      await db.update(payments).set({ status: 'Rejected', transactionId: transactionId ? String(transactionId) : null, transactionDetails: { ...(p.transactionDetails as any || {}), webhook: req.body }, resolvedAt: new Date() }).where(and(eq(payments.id, p.id), eq(payments.status, 'Pending')));
     }
     res.sendStatus(200);
   } catch (e: any) { console.error('Kashier webhook:', e); apiError(res, 400, 'Webhook processing failed', 'WEBHOOK_ERROR'); }
@@ -974,16 +998,16 @@ app.post('/api/client/mystery-boxes/open',requireAuth,async(req:any,res)=>{try{l
 app.post(['/api/v1', '/api/v2'], apiLimiter, async (req,res)=>{try{const key=String(req.body?.key||'');if(!key)return apiError(res,401,'Invalid API key','INVALID_API_KEY');const u=await db.query.users.findFirst({where:and(eq(users.status,'active'),sql`(${users.apiKeyHash} = ${hashApiKey(key)} OR ${users.apiKey} = ${key})`)});if(!u)return apiError(res,401,'Invalid API key','INVALID_API_KEY');
 if (!u.apiKeyHash && u.apiKey === key) {
   await db.update(users).set({ apiKey: null, apiKeyHash: hashApiKey(key) }).where(eq(users.id, u.id));
-}const action=String(req.body?.action||'');if(action==='balance')return res.json({balance:u.balance,currency:(process.env.CURRENCY||'EGP')});if(action==='services'){const rows=await db.query.services.findMany({where:eq(services.status,'active'),with:{category:true}});return res.json(rows.filter(s=>s.category?.status==='active').map(s=>({service:s.id,name:s.name,rate:s.pricePer1k,min:s.minQuantity,max:s.maxQuantity,category:s.category?.name||'',refill:s.refillable,cancel:s.cancelable})));}
+}const action=String(req.body?.action||'');if(action==='balance')return res.json({balance:u.balance,currency:(process.env.CURRENCY||'USD')});if(action==='services'){const rows=await db.query.services.findMany({where:eq(services.status,'active'),with:{category:true}});return res.json(rows.filter(s=>s.category?.status==='active').map(s=>({service:s.id,name:s.name,rate:s.pricePer1k,min:s.minQuantity,max:s.maxQuantity,category:s.category?.name||'',refill:s.refillable,cancel:s.cancelable})));}
 if(action==='status'){
   const single=req.body?.order!==undefined;
-  if(single){const o=await db.query.orders.findFirst({where:and(eq(orders.id,String(req.body.order||'')),eq(orders.userId,u.id))});if(!o)return apiError(res,404,'Order not found','NOT_FOUND');return res.json({order:o.id,status:o.status,charge:o.charge,start_count:o.startCount,remains:o.remains,currency:(process.env.CURRENCY||'EGP')});}
+  if(single){const o=await db.query.orders.findFirst({where:and(eq(orders.id,String(req.body.order||'')),eq(orders.userId,u.id))});if(!o)return apiError(res,404,'Order not found','NOT_FOUND');return res.json({order:o.id,status:o.status,charge:o.charge,start_count:o.startCount,remains:o.remains,currency:(process.env.CURRENCY||'USD')});}
   const ids=String(req.body?.orders||'').split(',').map(s=>s.trim()).filter(Boolean).slice(0,100);
   if(!ids.length)return apiError(res,400,'Provide order or orders','VALIDATION_ERROR');
   const rows=await db.query.orders.findMany({where:and(inArray(orders.id,ids.filter(uuidLike)),eq(orders.userId,u.id))});
   const byId=new Map(rows.map(o=>[o.id,o]));
   const out:Record<string,any>={};
-  for(const id of ids){const o=byId.get(id);out[id]=o?{charge:o.charge,start_count:o.startCount,status:o.status,remains:o.remains,currency:(process.env.CURRENCY||'EGP')}:{error:'Incorrect order ID'};}
+  for(const id of ids){const o=byId.get(id);out[id]=o?{charge:o.charge,start_count:o.startCount,status:o.status,remains:o.remains,currency:(process.env.CURRENCY||'USD')}:{error:'Incorrect order ID'};}
   return res.json(out);
 }
 if(action==='add'){const link=typeof req.body.link==='string'?req.body.link.trim():req.body.link;const {service,q,charge}=await validateOrderInput(req.body.service,link,req.body.quantity);let id='';await db.transaction(async tx=>{await debitWallet(tx,u.id,charge,'API order',undefined);const [o]=await tx.insert(orders).values({userId:u.id,serviceId:service.id,link,quantity:q,charge:charge.toFixed(4),cost:money(num(service.providerPrice)*q/1000).toFixed(4),status:'Pending'}).returning();id=o.id;});placeOrderToProvider(id).catch(console.error);return res.json({order:id});}
@@ -1050,37 +1074,13 @@ async function ensureWalletLedgerSchema(){
   await db.execute(sql`ALTER TABLE wallet_ledger ALTER COLUMN created_at TYPE timestamp USING created_at::timestamp`);
 }
 
-function injectSeoIntoHtml(html: string, pathname: string) {
-  const clean = pathname.replace(/\/+$/, '') || '/';
-  const platforms: Record<string, { en: [string,string]; ar: [string,string] }> = {
-    instagram: { en:['Instagram SMM Services | Followers, Likes & Views | RapidSMM','Instagram SMM services for followers, likes, views and engagement with public pricing and order limits.'], ar:['خدمات إنستجرام SMM | متابعين ولايكات ومشاهدات | RapidSMM','خدمات تسويق إنستجرام للمتابعين واللايكات والمشاهدات مع أسعار وحدود طلب واضحة.'] },
-    tiktok: { en:['TikTok SMM Services | Followers, Likes & Views | RapidSMM','TikTok SMM services for followers, likes and views with transparent pricing and order limits.'], ar:['خدمات تيك توك SMM | متابعين ولايكات ومشاهدات | RapidSMM','خدمات SMM لتيك توك للمتابعين واللايكات والمشاهدات بأسعار وحدود طلب واضحة.'] },
-    youtube: { en:['YouTube SMM Services | Views, Likes & Subscribers | RapidSMM','YouTube marketing and SMM services for views, likes and subscribers with public pricing.'], ar:['خدمات يوتيوب SMM | مشاهدات ولايكات ومشتركين | RapidSMM','خدمات تسويق يوتيوب للمشاهدات واللايكات والمشتركين مع عرض الأسعار وحدود الطلب.'] },
-    facebook: { en:['Facebook SMM Services | Likes, Followers & Engagement | RapidSMM','Facebook SMM services for page likes, followers, post engagement and views.'], ar:['خدمات فيسبوك SMM | لايكات ومتابعين وتفاعل | RapidSMM','خدمات SMM لفيسبوك تشمل لايكات الصفحات والمتابعين وتفاعل المنشورات والمشاهدات.'] },
-    telegram: { en:['Telegram SMM Services | Members, Views & Engagement | RapidSMM','Telegram marketing services for members, post views and engagement.'], ar:['خدمات تيليجرام SMM | أعضاء ومشاهدات وتفاعل | RapidSMM','خدمات تسويق تيليجرام لأعضاء القنوات ومشاهدات المنشورات والتفاعل.'] },
-    spotify: { en:['Spotify Promotion & SMM Services | Plays & Followers | RapidSMM','Spotify promotion services for plays, followers and music engagement.'], ar:['خدمات ترويج سبوتيفاي SMM | تشغيلات ومتابعين | RapidSMM','خدمات ترويج سبوتيفاي للتشغيلات والمتابعين والتفاعل الموسيقي.'] },
-    twitter: { en:['X Twitter SMM Services | Followers, Likes & Views | RapidSMM','X and Twitter SMM services for followers, likes, views and engagement.'], ar:['خدمات X وتويتر SMM | متابعين ولايكات ومشاهدات | RapidSMM','خدمات SMM لمنصة X وتويتر للمتابعين واللايكات والمشاهدات والتفاعل.'] },
-    threads: { en:['Threads SMM Services | Followers, Likes & Views | RapidSMM','Threads social media marketing services for followers, likes, views and engagement.'], ar:['خدمات ثريدز SMM | متابعين ولايكات ومشاهدات | RapidSMM','خدمات تسويق ثريدز للمتابعين واللايكات والمشاهدات والتفاعل.'] },
-  };
-  let title='SMM Rapid | Affordable SMM Panel & Social Media Marketing Services';
-  let description='RapidSMM offers social media marketing services for Instagram, TikTok, YouTube, Facebook, Telegram, X and more, with public pricing and automated order tracking.';
-  let lang='en';
-  if (clean === '/services') { title='SMM Services & Pricing | Instagram, TikTok, YouTube & More | RapidSMM'; description='Browse RapidSMM social media marketing services and current public rates for Instagram, TikTok, YouTube, Facebook, Telegram and more.'; }
-  const m=clean.match(/^\/(ar|en)\/([^/]+)-services$/);
-  if(m && platforms[m[2]]) { lang=m[1]; [title,description]=platforms[m[2]][lang as 'en'|'ar']; }
-  const canonical=`https://smmrapid.store${clean}`;
-  const esc=(v:string)=>v.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  const block=`<title>${esc(title)}</title><meta name="description" content="${esc(description)}"><meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1"><link rel="canonical" href="${canonical}"><link rel="alternate" hreflang="en" href="https://smmrapid.store${m ? `/en/${m[2]}-services` : clean}"><link rel="alternate" hreflang="ar" href="https://smmrapid.store${m ? `/ar/${m[2]}-services` : clean}"><link rel="alternate" hreflang="x-default" href="https://smmrapid.store${m ? `/en/${m[2]}-services` : clean}"><meta property="og:type" content="website"><meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(description)}"><meta property="og:url" content="${canonical}"><meta property="og:site_name" content="RapidSMM"><meta property="og:locale" content="${lang==='ar'?'ar_EG':'en_US'}">`;
-  return html.replace(/<title>.*?<\/title>/is, block);
-}
-
 async function startServer(){
   validateEnv();
   try { await ensureWalletLedgerSchema(); } catch (e) { console.error('[startup] wallet_ledger schema check failed', e); }
   // JSON 404 for unmatched API routes — must be registered before the SPA/static fallback
   // so a typo'd or unknown /api/* path returns JSON instead of index.html.
   app.use('/api', (_req, res) => apiError(res, 404, 'Not found', 'NOT_FOUND'));
-  if(!isProd){const vite=await createViteServer({server:{middlewareMode:true},appType:'spa'});app.use(vite.middlewares);}else{const distPath=path.join(process.cwd(),'dist');const indexHtml=readFileSync(path.join(distPath,'index.html'),'utf8');app.use(express.static(distPath,{index:false}));app.get('*',(_req,res)=>{res.type('html').send(injectSeoIntoHtml(indexHtml,_req.path));});}
+  if(!isProd){const vite=await createViteServer({server:{middlewareMode:true},appType:'spa'});app.use(vite.middlewares);}else{const distPath=path.join(process.cwd(),'dist');app.use(express.static(distPath));app.get('*',(_req,res)=>res.sendFile(path.join(distPath,'index.html')));}
   app.use((err:any,_req:any,res:any,_next:any)=>{console.error(err);if(!res.headersSent)apiError(res,500,'Internal server error','INTERNAL_ERROR');});
   const server = app.listen(PORT,'0.0.0.0',()=>{console.log(`Server listening on ${PORT}`);startProviderWorker();});
 

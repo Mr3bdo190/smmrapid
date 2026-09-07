@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
@@ -6,10 +5,12 @@ import { apiFetch } from '../../lib/api';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useTranslation } from '../../lib/i18n';
 
 export default function ClientTicketView() {
   const { id } = useParams();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [message, setMessage] = useState('');
 
@@ -48,8 +49,8 @@ export default function ClientTicketView() {
     replyMutation.mutate(message);
   };
 
-  if (isLoading) return <div>Loading...</div>;
-  if (!ticketData?.ticket) return <div>Ticket not found</div>;
+  if (isLoading) return <div>{t('common.loading')}</div>;
+  if (!ticketData?.ticket) return <div>{t('ticketView.notFound')}</div>;
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto flex flex-col h-[calc(100vh-8rem)]">
@@ -69,21 +70,21 @@ export default function ClientTicketView() {
               <span className="text-xs text-gray-400 mt-1">{new Date(m.createdAt).toLocaleString()}</span>
             </div>
           ))}
-          {ticketData.messages.length === 0 && <p className="text-center text-gray-500">No messages yet. Send one below.</p>}
+          {ticketData.messages.length === 0 && <p className="text-center text-gray-500">{t('ticketView.noMessages')}</p>}
         </div>
       </div>
 
       <form onSubmit={handleReply} className="flex gap-2">
-        <input 
-          type="text" 
-          value={message} 
-          onChange={e => setMessage(e.target.value)} 
-          placeholder="Type your reply..." 
+        <input
+          type="text"
+          value={message}
+          onChange={e => setMessage(e.target.value)}
+          placeholder={t('ticketView.typeReply')}
           className="input-primary flex-1"
           disabled={ticketData.ticket.status === 'Closed' || replyMutation.isPending}
         />
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           disabled={ticketData.ticket.status === 'Closed' || replyMutation.isPending}
           className="btn-primary flex items-center justify-center disabled:opacity-50"
         >

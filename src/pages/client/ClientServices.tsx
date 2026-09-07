@@ -1,12 +1,13 @@
-
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
 import { Tags } from 'lucide-react';
+import { useTranslation } from '../../lib/i18n';
 
 export default function ClientServices() {
   const { user } = useAuth();
-  
+  const { t } = useTranslation();
+
   const { data: services = [], isLoading } = useQuery({
     queryKey: ['client-services-list'],
     queryFn: async () => {
@@ -20,17 +21,17 @@ export default function ClientServices() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><Tags className="text-indigo-600"/> Services List</h2>
+      <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><Tags className="text-indigo-600"/> {t('services.title')}</h2>
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto w-full">
         <table className="min-w-full divide-y divide-gray-100">
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">ID</th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Category</th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Service</th>
-              <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase">Rate per 1k</th>
-              <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase">Min / Max</th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">{t('services.category')}</th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">{t('newOrder.service')}</th>
+              <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase">{t('services.rate')}</th>
+              <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase">{t('services.minMax')}</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-100">

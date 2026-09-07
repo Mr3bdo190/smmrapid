@@ -1,9 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
+import { useTranslation } from '../../lib/i18n';
 
 export default function ClientTransactions() {
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   const { data: transactions = [] } = useQuery({
     queryKey: ['client-transactions'],
@@ -18,19 +20,21 @@ export default function ClientTransactions() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-900">Transaction History</h2>
+      <h2 className="text-2xl font-bold text-gray-900">{t('nav.transactions')}</h2>
+      <p className="text-sm text-gray-500 -mt-4">{t('transactions.subtitle')}</p>
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden w-full">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-100">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Date</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Type</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Amount</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">{t('transactions.date')}</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">{t('transactions.description')}</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">{t('transactions.amount')}</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">{t('transactions.type')}</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-100">
+              {transactions.length === 0 && <tr><td colSpan={4} className="px-6 py-10 text-center text-gray-500">{t('transactions.none')}</td></tr>}
               {transactions.map((p: any) => (
                 <tr key={p.id}>
                   <td className="px-6 py-4 text-sm">{new Date(p.createdAt).toLocaleDateString()}</td>

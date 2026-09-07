@@ -2,7 +2,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import React, { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
-import SEO, { SITE } from '../components/SEO';
 import {
   ArrowRight, Zap, ShieldCheck, Wallet, Cable, LifeBuoy, ChevronDown,
   CheckCircle2, Circle,
@@ -43,7 +42,7 @@ const FAQS = [
 ];
 
 function LiveFeedPreview({ currencySymbol }: { currencySymbol: string }) {
-  const { t, lang } = useTranslation();
+  const { t } = useTranslation();
   const [rows, setRows] = useState(FEED_SAMPLE.slice(0, 3));
   const idx = useRef(3);
   useEffect(() => {
@@ -181,19 +180,6 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-[#0B0F17] text-slate-100" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
-      <SEO
-        title={t('landing.seoTitle')}
-        description={t('landing.seoDescription')}
-        path="/"
-        lang={lang}
-        keywords={['SMM panel','SMM services','social media marketing','Instagram services','TikTok services','YouTube services','لوحة SMM','خدمات سوشيال ميديا','متابعين انستجرام','متابعين تيك توك']}
-        jsonLd={[
-          { '@context':'https://schema.org', '@type':'WebSite', name: siteName, url: SITE, description: t('landing.seoDescription') },
-          { '@context':'https://schema.org', '@type':'Organization', name: siteName, url: SITE },
-          { '@context':'https://schema.org', '@type':'WebPage', name: t('landing.seoTitle'), url: SITE, description: t('landing.seoDescription') }
-        ]}
-      />
-
       {showAuthModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[100] p-4">
           <div className="bg-[#121826] border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl relative">

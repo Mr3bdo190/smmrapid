@@ -1,16 +1,17 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
 import { Link2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useTranslation } from '../../lib/i18n';
 
 export default function ClientShortlinks() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
   const [claimTokens, setClaimTokens] = useState<Record<string, string>>({});
-  
+
   const { data: shortlinks = [] } = useQuery({
     queryKey: ['client-shortlinks'],
     queryFn: async () => {
@@ -48,7 +49,7 @@ export default function ClientShortlinks() {
       return data;
     },
     onSuccess: () => {
-      toast.success('Reward claimed successfully!');
+      toast.success(t('shortlinks.rewardClaimed'));
       queryClient.invalidateQueries({ queryKey: ['client-user-info'] });
       queryClient.invalidateQueries({ queryKey: ['client-shortlinks'] });
     },
@@ -57,21 +58,21 @@ export default function ClientShortlinks() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><Link2 className="text-indigo-600"/> Earn via Shortlinks</h2>
+      <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><Link2 className="text-indigo-600"/> {t('shortlinks.title')}</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {shortlinks.map((sl: any) => (
           <div key={sl.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col items-center text-center">
             <h3 className="font-bold text-lg text-gray-900 mb-2">{sl.name}</h3>
-            <p className="text-sm text-gray-500 mb-4">Reward: ${Number(sl.rewardAmount).toFixed(4)}</p>
+            <p className="text-sm text-gray-500 mb-4">{t('shortlinks.reward', { amount: Number(sl.rewardAmount).toFixed(4) })}</p>
             <div className="flex gap-2 w-full">
               <button onClick={() => startMutation.mutate(sl.id)} disabled={startMutation.isPending || sl.claimed} className="flex-1 btn-secondary text-center disabled:opacity-50">
-                {sl.claimed ? 'Claimed' : 'Visit'}
+                {sl.claimed ? t('shortlinks.claimed') : t('shortlinks.visit')}
               </button>
-              <button onClick={() => claimMutation.mutate({ id: sl.id, claimToken: claimTokens[sl.id] || '' })} disabled={claimMutation.isPending || sl.claimed || !claimTokens[sl.id]} className="flex-1 btn-primary disabled:opacity-50">Claim</button>
+              <button onClick={() => claimMutation.mutate({ id: sl.id, claimToken: claimTokens[sl.id] || '' })} disabled={claimMutation.isPending || sl.claimed || !claimTokens[sl.id]} className="flex-1 btn-primary disabled:opacity-50">{t('shortlinks.claim')}</button>
             </div>
           </div>
         ))}
-        {shortlinks.length === 0 && <p className="text-gray-500 col-span-3">No active shortlinks currently available.</p>}
+        {shortlinks.length === 0 && <p className="text-gray-500 col-span-3">{t('shortlinks.noneAvailable')}</p>}
       </div>
     </div>
   );

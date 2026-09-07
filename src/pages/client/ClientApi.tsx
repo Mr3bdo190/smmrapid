@@ -4,9 +4,11 @@ import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
 import { Code, Key } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useTranslation } from '../../lib/i18n';
 
 export default function ClientApi() {
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   const [newApiKey, setNewApiKey] = useState('');
   const { data: userData, refetch } = useQuery({
@@ -30,62 +32,63 @@ export default function ClientApi() {
       if (res.ok) {
         const data = await res.json();
         setNewApiKey(data.apiKey);
-        toast.success('API Key generated. Save it now; it will not be shown again.');
+        toast.success(t('api.generated'));
         refetch();
       } else {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || 'Failed to generate key');
       }
     } catch (err) {
-      toast.error('Failed to generate key');
+      toast.error(t('api.failedToGenerate'));
     }
   };
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><Code className="text-indigo-600"/> API Documentation</h2>
-      
+      <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><Code className="text-indigo-600"/> {t('api.title')}</h2>
+      <p className="text-sm text-gray-500 -mt-4">{t('api.subtitle')}</p>
+
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-        <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><Key className="w-5 h-5"/> Your API Key</h3>
+        <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><Key className="w-5 h-5"/> {t('api.yourKey')}</h3>
         {newApiKey ? (
           <div className="flex items-center gap-4">
-            <input 
-              type="text" 
-              readOnly 
-              value={newApiKey} 
+            <input
+              type="text"
+              readOnly
+              value={newApiKey}
               className="input-field w-full md:w-96 font-mono text-sm bg-gray-50"
             />
-            <button 
-              onClick={() => { navigator.clipboard.writeText(newApiKey); toast.success('Copied!'); }}
+            <button
+              onClick={() => { navigator.clipboard.writeText(newApiKey); toast.success(t('api.keyCopied')); }}
               className="btn-secondary"
             >
-              Copy
+              {t('api.copy')}
             </button>
-            <button onClick={generateApiKey} className="text-sm text-indigo-600 hover:underline">Regenerate</button>
+            <button onClick={generateApiKey} className="text-sm text-indigo-600 hover:underline">{t('api.regenerate')}</button>
           </div>
         ) : (
           <div>
-            <p className="text-gray-500 mb-4">{userData?.apiKeyHash ? 'Your API key is configured and hidden for security. Generate a new key to replace it.' : 'You do not have an API key yet.'}</p>
-            <button onClick={generateApiKey} className="btn-primary">Generate API Key</button>
+            <p className="text-gray-500 mb-4">{userData?.apiKeyHash ? t('api.configuredHidden') : t('api.noKeyYet')}</p>
+            <button onClick={generateApiKey} className="btn-primary">{t('api.generateKey')}</button>
           </div>
         )}
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-4">
-        <h3 className="font-bold text-lg">API Usage</h3>
-        <p className="text-sm text-gray-600">Our API allows you to place orders and check status programmatically.</p>
-        
+        <h3 className="font-bold text-lg">{t('api.usage')}</h3>
+        <p className="text-sm text-gray-600">{t('api.usageDesc')}</p>
+
         <div className="mt-4">
-          <h4 className="font-semibold text-gray-900">HTTP Method</h4>
+          <h4 className="font-semibold text-gray-900">{t('api.httpMethod')}</h4>
           <code className="text-sm bg-gray-100 px-2 py-1 rounded">POST</code>
         </div>
         <div className="mt-4">
-          <h4 className="font-semibold text-gray-900">API URL</h4>
-          <code className="text-sm bg-gray-100 px-2 py-1 rounded">{window.location.origin}/api/v1</code>
+          <h4 className="font-semibold text-gray-900">{t('api.apiUrl')}</h4>
+          <code className="text-sm bg-gray-100 px-2 py-1 rounded">{window.location.origin}/api/v2</code>
         </div>
 
         <div className="mt-6 border-t pt-4">
-          <h4 className="font-semibold text-lg text-gray-900 mb-2">Place Order Example</h4>
+          <h4 className="font-semibold text-lg text-gray-900 mb-2">{t('api.placeOrderExample')}</h4>
           <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg text-xs overflow-x-auto">
 {`{
   "key": "YOUR_API_KEY",

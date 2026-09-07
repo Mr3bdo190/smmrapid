@@ -83,6 +83,8 @@ export const translations: Dict = {
   'nav.admin.title': { en: 'Admin', ar: 'الإدارة' },
 
   // Landing page
+  'landing.seoTitle': { en: 'SMM Rapid | Affordable SMM Panel & Social Media Marketing Services', ar: 'SMM Rapid | لوحة SMM وخدمات تسويق السوشيال ميديا بأسعار تنافسية' },
+  'landing.seoDescription': { en: 'RapidSMM offers social media marketing services for Instagram, TikTok, YouTube, Facebook, Telegram, X and more, with public pricing, automated order tracking and reseller API tools.', ar: 'توفر SMM Rapid خدمات تسويق السوشيال ميديا لإنستجرام وتيك توك ويوتيوب وفيسبوك وتيليجرام وX وغيرها، مع أسعار عامة وتتبع تلقائي للطلبات وواجهة API للموزعين.' },
   'landing.defaultTagline': { en: 'Automated social media growth, dispatched instantly', ar: 'نمو تلقائي لحساباتك على السوشيال ميديا، يبدأ فوراً' },
   'landing.navFeatures': { en: 'Features', ar: 'المميزات' },
   'landing.navPricing': { en: 'Pricing', ar: 'الأسعار' },
@@ -99,8 +101,8 @@ export const translations: Dict = {
   'landing.trustNoWait': { en: 'No approval wait', ar: 'بدون انتظار موافقة' },
   'landing.trustLocalPayment': { en: 'Local payment methods', ar: 'وسائل دفع محلية' },
   'landing.trustApi': { en: 'API included', ar: 'واجهة API متضمنة' },
-  'landing.liveFeedLabel': { en: 'Live tracking preview', ar: 'معاينة حية للمتابعة' },
-  'landing.liveFeedSyncing': { en: 'syncing', ar: 'جاري المزامنة' },
+  'landing.liveFeedLabel': { en: 'Order tracking preview', ar: 'معاينة لتتبع الطلبات' },
+  'landing.liveFeedSyncing': { en: 'example', ar: 'مثال' },
   'landing.walletBalance': { en: 'Wallet balance', ar: 'رصيد المحفظة' },
   'landing.platformsLabel': { en: 'Supported platforms', ar: 'المنصات المدعومة' },
   'landing.featuresTitle': { en: 'Built to run without you watching it', ar: 'مبني ليعمل تلقائياً دون الحاجة لمتابعته' },
@@ -216,6 +218,8 @@ export const translations: Dict = {
 
   // Public services catalog
   'publicServices.title': { en: 'Services & Pricing', ar: 'الخدمات والأسعار' },
+  'publicServices.seoTitle': { en: 'SMM Services & Pricing | Instagram, TikTok, YouTube & More | RapidSMM', ar: 'خدمات وأسعار SMM | إنستجرام وتيك توك ويوتيوب وأكثر | RapidSMM' },
+  'publicServices.seoDescription': { en: 'Browse RapidSMM social media marketing services and current public rates for Instagram, TikTok, YouTube, Facebook, Telegram and more.', ar: 'تصفح خدمات التسويق عبر السوشيال ميديا والأسعار العامة الحالية لإنستجرام وتيك توك ويوتيوب وفيسبوك وتيليجرام وغيرها.' },
   'publicServices.subtitle': { en: 'Everything currently available, with live pricing. Create a free account to place an order.', ar: 'كل الخدمات المتاحة حالياً بأسعارها الحية. أنشئ حساباً مجانياً لإتمام الطلب.' },
   'publicServices.searchPlaceholder': { en: 'Search services...', ar: 'ابحث عن خدمة...' },
   'publicServices.rateLabel': { en: 'per 1,000', ar: 'لكل 1000' },

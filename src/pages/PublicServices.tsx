@@ -4,12 +4,13 @@ import { useQuery } from '@tanstack/react-query';
 import { Search } from 'lucide-react';
 import PublicPageShell from './PublicPageShell';
 import { useTranslation } from '../lib/i18n';
+import SEO, { SITE } from '../components/SEO';
 
 interface SvcRow { id: string; name: string; description: string | null; rate: string; min: number; max: number; }
 interface CatRow { id: string; name: string; services: SvcRow[]; }
 
 export default function PublicServices() {
-  const { t } = useTranslation();
+  const { t, lang } = useTranslation();
   const [q, setQ] = useState('');
   const { data, isLoading } = useQuery({
     queryKey: ['public-services'],
@@ -20,8 +21,11 @@ export default function PublicServices() {
     .map(c => ({ ...c, services: c.services.filter(s => !q || s.name.toLowerCase().includes(q.toLowerCase())) }))
     .filter(c => c.services.length > 0);
 
+  const platformLinks = ['instagram','tiktok','youtube','facebook','telegram','spotify','twitter','threads'];
+
   return (
     <PublicPageShell title={t('publicServices.title')}>
+      <SEO title={t('publicServices.seoTitle')} description={t('publicServices.seoDescription')} path="/services" lang={lang} keywords={['SMM services','SMM panel prices','Instagram SMM','TikTok SMM','YouTube SMM','خدمات SMM','أسعار SMM']} jsonLd={{ '@context':'https://schema.org', '@type':'CollectionPage', name:t('publicServices.seoTitle'), url:`${SITE}/services`, description:t('publicServices.seoDescription') }} />
       <p>{t('publicServices.subtitle')}</p>
 
       <div className="relative">
@@ -66,6 +70,13 @@ export default function PublicServices() {
           </div>
         ))}
       </div>
+
+      <section className="pt-4">
+        <h2 className="text-xl font-bold text-white mb-3">{lang === 'ar' ? 'خدمات حسب المنصة' : 'Services by platform'}</h2>
+        <div className="flex flex-wrap gap-2">
+          {platformLinks.map(slug => <Link key={slug} to={`/${lang}/${slug}-services`} className="px-3 py-2 rounded-lg border border-white/10 bg-white/[0.03] text-sm text-slate-300 hover:text-white hover:border-amber-400/30">{slug === 'twitter' ? 'X / Twitter' : slug[0].toUpperCase()+slug.slice(1)}</Link>)}
+        </div>
+      </section>
 
       <div className="pt-4">
         <Link to="/" className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold text-[#0B0F17] bg-amber-400 rounded-xl hover:bg-amber-300 transition-colors">

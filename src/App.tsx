@@ -8,6 +8,7 @@ import Contact from './pages/Contact';
 import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
 import RefundPolicy from './pages/RefundPolicy';
+import PlatformSEO from './pages/PlatformSEO';
 
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'));
@@ -77,6 +78,7 @@ export default function App() {
           <Route path="/terms" element={<Terms />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/refund-policy" element={<RefundPolicy />} />
+          <Route path="/:lang/:slug-services" element={<PlatformSEO />} />
           <Route path="/dashboard" element={<ClientLayout />}>
             <Route index element={<ClientDashboard />} />
             <Route path="new-order" element={<ClientNewOrder />} />

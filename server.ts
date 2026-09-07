@@ -4,6 +4,7 @@ import net from 'node:net';
 dns.setDefaultResultOrder('ipv4first');
 import crypto from 'node:crypto';
 import path from 'node:path';
+import { readFileSync } from 'node:fs';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { createServer as createViteServer } from 'vite';
@@ -1049,13 +1050,37 @@ async function ensureWalletLedgerSchema(){
   await db.execute(sql`ALTER TABLE wallet_ledger ALTER COLUMN created_at TYPE timestamp USING created_at::timestamp`);
 }
 
+function injectSeoIntoHtml(html: string, pathname: string) {
+  const clean = pathname.replace(/\/+$/, '') || '/';
+  const platforms: Record<string, { en: [string,string]; ar: [string,string] }> = {
+    instagram: { en:['Instagram SMM Services | Followers, Likes & Views | RapidSMM','Instagram SMM services for followers, likes, views and engagement with public pricing and order limits.'], ar:['خدمات إنستجرام SMM | متابعين ولايكات ومشاهدات | RapidSMM','خدمات تسويق إنستجرام للمتابعين واللايكات والمشاهدات مع أسعار وحدود طلب واضحة.'] },
+    tiktok: { en:['TikTok SMM Services | Followers, Likes & Views | RapidSMM','TikTok SMM services for followers, likes and views with transparent pricing and order limits.'], ar:['خدمات تيك توك SMM | متابعين ولايكات ومشاهدات | RapidSMM','خدمات SMM لتيك توك للمتابعين واللايكات والمشاهدات بأسعار وحدود طلب واضحة.'] },
+    youtube: { en:['YouTube SMM Services | Views, Likes & Subscribers | RapidSMM','YouTube marketing and SMM services for views, likes and subscribers with public pricing.'], ar:['خدمات يوتيوب SMM | مشاهدات ولايكات ومشتركين | RapidSMM','خدمات تسويق يوتيوب للمشاهدات واللايكات والمشتركين مع عرض الأسعار وحدود الطلب.'] },
+    facebook: { en:['Facebook SMM Services | Likes, Followers & Engagement | RapidSMM','Facebook SMM services for page likes, followers, post engagement and views.'], ar:['خدمات فيسبوك SMM | لايكات ومتابعين وتفاعل | RapidSMM','خدمات SMM لفيسبوك تشمل لايكات الصفحات والمتابعين وتفاعل المنشورات والمشاهدات.'] },
+    telegram: { en:['Telegram SMM Services | Members, Views & Engagement | RapidSMM','Telegram marketing services for members, post views and engagement.'], ar:['خدمات تيليجرام SMM | أعضاء ومشاهدات وتفاعل | RapidSMM','خدمات تسويق تيليجرام لأعضاء القنوات ومشاهدات المنشورات والتفاعل.'] },
+    spotify: { en:['Spotify Promotion & SMM Services | Plays & Followers | RapidSMM','Spotify promotion services for plays, followers and music engagement.'], ar:['خدمات ترويج سبوتيفاي SMM | تشغيلات ومتابعين | RapidSMM','خدمات ترويج سبوتيفاي للتشغيلات والمتابعين والتفاعل الموسيقي.'] },
+    twitter: { en:['X Twitter SMM Services | Followers, Likes & Views | RapidSMM','X and Twitter SMM services for followers, likes, views and engagement.'], ar:['خدمات X وتويتر SMM | متابعين ولايكات ومشاهدات | RapidSMM','خدمات SMM لمنصة X وتويتر للمتابعين واللايكات والمشاهدات والتفاعل.'] },
+    threads: { en:['Threads SMM Services | Followers, Likes & Views | RapidSMM','Threads social media marketing services for followers, likes, views and engagement.'], ar:['خدمات ثريدز SMM | متابعين ولايكات ومشاهدات | RapidSMM','خدمات تسويق ثريدز للمتابعين واللايكات والمشاهدات والتفاعل.'] },
+  };
+  let title='SMM Rapid | Affordable SMM Panel & Social Media Marketing Services';
+  let description='RapidSMM offers social media marketing services for Instagram, TikTok, YouTube, Facebook, Telegram, X and more, with public pricing and automated order tracking.';
+  let lang='en';
+  if (clean === '/services') { title='SMM Services & Pricing | Instagram, TikTok, YouTube & More | RapidSMM'; description='Browse RapidSMM social media marketing services and current public rates for Instagram, TikTok, YouTube, Facebook, Telegram and more.'; }
+  const m=clean.match(/^\/(ar|en)\/([^/]+)-services$/);
+  if(m && platforms[m[2]]) { lang=m[1]; [title,description]=platforms[m[2]][lang as 'en'|'ar']; }
+  const canonical=`https://smmrapid.store${clean}`;
+  const esc=(v:string)=>v.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const block=`<title>${esc(title)}</title><meta name="description" content="${esc(description)}"><meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1"><link rel="canonical" href="${canonical}"><link rel="alternate" hreflang="en" href="https://smmrapid.store${m ? `/en/${m[2]}-services` : clean}"><link rel="alternate" hreflang="ar" href="https://smmrapid.store${m ? `/ar/${m[2]}-services` : clean}"><link rel="alternate" hreflang="x-default" href="https://smmrapid.store${m ? `/en/${m[2]}-services` : clean}"><meta property="og:type" content="website"><meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(description)}"><meta property="og:url" content="${canonical}"><meta property="og:site_name" content="RapidSMM"><meta property="og:locale" content="${lang==='ar'?'ar_EG':'en_US'}">`;
+  return html.replace(/<title>.*?<\/title>/is, block);
+}
+
 async function startServer(){
   validateEnv();
   try { await ensureWalletLedgerSchema(); } catch (e) { console.error('[startup] wallet_ledger schema check failed', e); }
   // JSON 404 for unmatched API routes — must be registered before the SPA/static fallback
   // so a typo'd or unknown /api/* path returns JSON instead of index.html.
   app.use('/api', (_req, res) => apiError(res, 404, 'Not found', 'NOT_FOUND'));
-  if(!isProd){const vite=await createViteServer({server:{middlewareMode:true},appType:'spa'});app.use(vite.middlewares);}else{const distPath=path.join(process.cwd(),'dist');app.use(express.static(distPath));app.get('*',(_req,res)=>res.sendFile(path.join(distPath,'index.html')));}
+  if(!isProd){const vite=await createViteServer({server:{middlewareMode:true},appType:'spa'});app.use(vite.middlewares);}else{const distPath=path.join(process.cwd(),'dist');const indexHtml=readFileSync(path.join(distPath,'index.html'),'utf8');app.use(express.static(distPath,{index:false}));app.get('*',(_req,res)=>{res.type('html').send(injectSeoIntoHtml(indexHtml,_req.path));});}
   app.use((err:any,_req:any,res:any,_next:any)=>{console.error(err);if(!res.headersSent)apiError(res,500,'Internal server error','INTERNAL_ERROR');});
   const server = app.listen(PORT,'0.0.0.0',()=>{console.log(`Server listening on ${PORT}`);startProviderWorker();});
 

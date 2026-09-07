@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import PublicPageShell from './PublicPageShell';
 import SEO, { SITE } from '../components/SEO';
@@ -39,13 +40,15 @@ const DATA: Record<string, { en: { name: string; title: string; description: str
 };
 
 export default function PlatformSEO() {
-  const { slug = 'instagram' } = useParams();
-  const { lang } = useTranslation();
-  const data = DATA[slug]?.[lang] || DATA.instagram.en;
-  const path = `/${lang}/${slug}-services`;
+  const { slug = 'instagram', lang: routeLang } = useParams();
+  const { lang, setLang } = useTranslation();
+  const safeLang = routeLang === 'ar' ? 'ar' : routeLang === 'en' ? 'en' : lang;
+  useEffect(() => { if (routeLang === 'ar' || routeLang === 'en') setLang(routeLang); }, [routeLang, setLang]);
+  const data = DATA[slug]?.[safeLang] || DATA.instagram.en;
+  const path = `/${safeLang}/${slug}-services`;
   const faqSchema = data.faq.map(([q,a]) => ({ '@type':'Question', name:q, acceptedAnswer:{ '@type':'Answer', text:a } }));
   return <>
-    <SEO title={data.title} description={data.description} path={path} keywords={data.keywords} lang={lang} alternates={{ ar: `/${'ar'}/${slug}-services`, en: `/${'en'}/${slug}-services`, xDefault: `/${'en'}/${slug}-services` }} jsonLd={[
+    <SEO title={data.title} description={data.description} path={path} keywords={data.keywords} lang={safeLang} alternates={{ ar: `/ar/${slug}-services`, en: `/en/${slug}-services`, xDefault: `/en/${slug}-services` }} jsonLd={[
       { '@context':'https://schema.org', '@type':'WebSite', name:'RapidSMM', url:SITE },
       { '@context':'https://schema.org', '@type':'Service', name:`${data.name} SMM Services`, description:data.description, provider:{ '@type':'Organization', name:'RapidSMM', url:SITE }, areaServed:'Worldwide', serviceType:'Social Media Marketing' },
       { '@context':'https://schema.org', '@type':'FAQPage', mainEntity:faqSchema }
@@ -53,18 +56,18 @@ export default function PlatformSEO() {
     <PublicPageShell title={data.title}>
       <p className="text-base md:text-lg">{data.intro}</p>
       <section>
-        <h2 className="text-xl font-bold text-white mb-3">{lang === 'ar' ? `خدمات ${data.name} المتخصصة` : `${data.name} services`}</h2>
+        <h2 className="text-xl font-bold text-white mb-3">{safeLang === 'ar' ? `خدمات ${data.name} المتخصصة` : `${data.name} services`}</h2>
         <div className="grid sm:grid-cols-2 gap-3">
           {data.services.map(s => <div key={s} className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-slate-200">{s}</div>)}
         </div>
       </section>
       <section>
-        <h2 className="text-xl font-bold text-white mb-3">{lang === 'ar' ? 'الأسعار والتوفر' : 'Pricing & availability'}</h2>
-        <p>{lang === 'ar' ? 'الأسعار والتوفر الفعليان يتغيران حسب الكتالوج النشط. راجع صفحة الخدمات العامة لمعرفة الخدمات المتاحة حالياً وحدود الطلب.' : 'Actual pricing and availability depend on the active catalog. Visit the public services page to see current services and order limits.'}</p>
-        <Link to="/services" className="inline-flex mt-4 px-5 py-2.5 rounded-lg bg-amber-400 text-[#0B0F17] font-semibold">{lang === 'ar' ? 'عرض الخدمات والأسعار' : 'View services & pricing'}</Link>
+        <h2 className="text-xl font-bold text-white mb-3">{safeLang === 'ar' ? 'الأسعار والتوفر' : 'Pricing & availability'}</h2>
+        <p>{safeLang === 'ar' ? 'الأسعار والتوفر الفعليان يتغيران حسب الكتالوج النشط. راجع صفحة الخدمات العامة لمعرفة الخدمات المتاحة حالياً وحدود الطلب.' : 'Actual pricing and availability depend on the active catalog. Visit the public services page to see current services and order limits.'}</p>
+        <Link to="/services" className="inline-flex mt-4 px-5 py-2.5 rounded-lg bg-amber-400 text-[#0B0F17] font-semibold">{safeLang === 'ar' ? 'عرض الخدمات والأسعار' : 'View services & pricing'}</Link>
       </section>
       <section>
-        <h2 className="text-xl font-bold text-white mb-3">{lang === 'ar' ? 'الأسئلة الشائعة' : 'Frequently asked questions'}</h2>
+        <h2 className="text-xl font-bold text-white mb-3">{safeLang === 'ar' ? 'الأسئلة الشائعة' : 'Frequently asked questions'}</h2>
         <div className="space-y-5">{data.faq.map(([q,a]) => <div key={q}><h3 className="font-semibold text-white">{q}</h3><p className="mt-1">{a}</p></div>)}</div>
       </section>
     </PublicPageShell>

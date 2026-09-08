@@ -1,0 +1,17 @@
+src/pages/admin/AdminDashboard.tsx
+src/pages/admin/AdminUsers.tsx
+src/pages/admin/AdminOrders.tsx
+src/pages/admin/AdminPayments.tsx
+src/pages/admin/AdminCategories.tsx
+src/pages/admin/AdminServices.tsx
+src/pages/admin/AdminProviders.tsx
+src/pages/admin/AdminSettings.tsx
+src/pages/admin/AdminTickets.tsx
+src/pages/admin/AdminAuditLogs.tsx
+src/pages/admin/AdminAffiliates.tsx
+src/pages/admin/AdminContactMessages.tsx
+src/pages/admin/AdminRaffles.tsx
+src/pages/admin/AdminMysteryBoxes.tsx
+src/pages/admin/AdminShortlinks.tsx
+src/pages/admin/AdminSystemReports.tsx
+src/pages/admin/AdminTicketView.tsx

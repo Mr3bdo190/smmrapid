@@ -1,0 +1,4 @@
+src/lib/api.ts
+src/lib/i18n.tsx
+src/lib/provider-engine.ts
+src/contexts/AuthContext.tsx

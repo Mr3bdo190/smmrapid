@@ -1,0 +1,8 @@
+src/pages/LandingPage.tsx
+src/pages/Terms.tsx
+src/pages/Privacy.tsx
+src/pages/RefundPolicy.tsx
+src/pages/Contact.tsx
+src/pages/PublicServices.tsx
+src/pages/PublicSupport.tsx
+src/pages/PlatformSEO.tsx

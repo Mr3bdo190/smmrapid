@@ -13,20 +13,76 @@ export interface ProviderResponse {
 const sleep = (ms:number) => new Promise(r => setTimeout(r, ms));
 const money = (v:number) => Math.round((v + Number.EPSILON) * 10000) / 10000;
 
+function isPrivateIp(ip: string): boolean {
+  if (net.isIPv4(ip)) {
+    const [a, b, c, d] = ip.split('.').map(Number);
+    return a === 10 ||
+           a === 127 ||
+           a === 0 ||
+           (a === 169 && b === 254) ||
+           (a === 172 && b >= 16 && b <= 31) ||
+           (a === 192 && b === 168) ||
+           (a === 100 && b >= 64 && b <= 127) || // CGNAT
+           (a === 198 && (b === 18 || b === 19)) || // Benchmark testing
+           (a === 198 && b === 51 && c === 100) || // Documentation
+           (a === 203 && b === 0 && c === 113) || // Documentation
+           (a === 224) || // Multicast
+           (a >= 240); // Reserved
+  }
+  if (net.isIPv6(ip)) {
+    return ip === '::1' ||
+           ip.startsWith('fc') || // ULA
+           ip.startsWith('fd') || // ULA
+           ip.startsWith('fe80:') || // Link-local
+           ip.startsWith('ff'); // Multicast
+  }
+  return false;
+}
+
+async function resolveAndCheckHost(host: string): Promise<void> {
+  try {
+    const results = await dns.promises.lookup(host, { all: true, family: 0 });
+    for (const { address } of results) {
+      if (isPrivateIp(address)) {
+        throw new Error('Provider host resolves to private IP');
+      }
+    }
+  } catch (e: any) {
+    if (e?.message === 'Provider host resolves to private IP') throw e;
+    // If DNS fails, we'll let the fetch fail naturally
+  }
+}
+
 export class ProviderClient {
   constructor(private url:string, private key:string) {}
+  
   private async request(data:Record<string,string>, retries=3):Promise<ProviderResponse>{
     let last='Provider request failed';
     for(let attempt=0;attempt<retries;attempt++){
-      const controller=new AbortController(); const timer=setTimeout(()=>controller.abort(),10000);
+      const controller=new AbortController(); 
+      const timer=setTimeout(()=>controller.abort(),10000);
       try{
-        const u=new URL(this.url); if(!['http:','https:'].includes(u.protocol)) throw new Error('Invalid provider URL');
+        const u=new URL(this.url); 
+        if(!['http:','https:'].includes(u.protocol)) throw new Error('Invalid provider URL');
+        
         const host=u.hostname.toLowerCase();
-        const privateIp=(ip:string)=>net.isIPv4(ip) ? (()=>{const [a,b]=ip.split('.').map(Number);return a===10||a===127||a===0||(a===169&&b===254)||(a===172&&b>=16&&b<=31)||(a===192&&b===168)})() : net.isIPv6(ip) && (ip==='::1'||ip.startsWith('fc')||ip.startsWith('fd')||ip.startsWith('fe80:'));
-        if(host==='localhost'||host.endsWith('.localhost')||(net.isIP(host)&&privateIp(host))) throw new Error('Provider host is not allowed');
-        try { const ips=await dns.promises.lookup(host,{all:true}); if(ips.some(x=>privateIp(x.address))) throw new Error('Provider host is not allowed'); } catch(e:any) { if(e?.message==='Provider host is not allowed') throw e; }
+        
+        // Block localhost and local domains
+        if(host==='localhost' || host.endsWith('.localhost') || host === '127.0.0.1' || host === '::1') {
+          throw new Error('Provider host is not allowed');
+        }
+        
+        // Block direct private IPs
+        if (net.isIP(host) && isPrivateIp(host)) {
+          throw new Error('Provider host is not allowed');
+        }
+        
+        // Resolve and check for private IPs
+        await resolveAndCheckHost(host);
+        
         const body=new URLSearchParams({key:this.key,...data});
         const res=await fetch(u,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','Accept':'application/json'},body:body.toString(),signal:controller.signal});
+        
         if(res.status===429||res.status>=500){
           const raw=await res.text().catch(()=>"");
           let detail="";
@@ -34,6 +90,7 @@ export class ProviderClient {
           last=`Provider HTTP ${res.status}${detail?`: ${String(detail).slice(0,240)}`:""}`;
           await sleep(500*(2**attempt));continue;
         }
+        
         if(!res.ok){
           const raw=await res.text().catch(()=>"");
           let detail="";
@@ -41,14 +98,19 @@ export class ProviderClient {
           last=`Provider HTTP ${res.status}${detail?`: ${String(detail).slice(0,240)}`:""}`;
           break;
         }
+        
         const json=await res.json() as ProviderResponse;
         if(json.error)return json;
         return json;
-      }catch(e:any){last=e?.name==='AbortError'?'Provider timeout':(e?.message||last);if(attempt<retries-1)await sleep(500*(2**attempt));}
+      }catch(e:any){
+        last=e?.name==='AbortError'?'Provider timeout':(e?.message||last);
+        if(attempt<retries-1)await sleep(500*(2**attempt));
+      }
       finally{clearTimeout(timer);}
     }
     return {error:last};
   }
+  
   balance(){return this.request({action:'balance'});}
   services(){return this.request({action:'services'});}
   addOrder(service:string,link:string,quantity:number){return this.request({action:'add',service,link,quantity:String(quantity)});}

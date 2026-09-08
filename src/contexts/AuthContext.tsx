@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { User, onAuthStateChanged, setPersistence, browserLocalPersistence, signInWithPopup, GoogleAuthProvider, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
+import { apiJson } from '../lib/api';
 
 const config = {
   projectId: "scope-app-492120",
@@ -15,31 +16,11 @@ const auth = getAuth(app);
 const AuthContext = createContext<any>({});
 
 async function syncAccount(u: User, referralCode?: string) {
-  // Force-refresh once so a stale cached Firebase ID token cannot cause a false Access Denied.
-  let token = await u.getIdToken();
-  let res = await fetch('/api/auth/sync', {
+  // Use apiJson which handles token refresh with mutex internally
+  return apiJson('/api/auth/sync', u, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify(referralCode ? { referralCode } : {})
   });
-
-  if (res.status === 401) {
-    token = await u.getIdToken(true);
-    res = await fetch('/api/auth/sync', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify(referralCode ? { referralCode } : {})
-    });
-  }
-
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const error: any = new Error(body?.error || `Authentication sync failed (${res.status})`);
-    error.status = res.status;
-    error.code = body?.code;
-    throw error;
-  }
-  return body;
 }
 
 export const AuthProvider = ({ children }: any) => {

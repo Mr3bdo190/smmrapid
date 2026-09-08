@@ -406,140 +406,30 @@ CREATE INDEX refill_requests_user_idx ON refill_requests(user_id);
 CREATE INDEX refill_requests_status_idx ON refill_requests(status);
 
 -- ============================================
--- ROW LEVEL SECURITY (RLS) POLICIES
+-- ROW LEVEL SECURITY (RLS) - DISABLED FOR FIREBASE AUTH ARCHITECTURE
 -- ============================================
--- Enable RLS on all tables
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE providers ENABLE ROW LEVEL SECURITY;
-ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
-ALTER TABLE services ENABLE ROW LEVEL SECURITY;
-ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
-ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE tickets ENABLE ROW LEVEL SECURITY;
-ALTER TABLE ticket_messages ENABLE ROW LEVEL SECURITY;
-ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
-ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE system_reports ENABLE ROW LEVEL SECURITY;
-ALTER TABLE shortlinks ENABLE ROW LEVEL SECURITY;
-ALTER TABLE shortlink_claims ENABLE ROW LEVEL SECURITY;
-ALTER TABLE shortlink_tokens ENABLE ROW LEVEL SECURITY;
-ALTER TABLE raffles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE raffle_tickets ENABLE ROW LEVEL SECURITY;
-ALTER TABLE mystery_box_tiers ENABLE ROW LEVEL SECURITY;
-ALTER TABLE wallet_ledger ENABLE ROW LEVEL SECURITY;
-ALTER TABLE referral_clicks ENABLE ROW LEVEL SECURITY;
-ALTER TABLE affiliate_commissions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE contact_messages ENABLE ROW LEVEL SECURITY;
-ALTER TABLE refill_requests ENABLE ROW LEVEL SECURITY;
-
--- Users policies
-CREATE POLICY "Users can view own profile" ON users
-    FOR SELECT USING (auth.uid()::text = uid);
-
-CREATE POLICY "Users can update own profile" ON users
-    FOR UPDATE USING (auth.uid()::text = uid);
-
--- Providers policies (admin only for write, public read for active)
-CREATE POLICY "Public can view active providers" ON providers
-    FOR SELECT USING (status = 'active' AND is_deleted = FALSE);
-
--- Categories policies
-CREATE POLICY "Public can view active categories" ON categories
-    FOR SELECT USING (status = 'active');
-
--- Services policies
-CREATE POLICY "Public can view active services" ON services
-    FOR SELECT USING (status = 'active');
-
--- Orders policies
-CREATE POLICY "Users can view own orders" ON orders
-    FOR SELECT USING (user_id IN (SELECT id FROM users WHERE uid = auth.uid()::text));
-
-CREATE POLICY "Users can create own orders" ON orders
-    FOR INSERT WITH CHECK (user_id IN (SELECT id FROM users WHERE uid = auth.uid()::text));
-
--- Payments policies
-CREATE POLICY "Users can view own payments" ON payments
-    FOR SELECT USING (user_id IN (SELECT id FROM users WHERE uid = auth.uid()::text));
-
-CREATE POLICY "Users can create own payments" ON payments
-    FOR INSERT WITH CHECK (user_id IN (SELECT id FROM users WHERE uid = auth.uid()::text));
-
--- Tickets policies
-CREATE POLICY "Users can view own tickets" ON tickets
-    FOR SELECT USING (user_id IN (SELECT id FROM users WHERE uid = auth.uid()::text));
-
-CREATE POLICY "Users can create own tickets" ON tickets
-    FOR INSERT WITH CHECK (user_id IN (SELECT id FROM users WHERE uid = auth.uid()::text));
-
--- Ticket messages policies
-CREATE POLICY "Users can view messages for own tickets" ON ticket_messages
-    FOR SELECT USING (ticket_id IN (SELECT id FROM tickets WHERE user_id IN (SELECT id FROM users WHERE uid = auth.uid()::text)));
-
-CREATE POLICY "Users can create messages for own tickets" ON ticket_messages
-    FOR INSERT WITH CHECK (
-        sender_id IN (SELECT id FROM users WHERE uid = auth.uid()::text)
-        AND ticket_id IN (SELECT id FROM tickets WHERE user_id IN (SELECT id FROM users WHERE uid = auth.uid()::text))
-    );
-
--- Shortlinks policies
-CREATE POLICY "Public can view active shortlinks" ON shortlinks
-    FOR SELECT USING (status = 'active');
-
-CREATE POLICY "Users can view own shortlink claims" ON shortlink_claims
-    FOR SELECT USING (user_id IN (SELECT id FROM users WHERE uid = auth.uid()::text));
-
-CREATE POLICY "Users can create own shortlink claims" ON shortlink_claims
-    FOR INSERT WITH CHECK (user_id IN (SELECT id FROM users WHERE uid = auth.uid()::text));
-
-CREATE POLICY "Users can view own shortlink tokens" ON shortlink_tokens
-    FOR SELECT USING (user_id IN (SELECT id FROM users WHERE uid = auth.uid()::text));
-
--- Raffles policies
-CREATE POLICY "Public can view raffles" ON raffles
-    FOR SELECT USING (TRUE);
-
-CREATE POLICY "Users can view own raffle tickets" ON raffle_tickets
-    FOR SELECT USING (user_id IN (SELECT id FROM users WHERE uid = auth.uid()::text));
-
-CREATE POLICY "Users can create own raffle tickets" ON raffle_tickets
-    FOR INSERT WITH CHECK (user_id IN (SELECT id FROM users WHERE uid = auth.uid()::text));
-
--- Mystery box tiers policies
-CREATE POLICY "Public can view active mystery box tiers" ON mystery_box_tiers
-    FOR SELECT USING (status = 'active');
-
--- Wallet ledger policies
-CREATE POLICY "Users can view own wallet ledger" ON wallet_ledger
-    FOR SELECT USING (user_id IN (SELECT id FROM users WHERE uid = auth.uid()::text));
-
--- Referral clicks policies (public insert for tracking)
-CREATE POLICY "Anyone can insert referral clicks" ON referral_clicks
-    FOR INSERT WITH CHECK (TRUE);
-
--- Affiliate commissions policies
-CREATE POLICY "Users can view own affiliate commissions" ON affiliate_commissions
-    FOR SELECT USING (
-        affiliate_id IN (SELECT id FROM users WHERE uid = auth.uid()::text)
-        OR referred_user_id IN (SELECT id FROM users WHERE uid = auth.uid()::text)
-    );
-
--- Contact messages policies (public insert)
-CREATE POLICY "Anyone can insert contact messages" ON contact_messages
-    FOR INSERT WITH CHECK (TRUE);
-
--- Refill requests policies
-CREATE POLICY "Users can view own refill requests" ON refill_requests
-    FOR SELECT USING (user_id IN (SELECT id FROM users WHERE uid = auth.uid()::text));
-
-CREATE POLICY "Users can create own refill requests" ON refill_requests
-    FOR INSERT WITH CHECK (user_id IN (SELECT id FROM users WHERE uid = auth.uid()::text));
+-- NOTE: This application uses Firebase Authentication with a custom Express backend.
+-- The backend verifies Firebase ID tokens and enforces authorization in middleware
+-- (requireAuth, requireAdmin). Database connections use a service role that bypasses RLS.
+-- 
+-- RLS policies based on auth.uid() are incompatible with Firebase Auth because:
+-- 1. auth.uid() returns a Supabase Auth UUID, not a Firebase UID
+-- 2. The database connection is not authenticated as the end user
+-- 
+-- If you migrate to Supabase Auth, uncomment and adapt the policies below.
+-- For now, RLS is left DISABLED (default) on all tables.
+-- 
+-- Example of how policies would look with Supabase Auth:
+-- ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY "Users can view own profile" ON users FOR SELECT USING (auth.uid()::text = uid);
+-- ... etc.
 
 -- ============================================
--- HELPER FUNCTIONS
+-- HELPER FUNCTIONS (for potential future Supabase Auth migration)
 -- ============================================
 
 -- Function to get current user's internal ID from Firebase UID
+-- NOTE: Requires Supabase Auth integration to work with auth.uid()
 CREATE OR REPLACE FUNCTION get_current_user_id()
 RETURNS UUID
 LANGUAGE sql
@@ -549,6 +439,7 @@ AS $$
 $$;
 
 -- Function to check if current user is admin
+-- NOTE: Requires Supabase Auth integration to work with auth.uid()
 CREATE OR REPLACE FUNCTION is_current_user_admin()
 RETURNS BOOLEAN
 LANGUAGE sql
@@ -556,61 +447,6 @@ STABLE
 AS $$
     SELECT role = 'admin' FROM users WHERE uid = auth.uid()::text;
 $$;
-
--- Admin policies (using the helper function)
-CREATE POLICY "Admins can manage all users" ON users
-    FOR ALL USING (is_current_user_admin());
-
-CREATE POLICY "Admins can manage all providers" ON providers
-    FOR ALL USING (is_current_user_admin());
-
-CREATE POLICY "Admins can manage all categories" ON categories
-    FOR ALL USING (is_current_user_admin());
-
-CREATE POLICY "Admins can manage all services" ON services
-    FOR ALL USING (is_current_user_admin());
-
-CREATE POLICY "Admins can view all orders" ON orders
-    FOR SELECT USING (is_current_user_admin());
-
-CREATE POLICY "Admins can manage all payments" ON payments
-    FOR ALL USING (is_current_user_admin());
-
-CREATE POLICY "Admins can manage all tickets" ON tickets
-    FOR ALL USING (is_current_user_admin());
-
-CREATE POLICY "Admins can manage all ticket messages" ON ticket_messages
-    FOR ALL USING (is_current_user_admin());
-
-CREATE POLICY "Admins can manage settings" ON settings
-    FOR ALL USING (is_current_user_admin());
-
-CREATE POLICY "Admins can view audit logs" ON audit_logs
-    FOR SELECT USING (is_current_user_admin());
-
-CREATE POLICY "Admins can manage system reports" ON system_reports
-    FOR ALL USING (is_current_user_admin());
-
-CREATE POLICY "Admins can manage shortlinks" ON shortlinks
-    FOR ALL USING (is_current_user_admin());
-
-CREATE POLICY "Admins can manage raffles" ON raffles
-    FOR ALL USING (is_current_user_admin());
-
-CREATE POLICY "Admins can manage mystery box tiers" ON mystery_box_tiers
-    FOR ALL USING (is_current_user_admin());
-
-CREATE POLICY "Admins can view all wallet ledger" ON wallet_ledger
-    FOR SELECT USING (is_current_user_admin());
-
-CREATE POLICY "Admins can view all affiliate commissions" ON affiliate_commissions
-    FOR SELECT USING (is_current_user_admin());
-
-CREATE POLICY "Admins can manage contact messages" ON contact_messages
-    FOR ALL USING (is_current_user_admin());
-
-CREATE POLICY "Admins can manage refill requests" ON refill_requests
-    FOR ALL USING (is_current_user_admin());
 
 -- ============================================
 -- TRIGGERS FOR UPDATED_AT
@@ -653,7 +489,7 @@ GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 -- Grant select on all tables to anon (for public data)
 GRANT SELECT ON providers, categories, services, shortlinks, mystery_box_tiers, raffles TO anon;
 
--- Grant all on all tables to authenticated (RLS will restrict)
+-- Grant all on all tables to authenticated (RLS would restrict if enabled)
 GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated;
 
 -- Grant all on all sequences to authenticated
@@ -687,6 +523,6 @@ BEGIN
     RAISE NOTICE 'Tables created: 22';
     RAISE NOTICE 'Enums created: 11';
     RAISE NOTICE 'Indexes created: 30+';
-    RAISE NOTICE 'RLS policies enabled on all tables';
+    RAISE NOTICE 'RLS policies: DISABLED (using Firebase Auth + backend middleware)';
     RAISE NOTICE 'Realtime publication configured for key tables';
 END $$;

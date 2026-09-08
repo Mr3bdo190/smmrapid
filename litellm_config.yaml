@@ -1,0 +1,16 @@
+model_list:
+  - model_name: primary-agent
+    litellm_params:
+      model: openrouter/google/gemini-1.5-flash
+      api_key: os.environ/OPENROUTER_API_KEY
+  - model_name: backup-1
+    litellm_params:
+      model: openrouter/anthropic/claude-3.5-sonnet
+      api_key: os.environ/OPENROUTER_API_KEY
+  - model_name: backup-2
+    litellm_params:
+      model: openrouter/google/gemini-1.5-pro
+      api_key: os.environ/OPENROUTER_API_KEY
+router_settings:
+  fallbacks:
+    - {"primary-agent": ["backup-1", "backup-2"]}

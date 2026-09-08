@@ -23,10 +23,12 @@ export default function ClientDashboard() {
   if (isLoading) return <div className="p-6 text-gray-500 flex items-center gap-2"><RefreshCw className="w-4 h-4 animate-spin" /> {t('dashboard.loading')}</div>;
   if (isError) return <div className="p-6 text-red-500 flex items-center gap-2"><AlertCircle className="w-5 h-5" /> {t('dashboard.error')}</div>;
 
+  const displayName = dbUser?.name || dbUser?.email?.split('@')[0] || t('common.user');
+
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 tracking-tight">{t('dashboard.welcome')}!</h2>
+        <h2 className="text-2xl font-bold text-gray-900 tracking-tight">{t('dashboard.welcome', { name: displayName })}!</h2>
         <p className="mt-1 text-sm text-gray-500">{t('dashboard.overview')}</p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

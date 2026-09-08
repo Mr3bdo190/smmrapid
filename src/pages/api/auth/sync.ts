@@ -37,14 +37,22 @@ export default async function handler(req: AuthenticatedRequest, res: Response) 
       const referralCode = crypto.randomBytes(6).toString('hex').toUpperCase();
       const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map((x: string) => x.trim().toLowerCase()).filter(Boolean);
       const role = adminEmails.includes(email.toLowerCase()) ? 'admin' : 'user';
+      const name = decoded.name || req.body?.name || null;
       try {
-        const [created] = await db.insert(users).values({ uid: decoded.uid, email, name: decoded.name || null, role, status: 'active', referralCode }).returning();
+        const [created] = await db.insert(users).values({ uid: decoded.uid, email, name, role, status: 'active', referralCode }).returning();
         userRecord = created;
       } catch (insertError: any) {
         userRecord = await db.query.users.findFirst({ where: eq(users.uid, decoded.uid) });
         if (!userRecord) throw insertError;
       }
     }
+    
+    // Update name if provided and user doesn't have one yet
+    if (req.body?.name && !userRecord.name) {
+      const [updated] = await db.update(users).set({ name: req.body.name }).where(eq(users.id, userRecord.id)).returning();
+      if (updated) userRecord = updated;
+    }
+    
     if (userRecord.status !== 'active') return apiError(res, 403, 'Account is not active', 'ACCOUNT_DISABLED');
 
     const referralCode = typeof req.body?.referralCode === 'string' ? req.body.referralCode.trim().toUpperCase() : '';

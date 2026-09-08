@@ -44,6 +44,12 @@ export const translations: Dict = {
   'common.send': { en: 'Send', ar: 'إرسال' },
   'common.viewAll': { en: 'View all', ar: 'عرض الكل' },
   'common.balance': { en: 'Balance', ar: 'الرصيد' },
+  'common.name': { en: 'Name', ar: 'الاسم' },
+  'common.namePlaceholder': { en: 'Enter your name', ar: 'أدخل اسمك' },
+  'common.nameRequired': { en: 'Name is required', ar: 'الاسم مطلوب' },
+  'common.saving': { en: 'Saving...', ar: 'جاري الحفظ...' },
+  'common.saved': { en: 'Saved', ar: 'تم الحفظ' },
+  'common.saveFailed': { en: 'Failed to save', ar: 'فشل الحفظ' },
 
   // Nav (also used as section headers)
   'nav.dashboard': { en: 'Dashboard', ar: 'لوحة التحكم' },
@@ -229,43 +235,6 @@ export const translations: Dict = {
 
   // Profile
   'profile.title': { en: 'Profile', ar: 'الملف الشخصي' },
-
-  // Tickets
-  'tickets.title': { en: 'Support Tickets', ar: 'تذاكر الدعم' },
-
-  // API
-  'api.title': { en: 'API Documentation', ar: 'توثيق واجهة API' },
-
-  // Footer/misc
-  'footer.rights': { en: 'All Rights Reserved.', ar: 'جميع الحقوق محفوظة.' },
-
-  // Affiliates
-  'affiliates.title': { en: 'Affiliate Center', ar: 'مركز الإحالة' },
-  'affiliates.subtitle': { en: 'Invite users, track conversions and earn from approved deposits.', ar: 'ادعُ مستخدمين، تابع التحويلات، واربح من الإيداعات المعتمدة.' },
-  'affiliates.yourLink': { en: 'Your Referral Link', ar: 'رابط الإحالة الخاص بك' },
-  'affiliates.linkHint': { en: 'Your referral code is permanent and is assigned automatically.', ar: 'كود الإحالة الخاص بك دائم ويُخصص تلقائياً.' },
-  'affiliates.copyLink': { en: 'Copy Link', ar: 'نسخ الرابط' },
-  'affiliates.code': { en: 'Code:', ar: 'الكود:' },
-  'affiliates.clicks': { en: 'Clicks', ar: 'النقرات' },
-  'affiliates.signups': { en: 'Signups', ar: 'التسجيلات' },
-  'affiliates.paidReferrals': { en: 'Paid Referrals', ar: 'إحالات مدفوعة' },
-  'affiliates.referralDeposits': { en: 'Referral Deposits', ar: 'ودائع الإحالة' },
-  'affiliates.earnings': { en: 'Earnings', ar: 'الأرباح' },
-  'affiliates.referredUsers': { en: 'Referred Users', ar: 'المستخدمون المُحالون' },
-  'affiliates.commissionHistory': { en: 'Commission History', ar: 'سجل العمولات' },
-  'affiliates.noReferrals': { en: 'No referrals yet.', ar: 'لا توجد إحالات حتى الآن.' },
-  'affiliates.noCommissions': { en: 'No commissions yet.', ar: 'لا توجد عمولات حتى الآن.' },
-  'affiliates.user': { en: 'User', ar: 'المستخدم' },
-  'affiliates.joined': { en: 'Joined', ar: 'تاريخ الانضمام' },
-  'affiliates.referredUser': { en: 'Referred User', ar: 'المستخدم المُحال' },
-  'affiliates.payment': { en: 'Payment', ar: 'الدفعة' },
-  'affiliates.commission': { en: 'Commission', ar: 'العمولة' },
-  'affiliates.linkCopied': { en: 'Referral link copied', ar: 'تم نسخ رابط الإحالة' },
-  'affiliates.linkNotReady': { en: 'Referral link is not ready', ar: 'رابط الإحالة غير جاهز بعد' },
-  'affiliates.copyFailed': { en: 'Copy failed', ar: 'فشل النسخ' },
-  'affiliates.generating': { en: 'Generating...', ar: 'جاري الإنشاء...' },
-
-  // Profile
   'profile.subtitle': { en: 'Manage your account details and security.', ar: 'إدارة بيانات حسابك والأمان.' },
   'profile.email': { en: 'Email', ar: 'البريد الإلكتروني' },
   'profile.name': { en: 'Name', ar: 'الاسم' },
@@ -275,7 +244,9 @@ export const translations: Dict = {
   'profile.regenerateApiKey': { en: 'Regenerate API Key', ar: 'تجديد مفتاح API' },
   'profile.save': { en: 'Save Changes', ar: 'حفظ التغييرات' },
   'profile.saved': { en: 'Profile updated', ar: 'تم تحديث الملف الشخصي' },
+  'profile.saveFailed': { en: 'Failed to save profile', ar: 'فشل تحديث الملف الشخصي' },
   'profile.confirmRegenerate': { en: 'Regenerating will invalidate your current API key immediately. Continue?', ar: 'تجديد المفتاح سيلغي مفتاحك الحالي فوراً. هل تريد المتابعة؟' },
+  'profile.currentName': { en: 'Current name: {name}', ar: 'الاسم الحالي: {name}' },
 
   // Transactions
   'transactions.subtitle': { en: 'A full history of wallet credits and debits.', ar: 'سجل كامل لكل عمليات الإضافة والخصم من محفظتك.' },
@@ -287,7 +258,7 @@ export const translations: Dict = {
   'transactions.none': { en: 'No transactions yet.', ar: 'لا توجد معاملات حتى الآن.' },
 
   // Dashboard
-  'dashboard.welcome': { en: 'Welcome back', ar: 'أهلاً بعودتك' },
+  'dashboard.welcome': { en: 'Welcome back, {name}!', ar: 'أهلاً بعودتك، {name}!' },
   'dashboard.overview': { en: 'Here is an overview of your account activity.', ar: 'نظرة عامة على نشاط حسابك.' },
   'dashboard.loading': { en: 'Loading dashboard...', ar: 'جاري تحميل لوحة التحكم...' },
   'dashboard.error': { en: 'Error loading dashboard.', ar: 'حدث خطأ أثناء تحميل لوحة التحكم.' },
@@ -333,6 +304,7 @@ export const translations: Dict = {
   'ticketView.typeReply': { en: 'Type your reply...', ar: 'اكتب ردك...' },
 
   // Tickets list
+  'tickets.title': { en: 'Support Tickets', ar: 'تذاكر الدعم' },
   'tickets.subtitle': { en: 'Get help from our support team.', ar: 'احصل على مساعدة من فريق الدعم.' },
   'tickets.newTicket': { en: 'New Ticket', ar: 'تذكرة جديدة' },
   'tickets.subject': { en: 'Subject', ar: 'الموضوع' },
@@ -346,6 +318,7 @@ export const translations: Dict = {
   'tickets.created': { en: 'Ticket created successfully', ar: 'تم إنشاء التذكرة بنجاح' },
 
   // API page
+  'api.title': { en: 'API Documentation', ar: 'توثيق واجهة API' },
   'api.subtitle': { en: 'Automate orders, status checks and balance lookups.', ar: 'أتمتة الطلبات ومتابعة الحالة والرصيد.' },
   'api.yourKey': { en: 'Your API Key', ar: 'مفتاح API الخاص بك' },
   'api.baseUrl': { en: 'Base URL', ar: 'الرابط الأساسي' },

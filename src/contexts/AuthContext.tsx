@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { User, onAuthStateChanged, setPersistence, browserLocalPersistence, signInWithPopup, GoogleAuthProvider, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { User, onAuthStateChanged, setPersistence, browserLocalPersistence, signInWithPopup, GoogleAuthProvider, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { apiJson } from '../lib/api';
@@ -15,11 +15,11 @@ const app = initializeApp(config);
 const auth = getAuth(app);
 const AuthContext = createContext<any>({});
 
-async function syncAccount(u: User, referralCode?: string) {
+async function syncAccount(u: User, referralCode?: string, name?: string) {
   // Use apiJson which handles token refresh with mutex internally
   return apiJson('/api/auth/sync', u, {
     method: 'POST',
-    body: JSON.stringify(referralCode ? { referralCode } : {})
+    body: JSON.stringify({ referralCode, name })
   });
 }
 
@@ -67,9 +67,12 @@ export const AuthProvider = ({ children }: any) => {
     await setPersistence(auth, browserLocalPersistence);
     await signInWithPopup(auth, new GoogleAuthProvider());
   };
-  const registerWithEmail = async (email: string, pass: string) => {
+  const registerWithEmail = async (email: string, pass: string, name?: string) => {
     await setPersistence(auth, browserLocalPersistence);
-    await createUserWithEmailAndPassword(auth, email, pass);
+    const cred = await createUserWithEmailAndPassword(auth, email, pass);
+    if (name && cred.user) {
+      await updateProfile(cred.user, { displayName: name });
+    }
   };
   const loginWithEmail = async (email: string, pass: string) => {
     await setPersistence(auth, browserLocalPersistence);
@@ -77,7 +80,27 @@ export const AuthProvider = ({ children }: any) => {
   };
   const logOut = () => signOut(auth);
 
-  return <AuthContext.Provider value={{ user, dbUser, loading, authError, signIn, registerWithEmail, loginWithEmail, logOut }}>{children}</AuthContext.Provider>;
+  const updateUserName = async (newName: string) => {
+    if (!user) return;
+    try {
+      await updateProfile(user, { displayName: newName });
+      // Also update in our database
+      await apiJson('/api/client/me', user, {
+        method: 'PUT',
+        body: JSON.stringify({ name: newName })
+      });
+      // Refresh dbUser
+      const token = await user.getIdToken();
+      const synced = await apiJson('/api/auth/sync', user, { method: 'POST', body: JSON.stringify({}) });
+      setDbUser(synced);
+      return true;
+    } catch (error) {
+      console.error('Failed to update name:', error);
+      return false;
+    }
+  };
+
+  return <AuthContext.Provider value={{ user, dbUser, loading, authError, signIn, registerWithEmail, loginWithEmail, logOut, updateUserName }}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => useContext(AuthContext);

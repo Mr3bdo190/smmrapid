@@ -162,6 +162,7 @@ export default function LandingPage() {
   const [isRegister, setIsRegister] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
   useEffect(() => { if (new URLSearchParams(window.location.search).get('ref')) { setIsRegister(true); setShowAuthModal(true); } }, []);
 
   const siteName = config?.siteName || 'RapidSMM';
@@ -170,7 +171,8 @@ export default function LandingPage() {
     e.preventDefault();
     if (isRegister) {
       if (password.length < 8) return toast.error(t('landing.passwordMinLength'));
-      try { await registerWithEmail(email, password); setShowAuthModal(false); }
+      if (!name.trim()) return toast.error(t('landing.nameRequired'));
+      try { await registerWithEmail(email, password, name.trim()); setShowAuthModal(false); }
       catch (err: any) { toast.error(err.message); }
     } else {
       try { await loginWithEmail(email, password); setShowAuthModal(false); }
@@ -189,6 +191,12 @@ export default function LandingPage() {
             </h2>
             <p className="text-center text-sm text-slate-400 mb-6">{isRegister ? t('landing.authRegisterSubtitle') : t('landing.authLoginSubtitle', { site: siteName })}</p>
             <form onSubmit={handleAuth} className="space-y-4">
+              {isRegister && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">{t('common.name')}</label>
+                  <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg outline-none text-slate-100 focus:border-amber-400/50" required maxLength={50} placeholder={t('common.namePlaceholder')} />
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-1">{t('common.email')}</label>
                 <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg outline-none text-slate-100 focus:border-amber-400/50" required />
@@ -211,7 +219,7 @@ export default function LandingPage() {
             </button>
             <p className="mt-6 text-center text-sm text-slate-400">
               {isRegister ? t('common.alreadyHaveAccount') : t('common.dontHaveAccount')}
-              <button onClick={() => setIsRegister(!isRegister)} className="ml-1 text-amber-400 font-medium hover:underline">
+              <button onClick={() => { setIsRegister(!isRegister); setName(''); setEmail(''); setPassword(''); }} className="ml-1 text-amber-400 font-medium hover:underline">
                 {isRegister ? t('common.signInLink') : t('common.registerNow')}
               </button>
             </p>

@@ -1,4 +1,4 @@
-import type { User } from 'firebase/auth';
+// import type { User } from 'firebase/auth';
 
 // Mutex for token refresh to prevent race conditions
 let refreshPromise: Promise<string> | null = null;
@@ -8,11 +8,11 @@ async function refreshTokenWithMutex(user: User): Promise<string> {
     return refreshPromise;
   }
 
-  const promise = user.getIdToken(true).finally(() => {
+  refreshPromise = user.getIdToken(true).finally(() => {
     refreshPromise = null;
   });
-  refreshPromise = promise;
-  return promise;
+
+  return refreshPromise;
 }
 
 // Error code constant for standardized checking

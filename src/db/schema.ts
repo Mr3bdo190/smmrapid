@@ -301,30 +301,6 @@ export const contactMessages = pgTable('contact_messages', {
   createdAtIdx: index('contact_messages_created_at_idx').on(t.createdAt),
 }));
 
-export const dailyMissions = pgTable('daily_missions', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  title: text('title').notNull(),
-  description: text('description').notNull(),
-  type: text('type').notNull(),
-  target: numeric('target', { precision: 12, scale: 4 }).notNull(),
-  rewardAmount: numeric('reward_amount', { precision: 12, scale: 4 }).notNull(),
-  status: text('status').default('active').notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-});
-
-export const dailyMissionClaims = pgTable('daily_mission_claims', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  missionId: uuid('mission_id').references(() => dailyMissions.id).notNull(),
-  userId: uuid('user_id').references(() => users.id).notNull(),
-  claimDate: text('claim_date').notNull(),
-  rewardAmount: numeric('reward_amount', { precision: 12, scale: 4 }).notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-}, (t) => ({
-  userDateIdx: index('daily_mission_claims_user_date_idx').on(t.userId, t.claimDate),
-  missionIdx: index('daily_mission_claims_mission_idx').on(t.missionId),
-  uniqueClaim: unique().on(t.missionId, t.userId, t.claimDate),
-}));
-
 export const refillRequests = pgTable('refill_requests', {
   id: uuid('id').primaryKey().defaultRandom(),
   orderId: uuid('order_id').references(() => orders.id).notNull(),

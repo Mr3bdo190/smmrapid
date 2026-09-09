@@ -43,8 +43,6 @@ const ClientApi = lazy(() => import('./pages/client/ClientApi'));
 const ClientAffiliates = lazy(() => import('./pages/client/ClientAffiliates'));
 const ClientMysteryBoxes = lazy(() => import('./pages/client/ClientMysteryBoxes'));
 const ClientGame = lazy(() => import('./pages/client/ClientGame'));
-const ClientMissions = lazy(() => import('./pages/client/ClientMissions'));
-const AdminMissions = lazy(() => import('./pages/admin/AdminMissions'));
 
 const Fallback = () => <div className="flex h-screen w-full items-center justify-center bg-gray-50"><div className="h-12 w-12 animate-spin rounded-full border-b-2 border-t-2 border-indigo-500"></div></div>;
 
@@ -96,7 +94,6 @@ export default function App() {
             <Route path="affiliates" element={<ClientAffiliates />} />
             <Route path="mystery-boxes" element={<ClientMysteryBoxes />} />
             <Route path="game" element={<ClientGame />} />
-            <Route path="missions" element={<ClientMissions />} />
           </Route>
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
@@ -116,7 +113,6 @@ export default function App() {
             <Route path="audit" element={<AdminAuditLogs />} />
             <Route path="affiliates" element={<AdminAffiliates />} />
             <Route path="contact-messages" element={<AdminContactMessages />} />
-            <Route path="missions" element={<AdminMissions />} />
           </Route>
           <Route path="*" element={<div className="p-10 text-center">404 - Not Found</div>} />
         </Routes>

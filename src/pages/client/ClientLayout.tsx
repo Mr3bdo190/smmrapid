@@ -26,12 +26,11 @@ const navItems = [
   { key: 'nav.affiliates', href: '/dashboard/affiliates', icon: Users },
   { key: 'nav.mysteryBoxes', href: '/dashboard/mystery-boxes', icon: Gift },
   { key: 'nav.game', href: '/dashboard/game', icon: Gamepad2 },
-  { key: 'nav.missions', href: '/dashboard/missions', icon: Gift },
 
 ];
 
 export default function ClientLayout() {
-  const { user, dbUser, loading, authError, logOut, retrySync } = useAuth();
+  const { user, dbUser, loading, authError, logOut } = useAuth();
   const location = useLocation();
   const { t, dir } = useTranslation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -63,9 +62,7 @@ export default function ClientLayout() {
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
         <h1 className="text-3xl font-bold mb-4 text-red-600">{t('common.accessDenied')}</h1>
         <p className="text-gray-600 mb-2">{user ? 'Your login is valid, but your account could not be synchronized with the server.' : 'Please log in to access the client area.'}</p>
-        {user && <p className="text-xs text-red-500 mb-6">Error: {authError?.code || authError?.message || 'ACCOUNT_SYNC_FAILED'}</p>}
-        {user && <button onClick={retrySync} className="mb-4 rounded-lg bg-indigo-600 px-5 py-2 text-white font-semibold hover:bg-indigo-700">Retry account sync</button>}
-        {user && <button onClick={logOut} className="text-sm text-gray-500 hover:text-red-600 underline">Sign out and choose another account</button>}
+        {user && authError?.code && <p className="text-xs text-red-500 mb-6">Error: {authError.code}</p>}
         <Link to="/" className="text-indigo-600 hover:underline">{t('common.returnHome')}</Link>
       </div>
     );

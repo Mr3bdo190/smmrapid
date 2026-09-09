@@ -164,31 +164,3 @@ test('complete affiliate system is wired', () => {
   assert.match(app, /ref_click:/);
   assert.ok(fs.existsSync(path.join(root, 'drizzle/0005_affiliate_system.sql')));
 });
-
-
-test('authentication recovery and same-project Firebase configuration are wired', () => {
-  const server = fs.readFileSync(path.join(root, 'server.ts'), 'utf8');
-  const auth = fs.readFileSync(path.join(root, 'src/contexts/AuthContext.tsx'), 'utf8');
-  const admin = fs.readFileSync(path.join(root, 'src/lib/firebase-admin.ts'), 'utf8');
-  assert.match(auth, /VITE_FIREBASE_PROJECT_ID/);
-  assert.match(auth, /getIdToken\(true\)/);
-  assert.match(auth, /retrySync/);
-  assert.match(server, /ADMIN_EMAILS/);
-  assert.match(admin, /FIREBASE_SERVICE_ACCOUNT_JSON/);
-});
-
-test('daily missions retention feature is wired end-to-end', () => {
-  const server = fs.readFileSync(path.join(root, 'server.ts'), 'utf8');
-  const schema = fs.readFileSync(path.join(root, 'src/db/schema.ts'), 'utf8');
-  const app = fs.readFileSync(path.join(root, 'src/App.tsx'), 'utf8');
-  const client = fs.readFileSync(path.join(root, 'src/pages/client/ClientMissions.tsx'), 'utf8');
-  const admin = fs.readFileSync(path.join(root, 'src/pages/admin/AdminMissions.tsx'), 'utf8');
-  assert.match(schema, /dailyMissions/);
-  assert.match(schema, /dailyMissionClaims/);
-  for (const route of ['/api/client/missions','/api/client/missions/:id/claim','/api/admin/missions','/api/admin/missions/:id']) assert.ok(server.includes(route), `missing ${route}`);
-  assert.match(app, /ClientMissions/);
-  assert.match(app, /AdminMissions/);
-  assert.match(client, /daily-missions/);
-  assert.match(admin, /Daily Missions/);
-  assert.ok(fs.existsSync(path.join(root, 'drizzle/0009_daily_missions.sql')));
-});

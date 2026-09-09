@@ -4,6 +4,7 @@ import net from 'node:net';
 dns.setDefaultResultOrder('ipv4first');
 import crypto from 'node:crypto';
 import path from 'node:path';
+import { readFileSync } from 'node:fs';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { createServer as createViteServer } from 'vite';
@@ -1095,7 +1096,51 @@ async function startServer(){
   // JSON 404 for unmatched API routes — must be registered before the SPA/static fallback
   // so a typo'd or unknown /api/* path returns JSON instead of index.html.
   app.use('/api', (_req, res) => apiError(res, 404, 'Not found', 'NOT_FOUND'));
-  if(!isProd){const vite=await createViteServer({server:{middlewareMode:true},appType:'spa'});app.use(vite.middlewares);}else{const distPath=path.join(process.cwd(),'dist');app.use(express.static(distPath));app.get('*',(_req,res)=>res.sendFile(path.join(distPath,'index.html')));}
+  if(!isProd){const vite=await createViteServer({server:{middlewareMode:true},appType:'spa'});app.use(vite.middlewares);}else{
+    const distPath=path.join(process.cwd(),'dist');
+    app.use(express.static(distPath));
+    const indexTemplate = readFileSync(path.join(distPath,'index.html'),'utf8');
+    const escapeHtml = (v:string) => v.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    const seoForPath = (pathname:string) => {
+      const base={title:'RapidSMM | SMM Panel & Social Media Marketing Services',description:'RapidSMM is an SMM panel for social media marketing services including Instagram, TikTok, YouTube, Facebook and Telegram.',lang:'en',canonical:`https://smmrapid.store${pathname==='/'?'':pathname}`};
+      if(pathname==='/') return base;
+      const hubs:any={
+        '/smm-panel':{title:'SMM Panel | Social Media Marketing Services | RapidSMM',description:'RapidSMM is an SMM panel for social media marketing services across Instagram, TikTok, YouTube, Facebook, Telegram and more.'},
+        '/social-media-marketing-services':{title:'Social Media Marketing Services | RapidSMM',description:'Explore social media marketing services for Instagram, TikTok, YouTube, Facebook, Telegram and other platforms through RapidSMM.'},
+        '/services':{title:'SMM Services & Pricing | RapidSMM',description:'Browse RapidSMM social media marketing services, rates, descriptions and order limits for Instagram, TikTok, YouTube, Facebook, Telegram and more.'},
+        '/contact':{title:'Contact RapidSMM Support | Customer Support',description:'Contact RapidSMM customer support for orders, payments, accounts, services and API assistance.'},
+        '/terms':{title:'Terms of Service | RapidSMM',description:'Read the RapidSMM terms of service and rules for using the social media marketing platform.'},
+        '/privacy':{title:'Privacy Policy | RapidSMM',description:'Read the RapidSMM privacy policy and learn how account and service information is handled.'},
+        '/refund-policy':{title:'Refund Policy | RapidSMM',description:'Read the RapidSMM refund policy for orders, payments and account balances.'}
+      };
+      if(hubs[pathname]) return {...base,...hubs[pathname]};
+      const m=pathname.match(/^\/(ar|en)\/(instagram|tiktok|youtube|facebook|telegram|spotify|twitter|threads)-services$/);
+      if(m){
+        const lang=m[1], slug=m[2];
+        const names:any={instagram:['Instagram','إنستجرام'],tiktok:['TikTok','تيك توك'],youtube:['YouTube','يوتيوب'],facebook:['Facebook','فيسبوك'],telegram:['Telegram','تيليجرام'],spotify:['Spotify','سبوتيفاي'],twitter:['X / Twitter','إكس / تويتر'],threads:['Threads','ثريدز']};
+        const name=names[slug][lang==='ar'?1:0];
+        return {title:lang==='ar'?`خدمات ${name} SMM | RapidSMM`:`${name} SMM Services | RapidSMM`,description:lang==='ar'?`خدمات التسويق عبر ${name} مع تفاصيل الأسعار والحدود والخدمات المتاحة في RapidSMM.`:`Explore ${name} social media marketing services, pricing and order limits on RapidSMM.`,lang,canonical:`https://smmrapid.store${pathname}`};
+      }
+      return base;
+    };
+    app.get('*',(req,res)=>{
+      const meta=seoForPath(req.path);
+      const jsonLd = req.path==='/' ? {
+        '@context':'https://schema.org','@type':'WebSite',name:'RapidSMM',alternateName:['SMM Rapid','Rapid SMM'],url:'https://smmrapid.store/'
+      } : {'@context':'https://schema.org','@type':'WebPage',name:meta.title,url:meta.canonical,description:meta.description};
+      let html=indexTemplate;
+      html=html.replace(/<html lang="[^"]*">/i,`<html lang="${meta.lang}" dir="${meta.lang==='ar'?'rtl':'ltr'}">`);
+      html=html.replace(/<title>.*?<\/title>/i,`<title>${escapeHtml(meta.title)}</title>`);
+      html=html.replace(/<meta name="description" content="[^"]*"\s*\/>/i,`<meta name="description" content="${escapeHtml(meta.description)}" />`);
+      html=html.replace(/<link rel="canonical" href="[^"]*"\s*\/>/i,`<link rel="canonical" href="${escapeHtml(meta.canonical)}" />`);
+      html=html.replace(/<meta property="og:title" content="[^"]*"\s*\/>/i,`<meta property="og:title" content="${escapeHtml(meta.title)}" />`);
+      html=html.replace(/<meta property="og:description" content="[^"]*"\s*\/>/i,`<meta property="og:description" content="${escapeHtml(meta.description)}" />`);
+      html=html.replace(/<meta property="og:url" content="[^"]*"\s*\/>/i,`<meta property="og:url" content="${escapeHtml(meta.canonical)}" />`);
+      html=html.replace('</head>',`<script type="application/ld+json">${JSON.stringify(jsonLd).replace(/</g,'\\u003c')}</script></head>`);
+      res.setHeader('Cache-Control','public, max-age=300, s-maxage=3600');
+      res.type('html').send(html);
+    });
+  }
   app.use((err:any,_req:any,res:any,_next:any)=>{console.error(err);if(!res.headersSent)apiError(res,500,'Internal server error','INTERNAL_ERROR');});
   const server = app.listen(PORT,'0.0.0.0',()=>{console.log(`Server listening on ${PORT}`);startProviderWorker();});
 

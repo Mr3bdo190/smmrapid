@@ -40,6 +40,7 @@ export default function SEO({ title, description, path, keywords = [], lang = 'e
     upsertMeta('property', 'og:description', description);
     upsertMeta('property', 'og:url', canonical);
     upsertMeta('property', 'og:site_name', 'RapidSMM');
+    upsertMeta('name', 'application-name', 'RapidSMM');
     upsertMeta('property', 'og:locale', lang === 'ar' ? 'ar_EG' : 'en_US');
     upsertMeta('name', 'twitter:card', 'summary');
     upsertMeta('name', 'twitter:title', title);

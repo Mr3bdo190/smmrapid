@@ -88,6 +88,11 @@ export const translations: Dict = {
   'nav.admin.panel': { en: 'Admin Panel', ar: 'لوحة الإدارة' },
   'nav.admin.title': { en: 'Admin', ar: 'الإدارة' },
 
+  // Affiliate
+  'affiliates.commissionHistory': { en: 'Commission History', ar: 'سجل العمولات' },
+  'affiliates.title': { en: 'Affiliate Center', ar: 'مركز الإحالة' },
+  'affiliates.referralLink': { en: 'Referral Link', ar: 'رابط الإحالة' },
+  'affiliates.referredUsers': { en: 'Referred Users', ar: 'المستخدمون المحالون' },
   // Landing page
   'landing.defaultTagline': { en: 'Automated social media growth, dispatched instantly', ar: 'نمو تلقائي لحساباتك على السوشيال ميديا، يبدأ فوراً' },
   'landing.navFeatures': { en: 'Features', ar: 'المميزات' },

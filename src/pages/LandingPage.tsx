@@ -8,7 +8,6 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTranslation, LanguageSwitcher } from '../lib/i18n';
-import SEO from '../components/SEO';
 
 const PLATFORMS = ['Instagram', 'TikTok', 'YouTube', 'Facebook', 'X / Twitter', 'Telegram', 'Spotify', 'Threads'];
 
@@ -43,7 +42,7 @@ const FAQS = [
 ];
 
 function LiveFeedPreview({ currencySymbol }: { currencySymbol: string }) {
-  const { t, lang } = useTranslation();
+  const { t } = useTranslation();
   const [rows, setRows] = useState(FEED_SAMPLE.slice(0, 3));
   const idx = useRef(3);
   useEffect(() => {
@@ -181,28 +180,8 @@ export default function LandingPage() {
     }
   };
 
-  const homeFaqSchema = FAQS.map(({ qKey, aKey }) => ({
-    '@type': 'Question',
-    name: t(qKey),
-    acceptedAnswer: { '@type': 'Answer', text: t(aKey) }
-  }));
-
-  const homeTitle = lang === 'ar'
-    ? 'RapidSMM | لوحة SMM وخدمات التسويق عبر وسائل التواصل الاجتماعي'
-    : 'RapidSMM | SMM Panel & Social Media Marketing Services';
-  const homeDescription = lang === 'ar'
-    ? 'RapidSMM لوحة SMM لخدمات التسويق عبر وسائل التواصل الاجتماعي مثل إنستجرام وتيك توك ويوتيوب وفيسبوك وتيليجرام، مع كتالوج خدمات وأسعار وإدارة طلبات.'
-    : 'RapidSMM is an SMM panel for social media marketing services including Instagram, TikTok, YouTube, Facebook and Telegram, with public services, pricing and online ordering.';
-
   return (
-    <>
-      <SEO title={homeTitle} description={homeDescription} path="/" lang={lang} alternates={{ar:'/',en:'/',xDefault:'/'}} jsonLd={[
-        {'@context':'https://schema.org','@type':'WebSite',name:'RapidSMM',alternateName:['SMM Rapid','Rapid SMM'],url:'https://smmrapid.store/'},
-        {'@context':'https://schema.org','@type':'Organization',name:'RapidSMM',url:'https://smmrapid.store/',logo:'https://smmrapid.store/favicon.svg',sameAs:[]},
-        {'@context':'https://schema.org','@type':'WebPage',name:homeTitle,url:'https://smmrapid.store/',description:homeDescription},
-        {'@context':'https://schema.org','@type':'FAQPage',mainEntity:homeFaqSchema}
-      ]} />
-      <div className="min-h-screen bg-[#0B0F17] text-slate-100" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
+    <div className="min-h-screen bg-[#0B0F17] text-slate-100" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
       {showAuthModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[100] p-4">
           <div className="bg-[#121826] border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl relative">
@@ -455,6 +434,5 @@ export default function LandingPage() {
         </div>
       </footer>
     </div>
-    </>
   );
 }

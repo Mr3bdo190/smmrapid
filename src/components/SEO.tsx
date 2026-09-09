@@ -5,7 +5,7 @@ type SEOProps = {
   description: string;
   path: string;
   keywords?: string[];
-  lang?: 'ar' | 'en';
+  locale?: 'ar' | 'en';
   type?: 'website' | 'article';
   jsonLd?: Record<string, unknown> | Record<string, unknown>[];
   alternates?: { ar: string; en: string; xDefault?: string };
@@ -25,13 +25,13 @@ function upsertLink(rel: string, href: string, hreflang?: string) {
   el.href = href;
 }
 
-export default function SEO({ title, description, path, keywords = [], lang = 'en', type = 'website', jsonLd, alternates }: SEOProps) {
+export default function SEO({ title, description, path, keywords = [], locale = 'en', type = 'website', jsonLd, alternates }: SEOProps) {
   useEffect(() => {
     const cleanPath = path.startsWith('/') ? path : `/${path}`;
     const canonical = `${SITE}${cleanPath === '/' ? '/' : cleanPath.replace(/\/$/, '')}`;
     document.title = title;
-    document.documentElement.lang = lang;
-    document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+    document.documentElement.lang = locale;
+    document.documentElement.dir = locale === 'ar' ? 'rtl' : 'ltr';
     upsertMeta('name', 'description', description);
     upsertMeta('name', 'robots', 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1');
     if (keywords.length) upsertMeta('name', 'keywords', keywords.join(', '));
@@ -40,8 +40,7 @@ export default function SEO({ title, description, path, keywords = [], lang = 'e
     upsertMeta('property', 'og:description', description);
     upsertMeta('property', 'og:url', canonical);
     upsertMeta('property', 'og:site_name', 'RapidSMM');
-    upsertMeta('name', 'application-name', 'RapidSMM');
-    upsertMeta('property', 'og:locale', lang === 'ar' ? 'ar_EG' : 'en_US');
+    upsertMeta('property', 'og:locale', locale === 'ar' ? 'ar_EG' : 'en_US');
     upsertMeta('name', 'twitter:card', 'summary');
     upsertMeta('name', 'twitter:title', title);
     upsertMeta('name', 'twitter:description', description);
@@ -61,7 +60,7 @@ export default function SEO({ title, description, path, keywords = [], lang = 'e
       script.textContent = JSON.stringify(payload.length === 1 ? payload[0] : payload);
       document.head.appendChild(script);
     }
-  }, [title, description, path, keywords.join('|'), lang, type, JSON.stringify(jsonLd), JSON.stringify(alternates)]);
+  }, [title, description, path, keywords.join('|'), locale, type, JSON.stringify(jsonLd), JSON.stringify(alternates)]);
   return null;
 }
 

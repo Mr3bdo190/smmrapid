@@ -41,14 +41,14 @@ const DATA: Record<string, { en: { name: string; title: string; description: str
 
 export default function PlatformSEO() {
   const { slug = 'instagram', lang: routeLang } = useParams();
-  const { lang, setLang } = useTranslation();
-  const safeLang = routeLang === 'ar' ? 'ar' : routeLang === 'en' ? 'en' : lang;
+  const { lang: currentLanguage, setLang } = useTranslation();
+  const safeLang = routeLang === 'ar' ? 'ar' : routeLang === 'en' ? 'en' : currentLanguage;
   useEffect(() => { if (routeLang === 'ar' || routeLang === 'en') setLang(routeLang); }, [routeLang, setLang]);
   const data = DATA[slug]?.[safeLang] || DATA.instagram.en;
   const path = `/${safeLang}/${slug}-services`;
   const faqSchema = data.faq.map(([q,a]) => ({ '@type':'Question', name:q, acceptedAnswer:{ '@type':'Answer', text:a } }));
   return <>
-    <SEO title={data.title} description={data.description} path={path} keywords={data.keywords} lang={safeLang} alternates={{ ar: `/ar/${slug}-services`, en: `/en/${slug}-services`, xDefault: `/en/${slug}-services` }} jsonLd={[
+    <SEO title={data.title} description={data.description} path={path} keywords={data.keywords} locale={safeLang} alternates={{ ar: `/ar/${slug}-services`, en: `/en/${slug}-services`, xDefault: `/en/${slug}-services` }} jsonLd={[
       { '@context':'https://schema.org', '@type':'WebSite', name:'RapidSMM', url:SITE },
       { '@context':'https://schema.org', '@type':'Service', name:`${data.name} SMM Services`, description:data.description, provider:{ '@type':'Organization', name:'RapidSMM', url:SITE }, areaServed:'Worldwide', serviceType:'Social Media Marketing' },
       { '@context':'https://schema.org', '@type':'FAQPage', mainEntity:faqSchema }

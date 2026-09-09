@@ -1,9 +1,8 @@
-// entire file content ...
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User, onAuthStateChanged, setPersistence, browserLocalPersistence, signInWithPopup, GoogleAuthProvider, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { apiJson } from '../lib/api';
+import { apiJson, isAuthDbUnavailableError, AUTH_DB_UNAVAILABLE } from '../lib/api';
 
 const config = {
   projectId: "scope-app-492120",
@@ -54,19 +53,23 @@ export const AuthProvider = ({ children }: any) => {
         } catch (error: any) {
           lastError = error;
           console.error(`Auth sync attempt ${attempt + 1} failed`, error);
-          // Specific handling for database unavailable error
-          if (error.message?.includes('AUTH_DB_UNAVAILABLE')) {
+          // Specific handling for database unavailable error using standardized checker
+          if (isAuthDbUnavailableError(error)) {
             setAuthError(new Error('Your account is logged in, but the database is currently unavailable. Some features may be limited.'));
             setDbUser(null);
             setLoading(false);
             return;
           }
-          if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
+          // Exponential backoff: 500ms, 1s, 2s
+          if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 500 * Math.pow(2, attempt)));
         }
       }
 
+      // Graceful degradation: user stays logged in, sync failure is non-blocking
       setDbUser(null);
-      setAuthError(lastError || new Error('Unable to sync account'));
+      setAuthError(
+        lastError?.message || 'Unable to synchronize account data. Please try again later.'
+      );
       setLoading(false);
     });
   }, []);

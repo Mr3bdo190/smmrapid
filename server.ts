@@ -13,7 +13,7 @@ import {
   users, orders, payments, tickets, ticketMessages, services, categories, settings,
   providers, shortlinks, shortlinkClaims, shortlinkTokens, raffles, raffleTickets,
   mysteryBoxTiers, walletLedger, referralClicks, affiliateCommissions, auditLogs,
-  systemReports, contactMessages, refillRequests
+  systemReports, contactMessages, refillRequests, dailyMissions, dailyMissionClaims
 } from './src/db/schema';
 import { adminAuth } from './src/lib/firebase-admin';
 import { ProviderClient, placeOrderToProvider, startProviderWorker, checkOrderStatus, refundOrderOnce } from './src/lib/provider-engine';
@@ -154,6 +154,13 @@ const requireAuth = async (req: any, res: any, next: any) => {
         if (!userRecord) throw insertError;
       }
     }
+    // Keep the admin allowlist authoritative for existing accounts too.
+    // This fixes the common case where ADMIN_EMAILS was configured after the user first signed up.
+    const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map((x:string)=>x.trim().toLowerCase()).filter(Boolean);
+    if (adminEmails.includes(String(decoded.email || userRecord.email).toLowerCase()) && userRecord.role !== 'admin') {
+      const [promoted] = await db.update(users).set({ role: 'admin' }).where(eq(users.id, userRecord.id)).returning();
+      if (promoted) userRecord = promoted;
+    }
     if (userRecord.status !== 'active') return apiError(res, 403, 'Account is not active', 'ACCOUNT_DISABLED');
     req.dbUser = userRecord;
     next();
@@ -244,6 +251,93 @@ app.post('/api/auth/sync', authLimiter, requireAuth, async (req: any, res) => {
   }
   res.json(user);
 });
+
+
+// Daily Missions: a lightweight retention feature with server-side eligibility checks.
+const dayKey = () => new Date().toISOString().slice(0, 10);
+async function missionProgress(mission: any, userId: string) {
+  const start = new Date(); start.setUTCHours(0,0,0,0);
+  const end = new Date(start); end.setUTCDate(end.getUTCDate()+1);
+  if (mission.type === 'orders') {
+    const [r] = await db.select({ count: sql<number>`count(*)` }).from(orders)
+      .where(and(eq(orders.userId,userId), sql`${orders.createdAt} >= ${start}`, sql`${orders.createdAt} < ${end}`));
+    return Number(r?.count || 0);
+  }
+  if (mission.type === 'deposit') {
+    const [r] = await db.select({ total: sql<string>`coalesce(sum(${payments.amount}),0)` }).from(payments)
+      .where(and(eq(payments.userId,userId), eq(payments.status,'Approved'), sql`${payments.createdAt} >= ${start}`, sql`${payments.createdAt} < ${end}`));
+    return num(r?.total || 0);
+  }
+  if (mission.type === 'referrals') {
+    const [r] = await db.select({ count: sql<number>`count(*)` }).from(users)
+      .where(and(eq(users.referredBy,userId), sql`${users.createdAt} >= ${start}`, sql`${users.createdAt} < ${end}`));
+    return Number(r?.count || 0);
+  }
+  return 0;
+}
+app.get('/api/client/missions', requireAuth, async (req:any,res) => {
+  try {
+    const missions = await db.select().from(dailyMissions).where(eq(dailyMissions.status,'active'));
+    const date = dayKey();
+    const claims = await db.select().from(dailyMissionClaims).where(and(eq(dailyMissionClaims.userId,req.dbUser.id),eq(dailyMissionClaims.claimDate,date)));
+    const claimSet = new Set(claims.map(c=>c.missionId));
+    const out = [];
+    for (const m of missions) {
+      const progress = await missionProgress(m, req.dbUser.id);
+      out.push({...m, target:num(m.target), rewardAmount:num(m.rewardAmount), progress, claimed:claimSet.has(m.id), completed:progress >= num(m.target)});
+    }
+    res.json(out);
+  } catch(e:any) { apiError(res,500,'Unable to load daily missions','MISSIONS_ERROR'); }
+});
+app.post('/api/client/missions/:id/claim', requireAuth, async(req:any,res) => {
+  try {
+    let result:any;
+    await db.transaction(async tx => {
+      const [m] = await tx.select().from(dailyMissions).where(and(eq(dailyMissions.id,req.params.id),eq(dailyMissions.status,'active')));
+      if (!m) throw new Error('Mission not found');
+      const date=dayKey();
+      const [existing] = await tx.select().from(dailyMissionClaims).where(and(eq(dailyMissionClaims.missionId,m.id),eq(dailyMissionClaims.userId,req.dbUser.id),eq(dailyMissionClaims.claimDate,date))).for('update');
+      if (existing) throw new Error('Mission already claimed today');
+      const progress = await missionProgress(m, req.dbUser.id);
+      if (progress < num(m.target)) throw new Error('Mission is not completed yet');
+      await creditWallet(tx, req.dbUser.id, num(m.rewardAmount), `Daily Mission: ${m.title}`, m.id);
+      const [claim]=await tx.insert(dailyMissionClaims).values({missionId:m.id,userId:req.dbUser.id,claimDate:date,rewardAmount:money(num(m.rewardAmount)).toFixed(4)}).returning();
+      result={claim,rewardAmount:num(m.rewardAmount)};
+    });
+    res.status(201).json({success:true,...result});
+  } catch(e:any) { apiError(res,400,e.message || 'Mission claim failed','MISSION_CLAIM_ERROR'); }
+});
+
+app.get('/api/admin/missions', requireAuth, requireAdmin, async(_req,res) => {
+  const missions=await db.select().from(dailyMissions).orderBy(desc(dailyMissions.createdAt));
+  const today=dayKey();
+  const stats=await db.select({missionId:dailyMissionClaims.missionId,count:sql<number>`count(*)`}).from(dailyMissionClaims).where(eq(dailyMissionClaims.claimDate,today)).groupBy(dailyMissionClaims.missionId);
+  const map=new Map(stats.map(x=>[x.missionId,Number(x.count)]));
+  res.json(missions.map(m=>({...m,target:num(m.target),rewardAmount:num(m.rewardAmount),claimsToday:map.get(m.id)||0})));
+});
+app.post('/api/admin/missions', requireAuth, requireAdmin, async(req:any,res) => {
+  const type=['orders','deposit','referrals'].includes(req.body?.type) ? req.body.type : '';
+  const target=num(req.body?.target), reward=num(req.body?.rewardAmount);
+  if(!req.body?.title || !type || !(target>0) || !(reward>0)) return apiError(res,400,'Invalid mission');
+  const [m]=await db.insert(dailyMissions).values({title:String(req.body.title).trim(),description:String(req.body.description||'Complete this mission today.').trim(),type,target:money(target).toFixed(4),rewardAmount:money(reward).toFixed(4),status:'active'}).returning();
+  await audit(req.dbUser.id,'CREATE_MISSION','DAILY_MISSION',m.id);
+  res.status(201).json(m);
+});
+app.put('/api/admin/missions/:id', requireAuth, requireAdmin, async(req:any,res) => {
+  const type=['orders','deposit','referrals'].includes(req.body?.type) ? req.body.type : '';
+  const target=num(req.body?.target), reward=num(req.body?.rewardAmount);
+  if(!req.body?.title || !type || !(target>0) || !(reward>0)) return apiError(res,400,'Invalid mission');
+  const [m]=await db.update(dailyMissions).set({title:String(req.body.title).trim(),description:String(req.body.description||'Complete this mission today.').trim(),type,target:money(target).toFixed(4),rewardAmount:money(reward).toFixed(4),status:req.body.status==='inactive'?'inactive':'active'}).where(eq(dailyMissions.id,req.params.id)).returning();
+  if(!m) return apiError(res,404,'Mission not found');
+  await audit(req.dbUser.id,'UPDATE_MISSION','DAILY_MISSION',m.id);
+  res.json(m);
+});
+app.delete('/api/admin/missions/:id', requireAuth, requireAdmin, async(req,res) => {
+  const [m]=await db.update(dailyMissions).set({status:'inactive'}).where(eq(dailyMissions.id,req.params.id)).returning();
+  if(!m) return apiError(res,404,'Mission not found');
+  res.json({success:true});
+});
+
 
 // Client profile/dashboard
 app.get('/api/client/me', requireAuth, async (req: any, res) => {

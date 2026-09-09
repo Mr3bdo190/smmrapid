@@ -67,6 +67,7 @@ export const translations: Dict = {
   'nav.affiliates': { en: 'Affiliates', ar: 'برنامج الإحالة' },
   'nav.mysteryBoxes': { en: 'Mystery Boxes', ar: 'الصناديق الغامضة' },
   'nav.game': { en: 'Rewards Hub', ar: 'مركز المكافآت' },
+  'nav.missions': { en: 'Daily Missions', ar: 'المهام اليومية' },
   'nav.clientArea': { en: 'Client Area', ar: 'منطقة العميل' },
   // Admin nav
   'nav.admin.dashboard': { en: 'Dashboard', ar: 'الرئيسية' },
@@ -416,6 +417,22 @@ export const translations: Dict = {
   'contact.sending': { en: 'Sending...', ar: 'جاري الإرسال...' },
   'contact.success': { en: "Thanks — we've received your message and will reply by email soon.", ar: 'شكراً — استلمنا رسالتك وهنرد عليك بالإيميل قريباً.' },
   'contact.error': { en: 'Could not send your message. Please try again.', ar: 'تعذر إرسال رسالتك. من فضلك حاول مرة أخرى.' },
+
+  // Affiliates
+  'affiliates.title': { en: 'Affiliate Program', ar: 'برنامج الإحالة' },
+  'affiliates.commissionHistory': { en: 'Commission History', ar: 'سجل العمولات' },
+  'affiliates.referralLink': { en: 'Referral Link', ar: 'رابط الإحالة' },
+  'affiliates.clicks': { en: 'Clicks', ar: 'النقرات' },
+  'affiliates.signups': { en: 'Signups', ar: 'التسجيلات' },
+  'affiliates.earnings': { en: 'Earnings', ar: 'الأرباح' },
+  'affiliates.referredUsers': { en: 'Referred Users', ar: 'المستخدمون المحالون' },
+
+  // Daily missions
+  'missions.title': { en: 'Daily Missions', ar: 'المهام اليومية' },
+  'missions.subtitle': { en: 'Complete simple tasks every day and collect wallet bonuses.', ar: 'أكمل مهام بسيطة كل يوم واحصل على مكافآت تضاف لمحفظتك.' },
+  'missions.claim': { en: 'Claim reward', ar: 'استلم المكافأة' },
+  'missions.claimed': { en: 'Claimed today', ar: 'تم الاستلام اليوم' },
+  'missions.reward': { en: 'Reward', ar: 'المكافأة' },
 
   // Legal pages
   'legal.terms': { en: 'Terms of Service', ar: 'شروط الخدمة' },

@@ -64,8 +64,8 @@ export default function ClientLayout() {
         <h1 className="text-3xl font-bold mb-4 text-red-600">{t('common.accessDenied')}</h1>
         <p className="text-gray-600 mb-2">{user ? 'Your login is valid, but your account could not be synchronized with the server.' : 'Please log in to access the client area.'}</p>
         {user && <p className="text-xs text-red-500 mb-6">Error: {authError?.code || authError?.message || 'ACCOUNT_SYNC_FAILED'}</p>}
-        {user && <button onClick={retrySync} className="mb-4 rounded-lg bg-indigo-600 px-5 py-2 text-white font-semibold hover:bg-indigo-700">Retry account sync</button>
-        {user && <button onClick={logOut} className="text-sm text-gray-500 hover:text-red-600 underline">Sign out and choose another account</button>}}
+        {user && <button onClick={retrySync} className="mb-4 rounded-lg bg-indigo-600 px-5 py-2 text-white font-semibold hover:bg-indigo-700">Retry account sync</button>}
+        {user && <button onClick={logOut} className="text-sm text-gray-500 hover:text-red-600 underline">Sign out and choose another account</button>}
         <Link to="/" className="text-indigo-600 hover:underline">{t('common.returnHome')}</Link>
       </div>
     );

@@ -366,7 +366,6 @@ export const translations: Dict = {
   'lottery.activeDraws': { en: 'Active Draws', ar: 'السحوبات النشطة' },
   'lottery.pastDraws': { en: 'Past Draws', ar: 'السحوبات السابقة' },
   'lottery.ticketPrice': { en: 'Ticket Price', ar: 'سعر التذكرة' },
-  'lottery.prizePool': { en: 'Prize Pool', ar: 'مجموع الجوائز' },
   'lottery.endsIn': { en: 'Ends in', ar: 'ينتهي خلال' },
   'lottery.buyTicket': { en: 'Buy Ticket', ar: 'شراء تذكرة' },
   'lottery.yourTickets': { en: 'Your Tickets', ar: 'تذاكرك' },

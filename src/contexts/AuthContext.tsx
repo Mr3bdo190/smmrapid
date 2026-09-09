@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+// import { createContext, useContext, useEffect, useState } from 'react';
 import { User, onAuthStateChanged, setPersistence, browserLocalPersistence, signInWithPopup, GoogleAuthProvider, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
@@ -55,7 +55,7 @@ export const AuthProvider = ({ children }: any) => {
           console.error(`Auth sync attempt ${attempt + 1} failed`, error);
           // Specific handling for database unavailable error using standardized checker
           if (isAuthDbUnavailableError(error)) {
-            setAuthError(new Error('Your account is logged in, but the database is currently unavailable. Some features may be limited.'));
+            setAuthError(new Error('Your login is valid, but your account could not be synchronized with the server.'));
             setDbUser(null);
             setLoading(false);
             return;

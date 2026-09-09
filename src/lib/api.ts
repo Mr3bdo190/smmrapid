@@ -1,4 +1,4 @@
-import type { User } from 'firebase/auth';
+// import type { User } from 'firebase/auth';
 
 // Mutex for token refresh to prevent race conditions
 let refreshPromise: Promise<string> | null = null;

@@ -1055,41 +1055,18 @@ function validateEnv() {
   }
 }
 
-async function ensureAuthRuntimeSchema(){
-  // Older production databases were created from 0000 and may be missing
-  // authentication columns that the current users query selects. Keep startup
-  // compatible while the formal migrations are applied.
+async function ensureAuthSchema(){
+  // Older production databases were created before the auth verification/reset
+  // fields were added to the Drizzle schema. Keep startup backward-compatible.
   await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified boolean NOT NULL DEFAULT false`);
   await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_token text`);
   await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_expires timestamp`);
   await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_token text`);
   await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_expires timestamp`);
   await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS api_key_hash text`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS users_email_verification_token_idx ON users(email_verification_token)`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS users_password_reset_token_idx ON users(password_reset_token)`);
   await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS users_api_key_hash_unique ON users(api_key_hash) WHERE api_key_hash IS NOT NULL`);
-  await db.execute(sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancel_requested boolean NOT NULL DEFAULT false`);
-  await db.execute(sql`DO $$ BEGIN CREATE TYPE refill_status AS ENUM ('Pending','Completed','Rejected'); EXCEPTION WHEN duplicate_object THEN NULL; END $$`);
-  await db.execute(sql`CREATE TABLE IF NOT EXISTS refill_requests (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    order_id uuid NOT NULL REFERENCES orders(id),
-    user_id uuid NOT NULL REFERENCES users(id),
-    provider_refill_id text,
-    status refill_status NOT NULL DEFAULT 'Pending',
-    created_at timestamp NOT NULL DEFAULT now()
-  )`);
-  await db.execute(sql`CREATE INDEX IF NOT EXISTS refill_requests_order_idx ON refill_requests(order_id)`);
-  await db.execute(sql`CREATE INDEX IF NOT EXISTS refill_requests_user_idx ON refill_requests(user_id)`);
-  await db.execute(sql`DO $$ BEGIN CREATE TYPE contact_message_status AS ENUM ('New','Read','Replied'); EXCEPTION WHEN duplicate_object THEN NULL; END $$`);
-  await db.execute(sql`CREATE TABLE IF NOT EXISTS contact_messages (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    name text NOT NULL,
-    email text NOT NULL,
-    subject text NOT NULL,
-    message text NOT NULL,
-    status contact_message_status NOT NULL DEFAULT 'New',
-    created_at timestamp NOT NULL DEFAULT now()
-  )`);
-  await db.execute(sql`CREATE INDEX IF NOT EXISTS contact_messages_status_idx ON contact_messages(status)`);
-  await db.execute(sql`CREATE INDEX IF NOT EXISTS contact_messages_created_at_idx ON contact_messages(created_at DESC)`);
 }
 
 async function ensureWalletLedgerSchema(){
@@ -1113,8 +1090,8 @@ async function ensureWalletLedgerSchema(){
 
 async function startServer(){
   validateEnv();
-  try { await ensureAuthRuntimeSchema(); } catch (e) { console.error('[startup] auth/runtime schema check failed', e); }
-  try { await ensureWalletLedgerSchema(); } catch (e) { console.error('[startup] wallet_ledger schema check failed', e); }
+  try { await ensureAuthSchema(); } catch (e) { console.error('[startup] auth schema check failed', e); throw e; }
+  try { await ensureWalletLedgerSchema(); } catch (e) { console.error('[startup] wallet_ledger schema check failed', e); throw e; }
   // JSON 404 for unmatched API routes — must be registered before the SPA/static fallback
   // so a typo'd or unknown /api/* path returns JSON instead of index.html.
   app.use('/api', (_req, res) => apiError(res, 404, 'Not found', 'NOT_FOUND'));

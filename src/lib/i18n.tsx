@@ -417,9 +417,6 @@ export const translations: Dict = {
   'contact.success': { en: "Thanks — we've received your message and will reply by email soon.", ar: 'شكراً — استلمنا رسالتك وهنرد عليك بالإيميل قريباً.' },
   'contact.error': { en: 'Could not send your message. Please try again.', ar: 'تعذر إرسال رسالتك. من فضلك حاول مرة أخرى.' },
 
-      'affiliates.referredUsers': { en: 'Referred Users', ar: 'المستخدمون المُحالون' },
-      'affiliates.commissionHistory': { en: 'Commission History', ar: 'سجل العمولات' },
-
   // Legal pages
   'legal.terms': { en: 'Terms of Service', ar: 'شروط الخدمة' },
   'legal.privacy': { en: 'Privacy Policy', ar: 'سياسة الخصوصية' },

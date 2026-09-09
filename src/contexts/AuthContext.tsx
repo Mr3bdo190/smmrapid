@@ -1,14 +1,14 @@
-// import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { User, onAuthStateChanged, setPersistence, browserLocalPersistence, signInWithPopup, GoogleAuthProvider, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { apiJson, isAuthDbUnavailableError, AUTH_DB_UNAVAILABLE } from '../lib/api';
 
 const config = {
-  projectId: "scope-app-492120",
-  appId: "1:523911913692:web:8e69126d645d84c7241419",
-  apiKey: "AIzaSyCQmRhaNxk0oPH6sl-nP4s718gW1yR60E4",
-  authDomain: "scope-app-492120.firebaseapp.com"
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "scope-app-492120",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:523911913692:web:8e69126d645d84c7241419",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyCQmRhaNxk0oPH6sl-nP4s718gW1yR60E4",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "scope-app-492120.firebaseapp.com",
 };
 
 const app = initializeApp(config);
@@ -41,36 +41,33 @@ export const AuthProvider = ({ children }: any) => {
 
       const params = new URLSearchParams(window.location.search);
       const ref = params.get('ref') || localStorage.getItem('ref') || undefined;
+      setLoading(false);
       let lastError: any = null;
 
-      for (let attempt = 0; attempt < 3; attempt++) {
+      for (let attempt = 0; attempt < 5; attempt++) {
         try {
           const synced = await syncAccount(u, ref);
           setDbUser(synced);
           setAuthError(null);
-          setLoading(false);
           return;
         } catch (error: any) {
           lastError = error;
           console.error(`Auth sync attempt ${attempt + 1} failed`, error);
           // Specific handling for database unavailable error using standardized checker
-          if (isAuthDbUnavailableError(error)) {
-            setAuthError(new Error('Your login is valid, but your account could not be synchronized with the server.'));
-            setDbUser(null);
-            setLoading(false);
-            return;
+          if (isAuthDbUnavailableError(error) && attempt < 4) {
+            await new Promise(resolve => setTimeout(resolve, 750 * Math.pow(2, attempt)));
+            continue;
           }
           // Exponential backoff: 500ms, 1s, 2s
-          if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 500 * Math.pow(2, attempt)));
+          if (attempt < 4) await new Promise(resolve => setTimeout(resolve, 750 * Math.pow(2, attempt)));
         }
       }
 
       // Graceful degradation: user stays logged in, sync failure is non-blocking
       setDbUser(null);
-      setAuthError(
-        lastError?.message || 'Unable to synchronize account data. Please try again later.'
-      );
-      setLoading(false);
+      const finalError: any = lastError instanceof Error ? lastError : new Error('Unable to synchronize account data. Please try again later.');
+      if (lastError?.code) finalError.code = lastError.code;
+      setAuthError(finalError);
     });
   }, []);
 

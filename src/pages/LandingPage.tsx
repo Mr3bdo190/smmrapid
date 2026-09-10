@@ -424,6 +424,7 @@ export default function LandingPage() {
           <div className="flex items-center gap-6 flex-wrap justify-center">
             <a href="#features" className="hover:text-slate-300">{t('landing.navFeatures')}</a>
             <Link to="/services" className="hover:text-slate-300">{t('nav.services')}</Link>
+            <a href="/blog/" className="hover:text-slate-300">المدونة</a>
             <a href="#faq" className="hover:text-slate-300">{t('landing.navFaq')}</a>
             <Link to="/contact" className="hover:text-slate-300">{t('landing.footerSupport')}</Link>
             <Link to="/terms" className="hover:text-slate-300">{t('legal.terms')}</Link>

@@ -50,7 +50,7 @@ export const translations: Dict = {
   'common.saving': { en: 'Saving...', ar: 'جاري الحفظ...' },
   'common.saved': { en: 'Saved', ar: 'تم الحفظ' },
   'common.saveFailed': { en: 'Failed to save', ar: 'فشل الحفظ' },
-  'common.currency': { en: 'EGP', ar: 'جنيه' },
+  'common.currency': { en: 'USD', ar: 'دولار' },
 
   // Nav (also used as section headers)
   'nav.dashboard': { en: 'Dashboard', ar: 'لوحة التحكم' },

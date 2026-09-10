@@ -41,7 +41,9 @@ export const AuthProvider = ({ children }: any) => {
 
       const params = new URLSearchParams(window.location.search);
       const ref = params.get('ref') || localStorage.getItem('ref') || undefined;
-      setLoading(false);
+      // Keep the client area in a loading state until the Firebase identity is
+      // successfully synchronized with the application database. This prevents
+      // the brief 'Access Denied' flash that happened while sync was still running.
       let lastError: any = null;
 
       for (let attempt = 0; attempt < 5; attempt++) {
@@ -49,6 +51,7 @@ export const AuthProvider = ({ children }: any) => {
           const synced = await syncAccount(u, ref);
           setDbUser(synced);
           setAuthError(null);
+          setLoading(false);
           return;
         } catch (error: any) {
           lastError = error;
@@ -68,6 +71,7 @@ export const AuthProvider = ({ children }: any) => {
       const finalError: any = lastError instanceof Error ? lastError : new Error('Unable to synchronize account data. Please try again later.');
       if (lastError?.code) finalError.code = lastError.code;
       setAuthError(finalError);
+      setLoading(false);
     });
   }, []);
 

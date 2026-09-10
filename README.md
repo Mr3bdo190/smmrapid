@@ -104,3 +104,9 @@ The panel supports Heleket invoice payments. Configure `HELEKET_MERCHANT_ID`, `H
 - Added provider connection test and clearer provider HTTP/API error messages.
 - Added provider service control center with bulk activate/deactivate and bulk selling-price adjustment.
 - Provider service list and bulk management endpoints are available under `/api/admin/providers/:id/services`.
+
+### Provider-sourced service metadata
+Run `drizzle/0011_provider_service_metadata.sql`. Provider sync now preserves service metadata such as provider service ID, provider rate, category, description, refill/cancel/drip-feed flags, and sync timestamp in `services.provider_meta`. Customer UI exposes only service-facing facts, never provider credentials or provider names.
+
+### Public pages / SEO architecture
+Public marketing, services, FAQ, contact, policies, how-it-works and blog pages are separate crawlable HTML URLs under `public/`. Authenticated client/admin dashboards remain an authenticated React application because splitting those into static pages would not improve SEO and would make auth/state handling worse.

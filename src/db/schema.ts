@@ -70,6 +70,7 @@ export const services = pgTable('services', {
   name: text('name').notNull(),
   pricePer1k: decimal('price_per_1k', { precision: 12, scale: 4 }).notNull(),
   providerPrice: decimal('provider_price', { precision: 12, scale: 4 }).default('0.0000'),
+  providerMeta: jsonb('provider_meta'),
   minQuantity: integer('min_quantity').notNull(),
   maxQuantity: integer('max_quantity').notNull(),
   description: text('description'),

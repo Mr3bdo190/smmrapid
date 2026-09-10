@@ -50,6 +50,7 @@ export const translations: Dict = {
   'common.saving': { en: 'Saving...', ar: 'جاري الحفظ...' },
   'common.saved': { en: 'Saved', ar: 'تم الحفظ' },
   'common.saveFailed': { en: 'Failed to save', ar: 'فشل الحفظ' },
+  'common.currency': { en: 'EGP', ar: 'جنيه' },
 
   // Nav (also used as section headers)
   'nav.dashboard': { en: 'Dashboard', ar: 'لوحة التحكم' },
@@ -199,6 +200,11 @@ export const translations: Dict = {
   'newOrder.enterValidQuantity': { en: 'Enter a valid quantity', ar: 'أدخل كمية صحيحة' },
   'newOrder.quantityRange': { en: 'Quantity must be between {min} and {max}', ar: 'يجب أن تكون الكمية بين {min} و {max}' },
   'newOrder.copied': { en: 'Copied', ar: 'تم النسخ' },
+
+  'affiliates.commissionHistory': { en: 'Commission History', ar: 'سجل العمولات' },
+  'affiliates.title': { en: 'Affiliate Center', ar: 'مركز الإحالة' },
+  'affiliates.referralLink': { en: 'Referral Link', ar: 'رابط الإحالة' },
+  'affiliates.referredUsers': { en: 'Referred Users', ar: 'المستخدمون المُحالون' },
 
   // Mass Order
   'massOrder.title': { en: 'Mass Order', ar: 'طلبات جماعية' },

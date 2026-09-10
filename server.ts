@@ -870,28 +870,45 @@ app.post('/api/admin/providers/:id/sync',requireAuth,requireAdmin,async(req:any,
     if(data.error)return apiError(res,502,`Provider error: ${String(data.error)}`,'PROVIDER_SYNC_FAILED');
     const incoming=Array.isArray(data) ? data : (Array.isArray(data.services) ? data.services : Array.isArray(data.data) ? data.data : Array.isArray(data.result) ? data.result : []);
     if(!incoming.length)return res.json({success:true,synced:0,created:0,updated:0});
-    const defaultCategoryName=`${p.name} Services`;
     let created=0,updated=0;
     await db.transaction(async tx=>{
-      const categoryRows=await tx.select().from(categories).where(eq(categories.name,defaultCategoryName)).limit(1); let category=categoryRows[0];
-      if(!category){
-        const [c]=await tx.insert(categories).values({name:defaultCategoryName,status:'active'}).returning();
-        category=c;
-      }
+      const categoryCache = new Map<string, any>();
       for(const raw of incoming.slice(0,2000)){
         const providerServiceId=String(raw.service ?? raw.id ?? '').trim();
-        const name=String(raw.name ?? `Service ${providerServiceId}`).trim().slice(0,150);
+        const name=String(raw.name ?? `Service ${providerServiceId}`).trim().slice(0,255);
         const providerPrice=Number(raw.rate ?? raw.price ?? raw.pricePer1k);
         const min=Number(raw.min ?? raw.minQuantity ?? 1);
         const max=Number(raw.max ?? raw.maxQuantity ?? 1000000);
         if(!providerServiceId||!name||!Number.isFinite(providerPrice)||providerPrice<0||!Number.isInteger(min)||!Number.isInteger(max)||min<1||max<min)continue;
+        const categoryName=String(raw.category ?? raw.category_name ?? raw.categoryName ?? raw.type ?? 'Uncategorized').trim().slice(0,120) || 'Uncategorized';
+        let category=categoryCache.get(categoryName);
+        if(!category){
+          const categoryRows=await tx.select().from(categories).where(eq(categories.name,categoryName)).limit(1);
+          category=categoryRows[0];
+          if(!category){ const [c]=await tx.insert(categories).values({name:categoryName,status:'active'}).returning(); category=c; }
+          categoryCache.set(categoryName,category);
+        }
+        const refillable=Boolean(raw.refill ?? raw.refillable ?? false);
+        const cancelable=Boolean(raw.cancel ?? raw.cancelable ?? false);
+        const description=String(raw.description ?? raw.desc ?? '').trim().slice(0,5000) || null;
+        const providerMeta={
+          sourceServiceId: providerServiceId,
+          providerRate: providerPrice,
+          providerMin: min, providerMax: max,
+          category: categoryName,
+          description,
+          refillable, cancelable,
+          dripfeed: Boolean(raw.dripfeed ?? raw.drip_feed ?? false),
+          type: raw.type ?? null,
+          syncedAt: new Date().toISOString()
+        };
         const selling=money(providerPrice*(1+Math.max(0,p.profitMargin)/100));
         const existingRows=await tx.select().from(services).where(and(eq(services.providerId,p.id),eq(services.providerServiceId,providerServiceId))).limit(1); const existing=existingRows[0];
         if(existing){
-          await tx.update(services).set({name,categoryId:category.id,providerPrice:providerPrice.toFixed(4),pricePer1k:selling.toFixed(4),minQuantity:min,maxQuantity:max,status:'active'}).where(eq(services.id,existing.id));
+          await tx.update(services).set({name,categoryId:category.id,providerPrice:providerPrice.toFixed(4),pricePer1k:selling.toFixed(4),minQuantity:min,maxQuantity:max,description,refillable,cancelable,providerMeta,status:'active'}).where(eq(services.id,existing.id));
           updated++;
         }else{
-          await tx.insert(services).values({categoryId:category.id,providerId:p.id,providerServiceId,name,providerPrice:providerPrice.toFixed(4),pricePer1k:selling.toFixed(4),minQuantity:min,maxQuantity:max,status:'active'});
+          await tx.insert(services).values({categoryId:category.id,providerId:p.id,providerServiceId,name,providerPrice:providerPrice.toFixed(4),pricePer1k:selling.toFixed(4),minQuantity:min,maxQuantity:max,description,refillable,cancelable,providerMeta,status:'active'});
           created++;
         }
       }

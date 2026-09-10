@@ -382,7 +382,6 @@ export const translations: Dict = {
   'lottery.endedWaitingDraw': { en: 'Ended (Waiting Draw)', ar: 'انتهى (بانتظار السحب)' },
   'lottery.youHaveTickets': { en: 'You have {count} ticket(s)', ar: 'لديك {count} تذكرة' },
   'lottery.weeklyRaffle': { en: 'Weekly Raffle', ar: 'السحب الأسبوعي' },
-  'lottery.prizePool': { en: 'Prize Pool', ar: 'مجموع الجوائز' },
   'lottery.perTicket': { en: 'per ticket', ar: 'لكل تذكرة' },
   'lottery.sold': { en: 'sold', ar: 'تم بيعها' },
   'lottery.maxPerUser': { en: 'Max {count} per user', ar: 'الحد الأقصى {count} لكل مستخدم' },

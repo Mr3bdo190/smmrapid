@@ -61,7 +61,7 @@ export default function ClientNewOrder() {
           <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4">
             {categoryServices.map((s:any)=><button key={s.id} type="button" onClick={()=>chooseService(s.id)} className={`text-left rounded-2xl border bg-white p-5 hover:shadow-md transition ${serviceId===s.id?'border-indigo-500 ring-2 ring-indigo-100':'border-gray-100'}`}>
               <div className="flex items-start justify-between gap-3"><div><div className="text-xs text-indigo-600 font-semibold mb-1">SERVICE #{s.providerServiceId || '—'}</div><h4 className="font-bold text-gray-900 leading-6 break-words">{s.name}</h4></div><Star onClick={(e)=>{e.stopPropagation();toggleFavorite(s.id)}} className={`shrink-0 w-5 h-5 ${favorites.includes(s.id)?'fill-yellow-400 text-yellow-500':'text-gray-300'}`}/></div>
-              <p className="text-sm text-gray-500 mt-3 line-clamp-3">{s.description || '{t('newOrder.serviceDetails')} متاحة عند اختيار الخدمة.'}</p>
+              <p className="text-sm text-gray-500 mt-3 line-clamp-3">{s.description || `${t('newOrder.serviceDetails')} متاحة عند اختيار الخدمة.`}</p>
               <div className="grid grid-cols-3 gap-2 mt-4 text-xs"><div className="rounded-lg bg-gray-50 p-2"><span className="text-gray-400 block">{t('newOrder.rate1k')}</span><b>{num(s.pricePer1k).toFixed(4)} {currency}</b></div><div className="rounded-lg bg-gray-50 p-2"><span className="text-gray-400 block">{t('newOrder.minimum')}</span><b>{Number(s.minQuantity).toLocaleString()}</b></div><div className="rounded-lg bg-gray-50 p-2"><span className="text-gray-400 block">{t('newOrder.maximum')}</span><b>{Number(s.maxQuantity).toLocaleString()}</b></div></div>
             </button>)}
           </div>

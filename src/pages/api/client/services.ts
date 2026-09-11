@@ -37,7 +37,25 @@ export default async function handler(req: AuthenticatedRequest, res: Response) 
       orderBy: [asc(services.sortOrder)]
     });
 
-    const filtered = rows.filter(x => x.category?.status === 'active' && (!x.providerId || x.provider?.status === 'active'));
+    const filtered = rows
+      .filter(x => x.category?.status === 'active' && (!x.providerId || x.provider?.status === 'active'))
+      .map((x: any) => ({
+        ...x,
+        // Always expose synchronized provider metadata to the New Order page.
+        // Older service rows may predate providerMeta, so build a safe fallback
+        // from the persisted service columns instead of showing empty details.
+        providerMeta: x.providerMeta || {
+          sourceServiceId: x.providerServiceId || null,
+          providerRate: x.providerPrice != null ? Number(x.providerPrice) : null,
+          providerMin: x.minQuantity,
+          providerMax: x.maxQuantity,
+          description: x.description || null,
+          refillable: Boolean(x.refillable),
+          cancelable: Boolean(x.cancelable),
+          dripfeed: false,
+          type: null
+        }
+      }));
     res.json(filtered);
   } catch (e: any) {
     console.error('[client/services] Error:', e);

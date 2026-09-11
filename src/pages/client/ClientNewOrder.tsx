@@ -28,7 +28,6 @@ export default function ClientNewOrder() {
   const qc = useQueryClient();
   const { t } = useTranslation();
   const [categoryId, setCategoryId] = useState('');
-  const [section, setSection] = useState('');
   const [serviceId, setServiceId] = useState('');
   const [search, setSearch] = useState('');
   const [link, setLink] = useState('');
@@ -51,29 +50,9 @@ export default function ClientNewOrder() {
   const categories = useMemo(() => Array.from(new Map(services.map((s: any) => [s.category?.id, s.category])).values()).filter(Boolean).sort((a: any, b: any) => a.sortOrder - b.sortOrder), [services]);
   const categoryServices = useMemo(() => services.filter((s: any) => s.category?.id === categoryId), [services, categoryId]);
 
-  // A section is a human-friendly service type (Followers, Likes, Views, etc.).
-  // It is derived from the provider-supplied service name/metadata, so no provider
-  // name is exposed to clients and no extra provider-specific UI is required.
-  const sectionOf = (s: any) => {
-    const n = String(s.name || '').toLowerCase();
-    const groups: Array<[string, string[]]> = [
-      ['followers', ['follower', 'متابع']], ['likes', ['like', 'إعجاب']], ['views', ['view', 'مشاهدة', 'مشاهدات']],
-      ['comments', ['comment', 'تعليق']], ['shares', ['share', 'مشاركة']], ['members', ['member', 'عضو']],
-      ['subscribers', ['subscriber', 'مشترك']], ['saves', ['save', 'حفظ']], ['reactions', ['reaction', 'تفاعل']],
-      ['stories', ['story', 'stories', 'ستوري']]
-    ];
-    for (const [key, words] of groups) if (words.some(w => n.includes(w))) return key;
-    return String(s.providerMeta?.type || 'other').trim() || 'other';
-  };
-  const sectionLabel = (key: string) => ({
-    followers: 'Followers / المتابعين', likes: 'Likes / الإعجابات', views: 'Views / المشاهدات', comments: 'Comments / التعليقات',
-    shares: 'Shares / المشاركات', members: 'Members / الأعضاء', subscribers: 'Subscribers / المشتركين', saves: 'Saves / المحفوظات',
-    reactions: 'Reactions / التفاعلات', stories: 'Stories / القصص', other: 'Other / أخرى'
-  } as Record<string, string>)[key] || key;
-  const sections = useMemo(() => Array.from(new Set(categoryServices.map(sectionOf))).sort(), [categoryServices]);
   const visibleServices = useMemo(() => categoryServices
-    .filter((s: any) => sectionOf(s) === section && (!search || String(s.name).toLowerCase().includes(search.toLowerCase())))
-    .sort((a: any, b: any) => a.sortOrder - b.sortOrder), [categoryServices, section, search]);
+    .filter((s: any) => !search || String(s.name).toLowerCase().includes(search.toLowerCase()))
+    .sort((a: any, b: any) => a.sortOrder - b.sortOrder || String(a.name).localeCompare(String(b.name))), [categoryServices, search]);
   const selectedService = services.find((s: any) => s.id === serviceId);
   const providerMeta = selectedService?.providerMeta || {};
   const currency = 'USD';
@@ -104,20 +83,19 @@ export default function ClientNewOrder() {
   return <div className="space-y-6 max-w-7xl mx-auto" dir="auto">
     <section className="rounded-2xl bg-gradient-to-r from-indigo-700 to-violet-700 text-white p-6 shadow-sm">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div><h1 className="text-2xl font-black">{t('newOrder.title') || 'New Order'}</h1><p className="text-indigo-100 mt-1">Category → Section → Service. Pick exactly what you need without scrolling through a huge service list.</p></div>
+        <div><h1 className="text-2xl font-black">{t('newOrder.title') || 'New Order'}</h1><p className="text-indigo-100 mt-1">Choose a category, then choose the exact service. All synchronized service details appear automatically.</p></div>
         <div className="rounded-xl bg-white/10 px-4 py-3 text-sm"><span className="text-indigo-100">{t('common.balance')}</span><strong className="block text-xl">{num(dbUser?.balance).toFixed(4)} {currency}</strong></div>
       </div>
     </section>
 
     <section className="bg-white rounded-2xl border shadow-sm p-5">
-      <div className="flex items-center justify-between gap-3 mb-5"><div><h2 className="font-black text-lg">Choose your service</h2><p className="text-sm text-gray-500">Three simple selectors — no long scrolling.</p></div><button type="button" onClick={() => servicesQ.refetch()} className="btn-secondary"><RefreshCw className="w-4 h-4" /> {t('common.refresh')}</button></div>
+      <div className="flex items-center justify-between gap-3 mb-5"><div><h2 className="font-black text-lg">Choose your service</h2><p className="text-sm text-gray-500">Two simple steps: category → service.</p></div><button type="button" onClick={() => servicesQ.refetch()} className="btn-secondary"><RefreshCw className="w-4 h-4" /> {t('common.refresh')}</button></div>
       {servicesQ.isLoading ? <div className="py-12 text-center text-gray-500">{t('common.loading')}</div> : servicesQ.isError ? <div className="py-10 text-center"><p className="text-red-600 font-semibold mb-3">Failed to load services.</p><button className="btn-primary" onClick={() => servicesQ.refetch()}>{t('common.refresh')}</button></div> : <>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div><label className="label-primary">1. {t('newOrder.chooseCategory')} / الفئة</label><select className="input-primary h-12" value={categoryId} onChange={e => { setCategoryId(e.target.value); setSection(''); setServiceId(''); setSearch(''); }}><option value="">Select category</option>{categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
-          <div><label className="label-primary">2. Section / القسم</label><select className="input-primary h-12" disabled={!categoryId} value={section} onChange={e => { setSection(e.target.value); setServiceId(''); }}><option value="">{categoryId ? 'Select section' : 'Select category first'}</option>{sections.map(k => <option key={k} value={k}>{sectionLabel(k)}</option>)}</select></div>
-          <div><label className="label-primary">3. Service / الخدمة</label><select className="input-primary h-12" disabled={!section} value={serviceId} onChange={e => chooseService(e.target.value)}><option value="">{section ? 'Select service' : 'Select section first'}</option>{visibleServices.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div><label className="label-primary">1. {t('newOrder.chooseCategory')} / القسم</label><select className="input-primary h-12" value={categoryId} onChange={e => { setCategoryId(e.target.value); setServiceId(''); setSearch(''); }}><option value="">Select category</option>{categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
+          <div><label className="label-primary">2. Service / الخدمة</label><select className="input-primary h-12" disabled={!categoryId} value={serviceId} onChange={e => chooseService(e.target.value)}><option value="">{categoryId ? 'Select service' : 'Select category first'}</option>{visibleServices.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
         </div>
-        {section && <div className="mt-4 flex flex-col md:flex-row gap-3"><div className="relative flex-1"><Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" /><input className="input-primary pl-9" placeholder={t('newOrder.searchInCategory')} value={search} onChange={e => setSearch(e.target.value)} /></div><span className="text-sm text-gray-500 self-center">{visibleServices.length} service(s)</span></div>}
+        {categoryId && <div className="mt-4 flex flex-col md:flex-row gap-3"><div className="relative flex-1"><Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" /><input className="input-primary pl-9" placeholder={t('newOrder.searchInCategory')} value={search} onChange={e => setSearch(e.target.value)} /></div><span className="text-sm text-gray-500 self-center">{visibleServices.length} service(s) in this category</span></div>}
       </>}
     </section>
 

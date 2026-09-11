@@ -12,6 +12,7 @@ type SEOProps = {
 };
 
 const SITE = 'https://smmrapid.store';
+const BRAND = 'RapidSMM';
 
 function upsertMeta(attr: 'name' | 'property', key: string, content: string) {
   let el = document.head.querySelector<HTMLMetaElement>(`meta[${attr}="${key}"]`);

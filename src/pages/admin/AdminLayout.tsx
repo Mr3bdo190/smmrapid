@@ -59,7 +59,7 @@ export default function AdminLayout() {
         isMobileMenuOpen ? "translate-x-0" : (dir === 'rtl' ? "translate-x-full" : "-translate-x-full")
       )}>
         <div className="h-16 flex items-center justify-between px-6 border-b border-gray-800">
-          <span className="text-lg font-bold tracking-tight">{config?.siteName || 'smmrapid.store'} {t('nav.admin.title')}</span>
+          <span className="text-lg font-bold tracking-tight">{config?.siteName || 'RapidSMM'} {t('nav.admin.title')}</span>
           <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden text-gray-400 hover:text-white"><X className="w-6 h-6" /></button>
         </div>
         <nav className="flex-1 overflow-y-auto py-4">

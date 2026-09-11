@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
 import { useTranslation, LanguageSwitcher } from '../../lib/i18n';
-import { LayoutDashboard, ShoppingCart, ListOrdered, Wallet, LogOut, Menu, X, User, Ticket, LifeBuoy, Tags, Link2, Code, Users, Gift, Gamepad2 } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, ListOrdered, Wallet, LogOut, Menu, X, User, Ticket, LifeBuoy, Tags, Link2, Code, Users, Gift, Gamepad2, RefreshCw, Bell, Plus } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 const navItems = [
@@ -59,32 +59,38 @@ export default function ClientLayout() {
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500">{t('common.loading')}</div>;
   if (!dbUser) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
-        <h1 className="text-3xl font-bold mb-4 text-red-600">{t('common.accessDenied')}</h1>
-        <p className="text-gray-600 mb-2">{user ? 'Your login is valid, but your account could not be synchronized with the server.' : 'Please log in to access the client area.'}</p>
-        {user && authError?.code && <p className="text-xs text-red-500 mb-6">Error: {authError.code}</p>}
-        <Link to="/" className="text-indigo-600 hover:underline">{t('common.returnHome')}</Link>
+      <div className="min-h-screen flex items-center justify-center bg-[#f7f8fc] p-4">
+        <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-xl">
+          <div className="brand-mark mx-auto mb-5">R</div>
+          <h1 className="text-2xl font-black text-slate-900">{user ? 'Finishing your account setup' : t('common.accessDenied')}</h1>
+          <p className="mt-2 text-sm leading-6 text-slate-500">{user ? 'Your login is valid. We are reconnecting your account data — this can happen briefly after a new deployment.' : 'Please sign in to access your dashboard.'}</p>
+          {user && authError?.code && <p className="mt-3 text-xs text-amber-600">Temporary sync code: {authError.code}</p>}
+          <div className="mt-6 flex gap-3 justify-center">
+            {user ? <button onClick={() => window.location.reload()} className="btn-primary"><RefreshCw className="h-4 w-4"/> Retry</button> : <Link to="/" className="btn-primary">Return home</Link>}
+            {user && <button onClick={logOut} className="btn-ghost">Sign out</button>}
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen bg-[#f7f8fc] overflow-hidden">
       {isMobileMenuOpen && <div className="fixed inset-0 z-20 bg-black/50 md:hidden" onClick={() => setIsMobileMenuOpen(false)} />}
       <aside className={cn(
-        "fixed inset-y-0 z-30 w-64 bg-white border-gray-200 flex flex-col transform transition-transform duration-200 ease-in-out md:relative md:translate-x-0",
+        "fixed inset-y-0 z-30 w-64 bg-white border-slate-200 flex flex-col transform transition-transform duration-200 ease-in-out md:relative md:translate-x-0",
         dir === 'rtl' ? "right-0 border-l" : "left-0 border-r",
         isMobileMenuOpen ? "translate-x-0" : (dir === 'rtl' ? "translate-x-full" : "-translate-x-full")
       )}>
-        <div className="h-16 flex items-center justify-between px-6 border-b border-gray-200">
-          <span className="text-lg font-bold tracking-tight text-gray-900">{config?.siteName || 'smmrapid.store'}</span>
+        <div className="h-16 flex items-center justify-between px-5 border-b border-slate-200">
+          <Link to="/dashboard" className="flex items-center gap-3"><span className="brand-mark h-9 w-9 text-sm">R</span><span className="text-lg font-black tracking-tight text-slate-900">Rapid<span className="text-violet-600">SMM</span></span></Link>
           <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden text-gray-400 hover:text-gray-900"><X className="w-6 h-6" /></button>
         </div>
         <nav className="flex-1 overflow-y-auto py-4">
           <ul className="space-y-1 px-3">
             {navItems.map((item) => (
               <li key={item.key}>
-                <Link to={item.href} onClick={() => setIsMobileMenuOpen(false)} className={cn("flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors", location.pathname === item.href ? "bg-indigo-50 text-indigo-700" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900")}>
+                <Link to={item.href} onClick={() => setIsMobileMenuOpen(false)} className={cn("flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors", location.pathname === item.href ? "bg-violet-50 text-violet-700" : "text-gray-600 hover:bg-slate-50 hover:text-slate-900")}>
                   <item.icon className="w-5 h-5" /> {t(item.key)}
                 </Link>
               </li>
@@ -97,22 +103,24 @@ export default function ClientLayout() {
         </div>
       </aside>
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden w-full h-full relative">
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 md:px-8 flex-shrink-0">
+        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-8 flex-shrink-0">
           <div className="flex items-center gap-4">
             <button onClick={() => setIsMobileMenuOpen(true)} className="md:hidden text-gray-500 hover:text-gray-900"><Menu className="w-6 h-6" /></button>
             <h2 className="text-xl font-semibold text-gray-800 truncate">{navItems.find(i => i.href === location.pathname) ? t(navItems.find(i => i.href === location.pathname)!.key) : t('nav.clientArea')}</h2>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <Link to="/dashboard/add-funds" className="hidden sm:flex btn-primary py-2"><Plus className="h-4 w-4"/> Add funds</Link>
+            <button className="rounded-xl border border-slate-200 p-2 text-slate-500"><Bell className="h-4 w-4"/></button>
             <div className={dir === 'rtl' ? "flex flex-col text-left" : "flex flex-col text-right"}>
-              <span className="text-sm font-medium text-gray-900">{config?.currencySymbol || '$'}{Number((freshUser || dbUser).balance).toFixed(4)}</span>
-              <span className="text-xs text-gray-500 hidden sm:block">{t('common.currentBalance')}</span>
+              <span className="text-sm font-black text-slate-900">{config?.currencySymbol || '$'}{Number((freshUser || dbUser).balance).toFixed(4)}</span>
+              <span className="text-xs text-slate-500 hidden sm:block">{t('common.currentBalance')}</span>
             </div>
-            <Link to="/dashboard/profile" className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold border border-indigo-200 transition-colors">{(freshUser || dbUser).email[0].toUpperCase()}</Link>
+            <Link to="/dashboard/profile" className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold border border-violet-200 transition-colors">{(freshUser || dbUser).email[0].toUpperCase()}</Link>
           </div>
         </header>
-        <div className="flex-1 overflow-y-auto p-4 md:p-8">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8"><div className="mx-auto max-w-[1440px]">
           <Outlet />
-        </div>
+        </div></div>
       </main>
     </div>
   );

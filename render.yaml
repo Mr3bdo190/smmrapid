@@ -41,4 +41,8 @@ services:
       - key: KASHIER_CURRENCY
         value: EGP
       - key: CURRENCY
-        value: EGP
+        value: USD
+      - key: HELEKET_CURRENCY
+        value: USD
+      - key: HELEKET_TO_WALLET_RATE
+        value: "1"

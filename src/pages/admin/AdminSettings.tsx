@@ -8,7 +8,7 @@ import { Save, PlugZap, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 export default function AdminSettings() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [siteName, setSiteName] = useState('smmrapid.store');
+  const [siteName, setSiteName] = useState('RapidSMM');
   const [currencySymbol, setCurrencySymbol] = useState('$');
   const [vodafoneCashNumber, setVodafoneCashNumber] = useState('');
   const [siteDescription, setSiteDescription] = useState('');
@@ -16,6 +16,7 @@ export default function AdminSettings() {
   const [siteLogo, setSiteLogo] = useState('');
   const [affiliateComm, setAffiliateComm] = useState('5');
   const [usdExchangeRate, setUsdExchangeRate] = useState('50');
+  const [defaultProfitMargin, setDefaultProfitMargin] = useState('50');
 
   const { data: settings } = useQuery({
     queryKey: ['admin-settings'],
@@ -38,6 +39,7 @@ export default function AdminSettings() {
       if (settings.site_logo) setSiteLogo(settings.site_logo);
       if (settings.affiliate_commission_percentage) setAffiliateComm(settings.affiliate_commission_percentage);
       if (settings.usd_exchange_rate) setUsdExchangeRate(settings.usd_exchange_rate);
+      if (settings.default_profit_margin) setDefaultProfitMargin(settings.default_profit_margin);
     }
   }, [settings]);
 
@@ -68,6 +70,7 @@ export default function AdminSettings() {
       site_logo: siteLogo,
       affiliate_commission_percentage: affiliateComm,
       usd_exchange_rate: usdExchangeRate,
+      default_profit_margin: defaultProfitMargin,
     });
   };
 
@@ -97,7 +100,7 @@ export default function AdminSettings() {
           <label className="block text-sm font-medium text-gray-700 mb-1">Site Description (SEO)</label>
           <input type="text" value={siteDescription} onChange={e => setSiteDescription(e.target.value)} className="input-primary w-full" />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="rounded-2xl border border-violet-100 bg-violet-50 p-4"><label className="block text-sm font-bold text-slate-800">Default provider profit margin (%)</label><p className="mt-1 text-xs text-slate-500">Used when creating a new provider. Existing providers keep their own margin until you edit them.</p><input type="number" min="0" max="10000" step="0.1" value={defaultProfitMargin} onChange={e=>setDefaultProfitMargin(e.target.value)} className="input-primary mt-3 max-w-xs"/></div><div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Currency Symbol</label>
             <input type="text" value={currencySymbol} onChange={e => setCurrencySymbol(e.target.value)} className="input-primary w-full" />

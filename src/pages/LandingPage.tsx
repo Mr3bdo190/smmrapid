@@ -1,439 +1,135 @@
-import { useAuth } from '../contexts/AuthContext';
+import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import React, { useState, useEffect, useRef } from 'react';
-import toast from 'react-hot-toast';
-import {
-  ArrowRight, Zap, ShieldCheck, Wallet, Cable, LifeBuoy, ChevronDown,
-  CheckCircle2, Circle,
-} from 'lucide-react';
+import { ArrowRight, ChevronDown, Globe2, Headphones, Layers3, Menu, ShieldCheck, Sparkles, Wallet, X, Zap } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useTranslation, LanguageSwitcher } from '../lib/i18n';
+import { useTranslation } from '../lib/i18n';
+import { useAuth } from '../contexts/AuthContext';
+import toast from 'react-hot-toast';
 
-const PLATFORMS = ['Instagram', 'TikTok', 'YouTube', 'Facebook', 'X / Twitter', 'Telegram', 'Spotify', 'Threads'];
-
-const FEED_SAMPLE = [
-  { label: 'Instagram Followers', qty: '+1,000', status: 'Completed' },
-  { label: 'TikTok Views', qty: '+10,000', status: 'Processing' },
-  { label: 'YouTube Watch Time', qty: '+500 hrs', status: 'In progress' },
-  { label: 'Facebook Page Likes', qty: '+250', status: 'Completed' },
-  { label: 'Telegram Members', qty: '+2,000', status: 'Processing' },
-  { label: 'Spotify Plays', qty: '+5,000', status: 'Completed' },
-];
-
-const FEATURES = [
-  { icon: Zap, titleKey: 'landing.feature1Title', bodyKey: 'landing.feature1Body' },
-  { icon: Wallet, titleKey: 'landing.feature2Title', bodyKey: 'landing.feature2Body' },
-  { icon: Cable, titleKey: 'landing.feature3Title', bodyKey: 'landing.feature3Body' },
-  { icon: LifeBuoy, titleKey: 'landing.feature4Title', bodyKey: 'landing.feature4Body' },
-];
-
-const STEPS = [
-  { n: '01', titleKey: 'landing.step1Title', bodyKey: 'landing.step1Body' },
-  { n: '02', titleKey: 'landing.step2Title', bodyKey: 'landing.step2Body' },
-  { n: '03', titleKey: 'landing.step3Title', bodyKey: 'landing.step3Body' },
+const PLATFORMS = [
+  ['Instagram', 'IG'], ['TikTok', 'TK'], ['YouTube', 'YT'], ['Facebook', 'FB'],
+  ['Telegram', 'TG'], ['X / Twitter', 'X'], ['Spotify', 'SP'], ['Threads', 'TH']
 ];
 
 const FAQS = [
-  { qKey: 'landing.faq1Q', aKey: 'landing.faq1A' },
-  { qKey: 'landing.faq2Q', aKey: 'landing.faq2A' },
-  { qKey: 'landing.faq3Q', aKey: 'landing.faq3A' },
-  { qKey: 'landing.faq4Q', aKey: 'landing.faq4A' },
-  { qKey: 'landing.faq5Q', aKey: 'landing.faq5A' },
+  ['What is RapidSMM?', 'RapidSMM is a social media marketing panel where customers can discover services, fund a USD wallet, place orders and track delivery from one dashboard.'],
+  ['How do I place an order?', 'Create an account, add funds, choose a category, section and service, then enter the target link and quantity.'],
+  ['Do I need to share my social password?', 'No. Services should only request the target URL or other service-specific public information. Never share your social account password.'],
+  ['Can resellers automate orders?', 'Yes. RapidSMM includes an API layer designed for resellers and software integrations.'],
+  ['What currency is my wallet?', 'USD is the primary wallet currency. External payment methods can use their own settlement currency and are converted before the wallet is credited.'],
 ];
 
-function LiveFeedPreview({ currencySymbol }: { currencySymbol: string }) {
-  const { t } = useTranslation();
-  const [rows, setRows] = useState(FEED_SAMPLE.slice(0, 3));
-  const idx = useRef(3);
-  useEffect(() => {
-    const id = setInterval(() => {
-      setRows(prev => {
-        const next = FEED_SAMPLE[idx.current % FEED_SAMPLE.length];
-        idx.current += 1;
-        return [next, ...prev].slice(0, 4);
-      });
-    }, 2600);
-    return () => clearInterval(id);
-  }, []);
-
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm">
-      <div className="flex items-center justify-between mb-4">
-        <span className="text-xs text-slate-400">{t('landing.liveFeedLabel')}</span>
-        <span className="flex items-center gap-1.5 text-xs text-emerald-400">
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400"></span>
-          </span>
-          {t('landing.liveFeedSyncing')}
-        </span>
-      </div>
-      <div className="space-y-2">
-        {rows.map((r, i) => (
-          <div key={`${r.label}-${i}-${r.qty}`} className="flex items-center justify-between rounded-lg bg-white/[0.04] px-3.5 py-3 text-sm">
-            <div className="min-w-0">
-              <div className="text-slate-100 truncate">{r.label}</div>
-              <div className="text-slate-500 text-xs mt-0.5 tabular-nums">{r.qty}</div>
-            </div>
-            <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${
-              r.status === 'Completed' ? 'bg-emerald-400/10 text-emerald-400' : 'bg-amber-400/10 text-amber-400'
-            }`}>{r.status}</span>
-          </div>
-        ))}
-      </div>
-      <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-4 text-sm">
-        <span className="text-slate-400">{t('landing.walletBalance')}</span>
-        <span className="text-slate-100 font-medium tabular-nums">128.40 {currencySymbol}</span>
-      </div>
-    </div>
-  );
-}
-
-function PricingPreview() {
-  const { data } = useQuery({
-    queryKey: ['public-showcase'],
-    queryFn: async () => {
-      const res = await fetch('/api/public/showcase');
-      if (!res.ok) throw new Error('Failed to load');
-      return res.json();
-    },
-    retry: 1,
-  });
-  const { t } = useTranslation();
-
-  const rows: any[] = data?.services || [];
-  if (!rows.length) return null;
-
-  return (
-    <div className="overflow-hidden rounded-2xl border border-white/10">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-white/10 text-left text-slate-400">
-            <th className="px-5 py-3 font-normal">{t('landing.tableService')}</th>
-            <th className="px-5 py-3 font-normal hidden sm:table-cell">{t('landing.tableCategory')}</th>
-            <th className="px-5 py-3 font-normal text-right">{t('landing.tableRate')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((s, i) => (
-            <tr key={s.id} className={i !== rows.length - 1 ? 'border-b border-white/[0.06]' : ''}>
-              <td className="px-5 py-3.5 text-slate-100">{s.name}</td>
-              <td className="px-5 py-3.5 text-slate-400 hidden sm:table-cell">{s.category}</td>
-              <td className="px-5 py-3.5 text-right text-slate-100 tabular-nums">{Number(s.rate).toFixed(2)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function FaqItem({ q, a }: { q: string; a: string }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="border-b border-white/10 py-5">
-      <button onClick={() => setOpen(o => !o)} className="flex w-full items-center justify-between text-left gap-4">
-        <span className="text-slate-100 font-medium">{q}</span>
-        <ChevronDown className={`w-4 h-4 shrink-0 text-slate-500 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-      {open && <p className="mt-3 text-sm leading-relaxed text-slate-400 max-w-2xl">{a}</p>}
-    </div>
-  );
-}
-
 export default function LandingPage() {
-  const { t } = useTranslation();
-  const { data: config } = useQuery({
-    queryKey: ['client-config'],
-    queryFn: async () => {
-      const res = await fetch('/api/client/config');
-      if (!res.ok) throw new Error('API Error');
-      return res.json();
-    }
-  });
-  const { data: showcase } = useQuery({
-    queryKey: ['public-showcase'],
-    queryFn: async () => { const res = await fetch('/api/public/showcase'); if (!res.ok) throw new Error('failed'); return res.json(); },
-    retry: 1,
-  });
-
+  const { t, dir } = useTranslation();
   const { user, dbUser, signIn, registerWithEmail, loginWithEmail } = useAuth();
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [isRegister, setIsRegister] = useState(true);
+  const [menu, setMenu] = useState(false);
+  const [auth, setAuth] = useState<'login' | 'register' | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  useEffect(() => { if (new URLSearchParams(window.location.search).get('ref')) { setIsRegister(true); setShowAuthModal(true); } }, []);
+  const [faq, setFaq] = useState(0);
+  const setIsRegister = (value: boolean) => setAuth(value ? 'register' : 'login');
+  React.useEffect(() => { if (new URLSearchParams(window.location.search).get('ref')) setIsRegister(true); }, []);
 
+  const { data: showcase } = useQuery({
+    queryKey: ['public-showcase'],
+    queryFn: async () => (await fetch('/api/public/showcase')).json(),
+    retry: 1,
+  });
+  const { data: config } = useQuery({
+    queryKey: ['client-config'],
+    queryFn: async () => (await fetch('/api/client/config')).json(),
+  });
+  const services = showcase?.services || [];
+  const serviceCount = Number(showcase?.serviceCount || 0);
+  const categoryCount = Number(showcase?.categoryCount || 0);
   const siteName = config?.siteName || 'RapidSMM';
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isRegister) {
-      if (password.length < 8) return toast.error(t('landing.passwordMinLength'));
-      if (!name.trim()) return toast.error(t('landing.nameRequired'));
-      try { await registerWithEmail(email, password, name.trim()); setShowAuthModal(false); }
-      catch (err: any) { toast.error(err.message); }
-    } else {
-      try { await loginWithEmail(email, password); setShowAuthModal(false); }
-      catch (err: any) { toast.error(t('landing.invalidCredentials')); }
-    }
+    try {
+      if (auth === 'register') {
+        if (!name.trim() || password.length < 8) throw new Error('Enter your name and an 8+ character password.');
+        await registerWithEmail(email.trim(), password, name.trim());
+      } else {
+        await loginWithEmail(email.trim(), password);
+      }
+      setAuth(null);
+    } catch (err: any) { toast.error(err?.message || 'Authentication failed'); }
   };
 
-  return (
-    <div className="min-h-screen bg-[#0B0F17] text-slate-100" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
-      {showAuthModal && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[100] p-4">
-          <div className="bg-[#121826] border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl relative">
-            <button onClick={() => setShowAuthModal(false)} className="absolute top-4 right-4 text-slate-500 hover:text-slate-300">×</button>
-            <h2 className="text-2xl font-bold mb-1 text-center text-white" style={{ fontFamily: "'Manrope', sans-serif" }}>
-              {isRegister ? t('common.createAccount') : t('common.welcomeBack')}
-            </h2>
-            <p className="text-center text-sm text-slate-400 mb-6">{isRegister ? t('landing.authRegisterSubtitle') : t('landing.authLoginSubtitle', { site: siteName })}</p>
-            <form onSubmit={handleAuth} className="space-y-4">
-              {isRegister && (
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">{t('common.name')}</label>
-                  <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg outline-none text-slate-100 focus:border-amber-400/50" required maxLength={50} placeholder={t('common.namePlaceholder')} />
-                </div>
-              )}
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">{t('common.email')}</label>
-                <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg outline-none text-slate-100 focus:border-amber-400/50" required />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">{t('common.password')}</label>
-                <input type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg outline-none text-slate-100 focus:border-amber-400/50" required />
-              </div>
-              <button type="submit" className="w-full bg-amber-400 text-[#0B0F17] font-semibold py-2.5 rounded-lg hover:bg-amber-300 transition-colors">
-                {isRegister ? t('common.createAccountBtn') : t('common.signIn')}
-              </button>
-            </form>
-            <div className="mt-4 flex items-center justify-between">
-              <span className="border-b border-white/10 flex-1"></span>
-              <span className="text-xs text-slate-500 px-4">{t('common.or')}</span>
-              <span className="border-b border-white/10 flex-1"></span>
-            </div>
-            <button onClick={async () => { try { await signIn(); setShowAuthModal(false); } catch (err: any) { toast.error(err.message || t('landing.googleSignInFailed')); } }} className="mt-4 w-full border border-white/10 text-slate-200 font-medium py-2.5 rounded-lg hover:bg-white/5 transition-colors flex items-center justify-center gap-2">
-              {t('common.continueWithGoogle')}
-            </button>
-            <p className="mt-6 text-center text-sm text-slate-400">
-              {isRegister ? t('common.alreadyHaveAccount') : t('common.dontHaveAccount')}
-              <button onClick={() => { setIsRegister(!isRegister); setName(''); setEmail(''); setPassword(''); }} className="ml-1 text-amber-400 font-medium hover:underline">
-                {isRegister ? t('common.signInLink') : t('common.registerNow')}
-              </button>
-            </p>
-          </div>
-        </div>
-      )}
+  const headline = useMemo(() => dir === 'rtl' ? 'نمو أسرع. طلبات أبسط. لوحة واحدة.' : 'Faster growth. Cleaner orders. One powerful panel.', [dir]);
 
-      <header className="px-6 py-4 flex items-center justify-between border-b border-white/10 sticky top-0 z-50 bg-[#0B0F17]/80 backdrop-blur-md">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-md bg-amber-400 flex items-center justify-center">
-            <Zap className="w-4 h-4 text-[#0B0F17]" fill="currentColor" />
+  return (
+    <div className="min-h-screen bg-[#f7f8fc] text-slate-900" dir={dir}>
+      <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+          <Link to="/" className="flex items-center gap-3" onClick={() => setMenu(false)}>
+            <span className="brand-mark">R</span>
+            <span className="text-xl font-black tracking-tight">Rapid<span className="text-violet-600">SMM</span></span>
+          </Link>
+          <nav className="hidden items-center gap-7 text-sm font-semibold text-slate-600 md:flex">
+            <Link to="/services" className="hover:text-violet-600">Services</Link>
+            <a href="#how" className="hover:text-violet-600">How it works</a>
+            <Link to="/blog/" className="hover:text-violet-600">Blog</Link>
+            <Link to="/contact" className="hover:text-violet-600">Support</Link>
+          </nav>
+          <div className="hidden items-center gap-3 md:flex">
+            {user && dbUser ? <Link to="/dashboard" className="btn-primary">Dashboard <ArrowRight className="h-4 w-4" /></Link> : <><button onClick={() => setAuth('login')} className="btn-ghost">Sign in</button><button onClick={() => setAuth('register')} className="btn-primary">Get started <ArrowRight className="h-4 w-4" /></button></>}
           </div>
-          <span className="text-lg font-bold tracking-tight" style={{ fontFamily: "'Manrope', sans-serif" }}>{siteName}</span>
+          <button className="rounded-xl p-2 md:hidden" onClick={() => setMenu(!menu)}>{menu ? <X /> : <Menu />}</button>
         </div>
-        <nav className="hidden md:flex items-center gap-8 text-sm text-slate-400">
-          <a href="#features" className="hover:text-slate-100 transition-colors">{t('landing.navFeatures')}</a>
-          <Link to="/services" className="hover:text-slate-100 transition-colors">{t('nav.services')}</Link>
-          <a href="#faq" className="hover:text-slate-100 transition-colors">{t('landing.navFaq')}</a>
-          <Link to="/contact" className="hover:text-slate-100 transition-colors">{t('contact.title')}</Link>
-        </nav>
-        <div className="flex items-center gap-3">
-          <LanguageSwitcher className="border-white/10 text-slate-300 hover:bg-white/5" />
-          {user ? (
-            <div className="flex gap-3">
-              {dbUser?.role === 'admin' && <Link to="/admin" className="px-4 py-2 text-sm font-medium text-slate-100 border border-white/10 rounded-lg hover:bg-white/5">{t('landing.adminPanel')}</Link>}
-              <Link to="/dashboard" className="px-4 py-2 text-sm font-semibold text-[#0B0F17] bg-amber-400 rounded-lg hover:bg-amber-300">{t('landing.dashboard')}</Link>
-            </div>
-          ) : (
-            <div className="flex gap-3">
-              <button onClick={() => { setIsRegister(false); setShowAuthModal(true); }} className="hidden sm:inline px-4 py-2 text-sm font-medium text-slate-300 hover:text-white">{t('landing.signIn')}</button>
-              <button onClick={() => { setIsRegister(true); setShowAuthModal(true); }} className="px-4 py-2 text-sm font-semibold text-[#0B0F17] bg-amber-400 rounded-lg hover:bg-amber-300 transition-colors">{t('landing.createAccount')}</button>
-            </div>
-          )}
-        </div>
+        {menu && <div className="border-t border-slate-200 bg-white p-4 md:hidden"><div className="flex flex-col gap-2"><Link onClick={() => setMenu(false)} className="mobile-nav" to="/services">Services</Link><a onClick={() => setMenu(false)} className="mobile-nav" href="#how">How it works</a><Link onClick={() => setMenu(false)} className="mobile-nav" to="/blog/">Blog</Link><Link onClick={() => setMenu(false)} className="mobile-nav" to="/contact">Support</Link><button onClick={() => {setMenu(false);setAuth('login')}} className="mobile-nav text-left">Sign in</button><button onClick={() => {setMenu(false);setAuth('register')}} className="btn-primary justify-center">Create account</button></div></div>}
       </header>
 
       <main>
-        {/* Hero */}
-        <section className="px-6 pt-16 pb-20 md:pt-24 md:pb-28 max-w-6xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-14 items-center">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 text-xs font-medium text-amber-400 bg-amber-400/10 rounded-full border border-amber-400/20 mb-6">
-                {config?.siteDescription || t('landing.defaultTagline')}
+        <section className="relative overflow-hidden bg-slate-950 text-white">
+          <div className="hero-grid absolute inset-0 opacity-70" />
+          <div className="absolute -left-24 top-10 h-72 w-72 rounded-full bg-violet-600/25 blur-3xl" />
+          <div className="absolute -right-24 bottom-0 h-80 w-80 rounded-full bg-cyan-500/15 blur-3xl" />
+          <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[1.1fr_.9fr] lg:px-8 lg:py-28">
+            <div className="max-w-3xl">
+              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[.06] px-3 py-1.5 text-xs font-bold text-violet-200"><Sparkles className="h-3.5 w-3.5" /> RapidSMM • Social Growth Infrastructure</div>
+              <h1 className="text-5xl font-black leading-[1.03] tracking-[-.04em] sm:text-6xl lg:text-7xl">{headline}</h1>
+              <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">{dir === 'rtl' ? 'خدمات تسويق السوشيال ميديا، أسعار مرنة للموزعين، محفظة بالدولار وواجهة API — كل ده في تجربة واحدة سريعة وواضحة.' : 'Social media services, reseller-friendly pricing, a USD wallet and a real API — wrapped in one fast, clear experience.'}</p>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <button onClick={() => setAuth('register')} className="btn-hero">Start for free <ArrowRight className="h-4 w-4" /></button>
+                <Link to="/services" className="btn-hero-secondary">Browse services</Link>
               </div>
-              <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight !leading-[1.08] text-white" style={{ fontFamily: "'Manrope', sans-serif" }}>
-                {t('landing.heroTitle')}
-              </h1>
-              <p className="text-lg text-slate-400 mt-6 max-w-lg">
-                {t('landing.heroSubtitle', { site: siteName })}
-              </p>
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 pt-8">
-                {user ? (
-                  <Link to="/dashboard" className="px-6 py-3.5 text-sm font-semibold text-[#0B0F17] bg-amber-400 rounded-xl hover:bg-amber-300 transition-colors flex items-center gap-2">
-                    {t('landing.goToDashboard')} <ArrowRight className="w-4 h-4" />
-                  </Link>
-                ) : (
-                  <button onClick={() => { setIsRegister(true); setShowAuthModal(true); }} className="px-6 py-3.5 text-sm font-semibold text-[#0B0F17] bg-amber-400 rounded-xl hover:bg-amber-300 transition-colors flex items-center gap-2">
-                    {t('landing.createFreeAccount')} <ArrowRight className="w-4 h-4" />
-                  </button>
-                )}
-                <a href="#pricing" className="px-6 py-3.5 text-sm font-medium text-slate-200 border border-white/10 rounded-xl hover:bg-white/5 transition-colors">
-                  {t('landing.seePricing')}
-                </a>
-              </div>
-              <div className="flex flex-wrap gap-x-6 gap-y-2 pt-8 text-sm text-slate-500">
-                <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-400" /> {t('landing.trustNoWait')}</span>
-                <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-400" /> {t('landing.trustLocalPayment')}</span>
-                <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-400" /> {t('landing.trustApi')}</span>
-              </div>
+              <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-sm text-slate-400"><span>✓ USD wallet</span><span>✓ Provider sync</span><span>✓ Reseller API</span><span>✓ Ticket support</span></div>
             </div>
-            <LiveFeedPreview currencySymbol={config?.currencySymbol || 'EGP'} />
-          </div>
-        </section>
-
-        {/* Platform strip */}
-        <section className="border-y border-white/10 bg-white/[0.02]">
-          <div className="max-w-6xl mx-auto px-6 py-5 flex flex-wrap items-center gap-x-8 gap-y-2 text-sm text-slate-500">
-            <span className="text-slate-600">{t('landing.platformsLabel')}</span>
-            {PLATFORMS.map(p => <span key={p}>{p}</span>)}
-          </div>
-        </section>
-
-        {/* Features */}
-        <section id="features" className="px-6 py-20 md:py-28 max-w-6xl mx-auto">
-          <div className="grid lg:grid-cols-[minmax(0,320px)_1fr] gap-12">
-            <div>
-              <h2 className="text-3xl font-bold text-white !leading-tight" style={{ fontFamily: "'Manrope', sans-serif" }}>
-                {t('landing.featuresTitle')}
-              </h2>
-              <p className="text-slate-400 mt-4">
-                {t('landing.featuresSubtitle')}
-              </p>
-            </div>
-            <div className="divide-y divide-white/10">
-              {FEATURES.map(f => (
-                <div key={f.titleKey} className="flex gap-5 py-6 first:pt-0">
-                  <f.icon className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-                  <div>
-                    <h3 className="text-slate-100 font-semibold mb-1">{t(f.titleKey)}</h3>
-                    <p className="text-slate-400 text-sm leading-relaxed">{t(f.bodyKey)}</p>
-                  </div>
+            <div className="self-center">
+              <div className="glass-card p-5 shadow-2xl shadow-violet-950/40">
+                <div className="mb-5 flex items-center justify-between"><div><p className="text-xs text-slate-400">RapidSMM dashboard</p><p className="mt-1 text-2xl font-black">Order center</p></div><span className="status-dot">Live</span></div>
+                <div className="space-y-3">
+                  <div className="rounded-2xl bg-white/[.06] p-4"><div className="mb-3 flex items-center justify-between text-xs text-slate-400"><span>Category</span><span>1 / 3</span></div><div className="rounded-xl bg-white/[.08] px-4 py-3 font-semibold">Instagram</div></div>
+                  <div className="rounded-2xl bg-white/[.06] p-4"><div className="mb-3 flex items-center justify-between text-xs text-slate-400"><span>Section</span><span>2 / 3</span></div><div className="rounded-xl bg-white/[.08] px-4 py-3 font-semibold">Followers</div></div>
+                  <div className="rounded-2xl bg-white/[.06] p-4"><div className="mb-3 flex items-center justify-between text-xs text-slate-400"><span>Service</span><span>3 / 3</span></div><div className="rounded-xl bg-white/[.08] px-4 py-3 font-semibold">Instagram Followers — High Quality</div></div>
                 </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* How it works */}
-        <section className="px-6 py-20 md:py-24 border-t border-white/10 bg-white/[0.02]">
-          <div className="max-w-6xl mx-auto">
-            <h2 className="text-3xl font-bold text-white mb-12" style={{ fontFamily: "'Manrope', sans-serif" }}>{t('landing.stepsTitle')}</h2>
-            <div className="grid md:grid-cols-3 gap-10">
-              {STEPS.map(s => (
-                <div key={s.n}>
-                  <span className="text-sm text-amber-400 tabular-nums">{s.n}</span>
-                  <h3 className="text-lg font-semibold text-white mt-3 mb-2">{t(s.titleKey)}</h3>
-                  <p className="text-slate-400 text-sm leading-relaxed">{t(s.bodyKey)}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Pricing preview */}
-        <section id="pricing" className="px-6 py-20 md:py-28 max-w-6xl mx-auto">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10">
-            <div>
-              <h2 className="text-3xl font-bold text-white" style={{ fontFamily: "'Manrope', sans-serif" }}>{t('landing.pricingTitle')}</h2>
-              <p className="text-slate-400 mt-3 max-w-xl">
-                {showcase?.serviceCount ? t('landing.pricingSubtitleWithCounts', { count: showcase.serviceCount, cats: showcase.categoryCount }) : t('landing.pricingSubtitleFallback')} {t('landing.pricingSubtitleSuffix')}
-              </p>
-            </div>
-          </div>
-          <PricingPreview />
-          <div className="mt-8">
-            <Link to="/services" className="inline-flex items-center gap-2 text-sm font-medium text-amber-400 hover:underline">{t('landing.viewFullPricing')} <ArrowRight className="w-4 h-4" /></Link>
-          </div>
-        </section>
-
-        {/* Security */}
-        <section className="px-6 py-20 md:py-24 border-t border-white/10 bg-white/[0.02]">
-          <div className="max-w-6xl mx-auto grid md:grid-cols-[minmax(0,320px)_1fr] gap-12 items-start">
-            <div className="flex items-start gap-4">
-              <ShieldCheck className="w-8 h-8 text-amber-400 shrink-0" />
-              <div>
-                <h2 className="text-2xl font-bold text-white" style={{ fontFamily: "'Manrope', sans-serif" }}>{t('landing.securityTitle')}</h2>
-              </div>
-            </div>
-            <div className="grid sm:grid-cols-3 gap-8 text-sm">
-              <div>
-                <h3 className="text-slate-100 font-semibold mb-1.5">{t('landing.security1Title')}</h3>
-                <p className="text-slate-400 leading-relaxed">{t('landing.security1Body')}</p>
-              </div>
-              <div>
-                <h3 className="text-slate-100 font-semibold mb-1.5">{t('landing.security2Title')}</h3>
-                <p className="text-slate-400 leading-relaxed">{t('landing.security2Body')}</p>
-              </div>
-              <div>
-                <h3 className="text-slate-100 font-semibold mb-1.5">{t('landing.security3Title')}</h3>
-                <p className="text-slate-400 leading-relaxed">{t('landing.security3Body')}</p>
+                <div className="mt-4 flex items-center justify-between rounded-2xl bg-violet-500/15 px-4 py-3"><span className="text-sm text-slate-300">Estimated charge</span><strong>$2.8400</strong></div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* FAQ */}
-        <section id="faq" className="px-6 py-20 md:py-28 max-w-3xl mx-auto">
-          <h2 className="text-3xl font-bold text-white mb-10" style={{ fontFamily: "'Manrope', sans-serif" }}>{t('landing.faqTitle')}</h2>
-          <div>
-            {FAQS.map(f => <FaqItem key={f.qKey} q={t(f.qKey)} a={t(f.aKey)} />)}
-          </div>
-        </section>
+        <section className="border-b border-slate-200 bg-white"><div className="mx-auto grid max-w-7xl grid-cols-2 gap-4 px-4 py-7 sm:grid-cols-4 sm:px-6 lg:px-8"><div className="stat"><b>{serviceCount || '—'}</b><span>Live services</span></div><div className="stat"><b>{categoryCount || '—'}</b><span>Categories</span></div><div className="stat"><b>USD</b><span>Wallet currency</span></div><div className="stat"><b>24/7</b><span>Panel access</span></div></div></section>
 
-        {/* Final CTA */}
-        <section className="px-6 py-20 md:py-24 bg-amber-400">
-          <div className="max-w-4xl mx-auto text-center">
-            <h2 className="text-3xl md:text-4xl font-extrabold text-[#0B0F17]" style={{ fontFamily: "'Manrope', sans-serif" }}>
-              {t('landing.ctaTitle')}
-            </h2>
-            <p className="text-[#0B0F17]/70 mt-4 max-w-lg mx-auto">
-              {t('landing.ctaSubtitle')}
-            </p>
-            {user ? (
-              <Link to="/dashboard" className="inline-flex items-center gap-2 mt-8 px-7 py-3.5 text-sm font-semibold text-white bg-[#0B0F17] rounded-xl hover:bg-slate-900 transition-colors">
-                {t('landing.goToDashboard')} <ArrowRight className="w-4 h-4" />
-              </Link>
-            ) : (
-              <button onClick={() => { setIsRegister(true); setShowAuthModal(true); }} className="inline-flex items-center gap-2 mt-8 px-7 py-3.5 text-sm font-semibold text-white bg-[#0B0F17] rounded-xl hover:bg-slate-900 transition-colors">
-                {t('landing.createFreeAccount')} <ArrowRight className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-        </section>
+        <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8"><div className="mb-8 flex items-end justify-between gap-4"><div><p className="eyebrow">PLATFORMS</p><h2 className="section-title">One panel. Every major network.</h2></div><Link className="hidden text-sm font-bold text-violet-600 sm:block" to="/services">View all services →</Link></div><div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">{PLATFORMS.map(([name, initials]) => <Link to="/services" key={name} className="platform-card"><span>{initials}</span><b>{name}</b></Link>)}</div></section>
+
+        <section id="how" className="bg-white"><div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8"><div className="max-w-2xl"><p className="eyebrow">HOW IT WORKS</p><h2 className="section-title">Three steps. No clutter.</h2><p className="section-copy">The ordering experience is intentionally simple: choose the market, narrow the service type, select the exact service, then place the order.</p></div><div className="mt-12 grid gap-5 md:grid-cols-3">{[['01','Create account','Start with a free account and access the dashboard.'],['02','Fund your wallet','Add USD balance using an available payment method.'],['03','Place & track','Choose Category → Section → Service and track every order.']].map(([n,t,d]) => <div key={n} className="step-card"><span>{n}</span><h3>{t}</h3><p>{d}</p></div>)}</div></div></section>
+
+        <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8"><div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">{[[Zap,'Fast dispatch','Orders can be routed to connected provider APIs automatically.'],[Wallet,'USD wallet','Keep one clear base currency across orders and wallet history.'],[Layers3,'Provider-ready','Import service names, rates, limits and capabilities from providers.'],[Headphones,'Human support','Use tickets and contact channels when an order needs attention.']].map(([Icon,title,body]) => {const I=Icon as any; return <div className="feature-card" key={String(title)}><I className="h-6 w-6 text-violet-600"/><h3>{title as string}</h3><p>{body as string}</p></div>})}</div></section>
+
+        <section className="bg-slate-950 text-white"><div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8"><div className="grid gap-12 lg:grid-cols-2"><div><p className="eyebrow text-violet-300">LIVE CATALOG</p><h2 className="section-title text-white">Pricing that can compete.</h2><p className="mt-4 max-w-xl text-slate-400">Service pricing is controlled from the admin side and can be synced from providers. Your margin stays yours.</p><Link to="/services" className="btn-hero mt-7 inline-flex">Open catalog <ArrowRight className="h-4 w-4" /></Link></div><div className="overflow-hidden rounded-3xl border border-white/10 bg-white/[.03]">{services.length ? services.slice(0,6).map((s:any,i:number)=><div key={s.id} className={`flex items-center justify-between gap-4 px-5 py-4 ${i ? 'border-t border-white/10':''}`}><div className="min-w-0"><p className="truncate font-semibold">{s.name}</p><p className="mt-1 text-xs text-slate-500">{s.category}</p></div><b className="shrink-0">${Number(s.rate).toFixed(4)}</b></div>) : <div className="p-8 text-center text-slate-500">Connect a provider to populate live pricing.</div>}</div></div></div></section>
+
+        <section className="mx-auto max-w-4xl px-4 py-20 sm:px-6"><div className="text-center"><p className="eyebrow">FAQ</p><h2 className="section-title">Questions, answered.</h2></div><div className="mt-10 rounded-3xl border border-slate-200 bg-white px-6 shadow-sm">{FAQS.map(([q,a],i)=><div key={q} className="border-b border-slate-100 last:border-0"><button className="flex w-full items-center justify-between gap-5 py-5 text-left font-bold" onClick={()=>setFaq(faq===i?-1:i)}><span>{q}</span><ChevronDown className={`h-5 w-5 text-slate-400 transition ${faq===i?'rotate-180':''}`} /></button>{faq===i&&<p className="pb-5 pr-8 text-sm leading-7 text-slate-500">{a}</p>}</div>)}</div></section>
+
+        <section className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8"><div className="overflow-hidden rounded-[2rem] bg-gradient-to-br from-violet-700 to-indigo-900 px-6 py-12 text-center text-white sm:px-12"><ShieldCheck className="mx-auto h-8 w-8 text-violet-200"/><h2 className="mt-4 text-3xl font-black">Ready to build your next order flow?</h2><p className="mx-auto mt-3 max-w-xl text-violet-100">Start free, connect your provider network and let RapidSMM handle the repetitive parts.</p><button onClick={()=>setAuth('register')} className="btn-hero mt-7">Create your RapidSMM account <ArrowRight className="h-4 w-4"/></button></div></section>
       </main>
 
-      <footer className="border-t border-white/10 px-6 py-10">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-500">
-          <div className="flex items-center gap-2">
-            <Circle className="w-3 h-3 fill-amber-400 text-amber-400" />
-            <span>{siteName}</span>
-          </div>
-          <div className="flex items-center gap-6 flex-wrap justify-center">
-            <a href="#features" className="hover:text-slate-300">{t('landing.navFeatures')}</a>
-            <Link to="/services" className="hover:text-slate-300">{t('nav.services')}</Link>
-            <a href="/blog/" className="hover:text-slate-300">المدونة</a>
-            <a href="#faq" className="hover:text-slate-300">{t('landing.navFaq')}</a>
-            <Link to="/contact" className="hover:text-slate-300">{t('landing.footerSupport')}</Link>
-            <Link to="/terms" className="hover:text-slate-300">{t('legal.terms')}</Link>
-            <Link to="/privacy" className="hover:text-slate-300">{t('legal.privacy')}</Link>
-            <Link to="/refund-policy" className="hover:text-slate-300">{t('legal.refund')}</Link>
-          </div>
-          <span>© {new Date().getFullYear()} {siteName}</span>
-        </div>
-      </footer>
+      <footer className="border-t border-slate-200 bg-white"><div className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-8 text-sm text-slate-500 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8"><div><span className="font-black text-slate-900">Rapid<span className="text-violet-600">SMM</span></span><span className="ml-3">Social media services & reseller infrastructure.</span></div><div className="flex flex-wrap gap-5"><Link to="/services">Services</Link><Link to="/contact">Support</Link><Link to="/terms">Terms</Link><Link to="/privacy">Privacy</Link><Link to="/refund-policy">Refunds</Link></div></div></footer>
+
+      {auth && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"><div className="w-full max-w-md rounded-3xl bg-white p-7 shadow-2xl"><div className="flex items-start justify-between"><div><div className="brand-mark mb-4">R</div><h2 className="text-2xl font-black">{auth==='register'?'Create your account':'Welcome back'}</h2><p className="mt-1 text-sm text-slate-500">{siteName}</p></div><button onClick={()=>setAuth(null)} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100"><X/></button></div><form onSubmit={handleAuth} className="mt-7 space-y-4">{auth==='register'&&<div><label className="label-primary">Name</label><input className="input-primary" value={name} onChange={e=>setName(e.target.value)} required/></div>}<div><label className="label-primary">Email</label><input className="input-primary" type="email" value={email} onChange={e=>setEmail(e.target.value)} required/></div><div><label className="label-primary">Password</label><input className="input-primary" type="password" value={password} onChange={e=>setPassword(e.target.value)} minLength={8} required/></div><button className="btn-primary w-full justify-center">{auth==='register'?'Create account':'Sign in'}</button></form><div className="mt-5 text-center text-sm text-slate-500">{auth==='register'?<>Already have an account? <button className="font-bold text-violet-600" onClick={()=>setAuth('login')}>Sign in</button></>:<>New here? <button className="font-bold text-violet-600" onClick={()=>setAuth('register')}>Create account</button></>}</div></div></div>}
     </div>
   );
 }

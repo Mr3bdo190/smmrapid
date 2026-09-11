@@ -68,6 +68,28 @@ const money = (v: number) => Math.round((v + Number.EPSILON) * 10000) / 10000;
 const positiveMoney = (v: unknown) => Number.isFinite(num(v)) && num(v) > 0;
 const uuidLike = (v: unknown) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
 const validUrl = (v: unknown) => { try { const u = new URL(String(v)); return ['http:', 'https:'].includes(u.protocol); } catch { return false; } };
+
+// Provider sync jobs are tracked in-process so admins can see live progress instead of
+// waiting on one long HTTP request. The actual service rows are persisted in Postgres.
+type ProviderSyncJob = {
+  id: string; providerId: string; status: 'queued'|'running'|'completed'|'failed';
+  total: number; processed: number; created: number; updated: number; skipped: number;
+  startedAt: string; finishedAt?: string; error?: string;
+};
+const providerSyncJobs = new Map<string, ProviderSyncJob>();
+const activeProviderSync = new Map<string, string>();
+const buildProviderDescription = (raw: any, name: string, rate: number, min: number, max: number, refillable: boolean, cancelable: boolean, dripfeed: boolean) => {
+  const source = String(raw?.description ?? raw?.desc ?? '').trim();
+  if (source) return source.slice(0, 5000);
+  const parts = [`${name} — provider service.`];
+  if (Number.isFinite(rate)) parts.push(`Provider rate: ${rate} per 1K.`);
+  parts.push(`Minimum: ${min.toLocaleString()}. Maximum: ${max.toLocaleString()}.`);
+  parts.push(`Refill: ${refillable ? 'Available' : 'Not available'}. Cancel: ${cancelable ? 'Available' : 'Not available'}.`);
+  if (dripfeed) parts.push('Drip-feed: available.');
+  if (raw?.type) parts.push(`Type: ${String(raw.type)}.`);
+  return parts.join(' ').slice(0, 5000);
+};
+
 const hashApiKey = (key: string) => crypto.createHash('sha256').update(key).digest('hex');
 const isPrivateIp = (ip: string) => {
   if (net.isIPv4(ip)) {
@@ -860,61 +882,77 @@ app.delete('/api/admin/providers/:id',requireAuth,requireAdmin,async(req:any,res
   res.json({success:true});
 });
 app.get('/api/admin/providers/:id/balance',requireAuth,requireAdmin,async(req,res)=>{try{const [p]=await db.select().from(providers).where(and(eq(providers.id,req.params.id),eq(providers.isDeleted,false)));if(!p)return apiError(res,404,'Provider not found');await assertSafeProviderUrl(p.apiUrl);const c=new ProviderClient(p.apiUrl,p.apiKey);const b=await c.balance();if(b.error)return apiError(res,502,'Provider request failed');res.json(b);}catch{apiError(res,502,'Provider request failed');}});
-app.post('/api/admin/providers/:id/sync',requireAuth,requireAdmin,async(req:any,res)=>{
+app.post('/api/admin/providers/:id/sync',requireAuth,requireAdmin,async(req:any,res:any)=>{
   try{
     const [p]=await db.select().from(providers).where(and(eq(providers.id,req.params.id),eq(providers.isDeleted,false)));
     if(!p)return apiError(res,404,'Provider not found');
+    const active=activeProviderSync.get(p.id);
+    if(active){
+      const existing=providerSyncJobs.get(active);
+      if(existing && (existing.status==='queued'||existing.status==='running')) return res.status(409).json({error:'A synchronization is already running',code:'SYNC_IN_PROGRESS',jobId:active});
+      activeProviderSync.delete(p.id);
+    }
     await assertSafeProviderUrl(p.apiUrl);
     const data=await new ProviderClient(p.apiUrl,p.apiKey).services();
     if(data.error)return apiError(res,502,`Provider error: ${String(data.error)}`,'PROVIDER_SYNC_FAILED');
     const incoming=Array.isArray(data) ? data : (Array.isArray(data.services) ? data.services : Array.isArray(data.data) ? data.data : Array.isArray(data.result) ? data.result : []);
-    if(!incoming.length)return res.json({success:true,synced:0,created:0,updated:0});
-    let created=0,updated=0;
-    await db.transaction(async tx=>{
-      const categoryCache = new Map<string, any>();
-      for(const raw of incoming.slice(0,2000)){
-        const providerServiceId=String(raw.service ?? raw.id ?? '').trim();
-        const name=String(raw.name ?? `Service ${providerServiceId}`).trim().slice(0,255);
-        const providerPrice=Number(raw.rate ?? raw.price ?? raw.pricePer1k);
-        const min=Number(raw.min ?? raw.minQuantity ?? 1);
-        const max=Number(raw.max ?? raw.maxQuantity ?? 1000000);
-        if(!providerServiceId||!name||!Number.isFinite(providerPrice)||providerPrice<0||!Number.isInteger(min)||!Number.isInteger(max)||min<1||max<min)continue;
-        const categoryName=String(raw.category ?? raw.category_name ?? raw.categoryName ?? raw.type ?? 'Uncategorized').trim().slice(0,120) || 'Uncategorized';
-        let category=categoryCache.get(categoryName);
-        if(!category){
-          const categoryRows=await tx.select().from(categories).where(eq(categories.name,categoryName)).limit(1);
-          category=categoryRows[0];
-          if(!category){ const [c]=await tx.insert(categories).values({name:categoryName,status:'active'}).returning(); category=c; }
-          categoryCache.set(categoryName,category);
+    const items=incoming.slice(0,5000);
+    if(!items.length)return res.json({success:true,synced:0,created:0,updated:0,skipped:0,message:'Provider returned no services'});
+    const job:ProviderSyncJob={id:crypto.randomUUID(),providerId:p.id,status:'queued',total:items.length,processed:0,created:0,updated:0,skipped:0,startedAt:new Date().toISOString()};
+    providerSyncJobs.set(job.id,job); activeProviderSync.set(p.id,job.id);
+    res.status(202).json({success:true,jobId:job.id,total:job.total,status:job.status,message:'Synchronization started'});
+
+    void (async()=>{
+      job.status='running';
+      try{
+        const allCategories=await db.select().from(categories);
+        const categoryMap=new Map(allCategories.map((c:any)=>[String(c.name).trim(),c]));
+        const existingRows=await db.select().from(services).where(eq(services.providerId,p.id));
+        const existingMap=new Map(existingRows.filter((x:any)=>x.providerServiceId).map((x:any)=>[String(x.providerServiceId),x]));
+        const BATCH=50;
+        for(let offset=0;offset<items.length;offset+=BATCH){
+          const batch=items.slice(offset,offset+BATCH);
+          await Promise.all(batch.map(async(raw:any)=>{
+            try{
+              const providerServiceId=String(raw.service ?? raw.id ?? '').trim();
+              const name=String(raw.name ?? `Service ${providerServiceId}`).trim().slice(0,255);
+              const providerPrice=Number(raw.rate ?? raw.price ?? raw.pricePer1k);
+              const min=Number(raw.min ?? raw.minQuantity ?? 1);
+              const max=Number(raw.max ?? raw.maxQuantity ?? 1000000);
+              if(!providerServiceId||!name||!Number.isFinite(providerPrice)||providerPrice<0||!Number.isInteger(min)||!Number.isInteger(max)||min<1||max<min){job.skipped++;return;}
+              const categoryName=String(raw.category ?? raw.category_name ?? raw.categoryName ?? raw.type ?? 'Uncategorized').trim().slice(0,120)||'Uncategorized';
+              let category=categoryMap.get(categoryName);
+              if(!category){ const [c]=await db.insert(categories).values({name:categoryName,status:'active'}).returning(); category=c; categoryMap.set(categoryName,c); }
+              const refillable=Boolean(raw.refill ?? raw.refillable ?? false);
+              const cancelable=Boolean(raw.cancel ?? raw.cancelable ?? false);
+              const dripfeed=Boolean(raw.dripfeed ?? raw.drip_feed ?? false);
+              const description=buildProviderDescription(raw,name,providerPrice,min,max,refillable,cancelable,dripfeed);
+              const providerMeta={sourceServiceId:providerServiceId,providerRate:providerPrice,providerMin:min,providerMax:max,category:categoryName,description,refillable,cancelable,dripfeed,type:raw.type??null,syncedAt:new Date().toISOString()};
+              const selling=money(providerPrice*(1+Math.max(0,p.profitMargin)/100));
+              const existing=existingMap.get(providerServiceId);
+              if(existing){
+                await db.update(services).set({name,categoryId:category.id,providerPrice:providerPrice.toFixed(4),pricePer1k:selling.toFixed(4),minQuantity:min,maxQuantity:max,description,refillable,cancelable,providerMeta,status:'active'}).where(eq(services.id,existing.id));
+                job.updated++;
+              }else{
+                const [created]=await db.insert(services).values({categoryId:category.id,providerId:p.id,providerServiceId,name,providerPrice:providerPrice.toFixed(4),pricePer1k:selling.toFixed(4),minQuantity:min,maxQuantity:max,description,refillable,cancelable,providerMeta,status:'active'}).returning();
+                existingMap.set(providerServiceId,created); job.created++;
+              }
+            }catch{job.skipped++;}
+            finally{job.processed++;}
+          }));
         }
-        const refillable=Boolean(raw.refill ?? raw.refillable ?? false);
-        const cancelable=Boolean(raw.cancel ?? raw.cancelable ?? false);
-        const description=String(raw.description ?? raw.desc ?? '').trim().slice(0,5000) || null;
-        const providerMeta={
-          sourceServiceId: providerServiceId,
-          providerRate: providerPrice,
-          providerMin: min, providerMax: max,
-          category: categoryName,
-          description,
-          refillable, cancelable,
-          dripfeed: Boolean(raw.dripfeed ?? raw.drip_feed ?? false),
-          type: raw.type ?? null,
-          syncedAt: new Date().toISOString()
-        };
-        const selling=money(providerPrice*(1+Math.max(0,p.profitMargin)/100));
-        const existingRows=await tx.select().from(services).where(and(eq(services.providerId,p.id),eq(services.providerServiceId,providerServiceId))).limit(1); const existing=existingRows[0];
-        if(existing){
-          await tx.update(services).set({name,categoryId:category.id,providerPrice:providerPrice.toFixed(4),pricePer1k:selling.toFixed(4),minQuantity:min,maxQuantity:max,description,refillable,cancelable,providerMeta,status:'active'}).where(eq(services.id,existing.id));
-          updated++;
-        }else{
-          await tx.insert(services).values({categoryId:category.id,providerId:p.id,providerServiceId,name,providerPrice:providerPrice.toFixed(4),pricePer1k:selling.toFixed(4),minQuantity:min,maxQuantity:max,description,refillable,cancelable,providerMeta,status:'active'});
-          created++;
-        }
-      }
-    });
-    await audit(req.dbUser.id,'SYNC_PROVIDER','PROVIDER',p.id,`created=${created},updated=${updated}`);
-    res.json({success:true,synced:created+updated,created,updated});
+        job.status='completed'; job.finishedAt=new Date().toISOString();
+        await audit(req.dbUser.id,'SYNC_PROVIDER','PROVIDER',p.id,`created=${job.created},updated=${job.updated},skipped=${job.skipped}`);
+      }catch(e:any){job.status='failed';job.error=e?.message||'Provider synchronization failed';job.finishedAt=new Date().toISOString();}
+      finally{activeProviderSync.delete(p.id);setTimeout(()=>providerSyncJobs.delete(job.id),30*60*1000);}
+    })();
   }catch(e:any){apiError(res,502,e.message||'Provider synchronization failed','PROVIDER_SYNC_FAILED');}
+});
+app.get('/api/admin/providers/:id/sync/:jobId',requireAuth,requireAdmin,async(req:any,res:any)=>{
+  const job=providerSyncJobs.get(req.params.jobId);
+  if(!job||job.providerId!==req.params.id)return apiError(res,404,'Sync job not found','SYNC_NOT_FOUND');
+  const percent=job.total?Math.min(100,Math.round(job.processed/job.total*100)):100;
+  res.json({...job,percent});
 });
 
 app.get('/api/admin/orders',requireAuth,requireAdmin,async(req:any,res)=>{

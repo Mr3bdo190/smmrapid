@@ -8,6 +8,20 @@ import { useTranslation } from '../../lib/i18n';
 
 const readError = async (res: Response, fallback: string) => { const b = await res.json().catch(() => ({})); return b?.error || b?.message || fallback; };
 const num = (v: any) => Number(v || 0);
+const serviceDetails = (s: any) => {
+  const meta = s?.providerMeta || {};
+  const explicit = String(s?.description || meta.description || '').trim();
+  if (explicit) return explicit;
+  const parts:string[] = [];
+  if (meta.providerRate != null) parts.push(`Provider rate: ${meta.providerRate} per 1K.`);
+  if (meta.providerMin != null || meta.providerMax != null) parts.push(`Quantity: ${Number(meta.providerMin ?? s?.minQuantity ?? 0).toLocaleString()} - ${Number(meta.providerMax ?? s?.maxQuantity ?? 0).toLocaleString()}.`);
+  if (meta.type) parts.push(`Type: ${meta.type}.`);
+  parts.push(`Refill: ${meta.refillable ?? s?.refillable ? 'Available' : 'Not available'}.`);
+  parts.push(`Cancel: ${meta.cancelable ?? s?.cancelable ? 'Available' : 'Not available'}.`);
+  if (meta.dripfeed) parts.push('Drip-feed: available.');
+  return parts.length ? parts.join(' ') : 'Service details are available from the synchronized provider data.';
+};
+
 
 export default function ClientNewOrder() {
   const { user, dbUser } = useAuth();
@@ -111,7 +125,7 @@ export default function ClientNewOrder() {
       <div className="p-6 border-b bg-gray-50"><div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4"><div><span className="text-xs font-semibold text-indigo-600">{t('newOrder.serviceDetails')}</span><h3 className="text-2xl font-black text-gray-900 mt-1 break-words">{selectedService.name}</h3><span className="sr-only">{t('newOrder.selectedService')}</span><p className="text-sm text-gray-500 mt-1">{selectedService.category?.name}</p></div><button type="button" onClick={() => toggleFavorite(selectedService.id)} className="btn-secondary shrink-0"><Star className={`w-4 h-4 ${favorites.includes(selectedService.id) ? 'fill-yellow-400 text-yellow-500' : ''}`} />{favorites.includes(selectedService.id) ? 'Favorite' : 'Add favorite'}</button></div></div>
       <div className="p-6 space-y-6">
         <div className="grid grid-cols-2 lg:grid-cols-6 gap-3"><div className="p-4 rounded-xl bg-indigo-50"><span className="text-xs text-gray-500">Rate / 1K</span><b className="block text-lg text-indigo-700">{num(selectedService.pricePer1k).toFixed(4)} {currency}</b></div><div className="p-4 rounded-xl bg-gray-50"><span className="text-xs text-gray-500">{t('newOrder.minimum')}</span><b className="block">{Number(selectedService.minQuantity).toLocaleString()}</b></div><div className="p-4 rounded-xl bg-gray-50"><span className="text-xs text-gray-500">{t('newOrder.maximum')}</span><b className="block">{Number(selectedService.maxQuantity).toLocaleString()}</b></div><div className="p-4 rounded-xl bg-emerald-50"><span className="text-xs text-gray-500">Refill</span><b className="block text-emerald-700">{selectedService.refillable ? 'Available' : 'No'}</b></div><div className="p-4 rounded-xl bg-blue-50"><span className="text-xs text-gray-500">Cancel</span><b className="block text-blue-700">{selectedService.cancelable ? 'Available' : 'No'}</b></div><div className="p-4 rounded-xl bg-gray-50"><span className="text-xs text-gray-500">Cashback</span><b className="block">{selectedService.cashbackPercentage || 0}%</b></div></div>
-        <div className="rounded-xl border p-4"><div className="flex gap-2 items-center font-bold"><Info className="w-4 h-4 text-indigo-600" /> Provider service details</div><p className="text-sm text-gray-700 mt-2 whitespace-pre-wrap leading-7">{selectedService.description || 'No additional description was supplied by the service source.'}</p>{providerMeta.dripfeed && <p className="text-xs text-gray-500 mt-3">Drip-feed: available according to provider data.</p>}</div>
+        <div className="rounded-xl border p-4"><div className="flex gap-2 items-center font-bold"><Info className="w-4 h-4 text-indigo-600" /> Provider service details</div><p className="text-sm text-gray-700 mt-2 whitespace-pre-wrap leading-7">{serviceDetails(selectedService)}</p>{providerMeta.dripfeed && <p className="text-xs text-gray-500 mt-3">Drip-feed: available according to provider data.</p>}</div>
         <form onSubmit={e => { e.preventDefault(); if (!validQty) return toast.error(t('newOrder.quantityRange', { min: selectedService.minQuantity, max: selectedService.maxQuantity })); if (totalPrice > num(dbUser?.balance)) return toast.error(t('newOrder.insufficientBalance')); order.mutate(); }} className="grid grid-cols-1 lg:grid-cols-[1fr_1fr_260px] gap-4 items-end border-t pt-5">
           <div><label className="label-primary">Link</label><input required type="url" value={link} onChange={e => setLink(e.target.value)} className="input-primary" placeholder="https://..." /></div>
           <div><label className="label-primary">Quantity</label><input required type="number" value={quantity} min={selectedService.minQuantity} max={selectedService.maxQuantity} onChange={e => setQuantity(e.target.value === '' ? '' : Number(e.target.value))} className="input-primary" placeholder={`${selectedService.minQuantity} - ${selectedService.maxQuantity}`} /><div className="flex flex-wrap gap-2 mt-2">{[selectedService.minQuantity, Math.min(selectedService.maxQuantity, selectedService.minQuantity * 2), Math.min(selectedService.maxQuantity, 1000), Math.min(selectedService.maxQuantity, 10000)].filter((v: number, i: number, a: number[]) => v > 0 && a.indexOf(v) === i).map((v: number) => <button type="button" key={v} onClick={() => setQuantity(v)} className="text-xs px-2 py-1 rounded border hover:border-indigo-400">{v.toLocaleString()}</button>)}</div></div>

@@ -83,7 +83,7 @@ export default function AdminLayout() {
           </div>
         </header>
         <div className="rapid-content flex-1 overflow-y-auto p-4 md:p-8">
-          <Outlet />
+          <div className="admin-page-frame"><Outlet /></div>
         </div>
       </main>
     </div>

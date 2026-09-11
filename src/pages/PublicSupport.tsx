@@ -1,8 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Mail, MessageCircle, Ticket } from 'lucide-react';
+import { Mail, MessageCircle, Ticket, ArrowRight, ShieldCheck } from 'lucide-react';
+import PublicPageShell from './PublicPageShell';
 export default function PublicSupport(){
  const {data:c={}}=useQuery({queryKey:['client-config'],queryFn:async()=>{const r=await fetch('/api/client/config');return r.ok?r.json():{};}});
- const email=c.supportEmail || 'support@RapidSMM';
- return <div className="min-h-screen bg-slate-50 text-slate-900"><header className="bg-white border-b"><div className="max-w-5xl mx-auto px-6 py-4 flex justify-between"><Link to="/" className="font-bold text-xl">RapidSMM</Link><Link to="/" className="text-indigo-600 flex gap-1 items-center"><ArrowLeft className="w-4 h-4"/> Home</Link></div></header><main className="max-w-5xl mx-auto px-6 py-12"><div className="text-center"><h1 className="text-4xl font-extrabold">Customer Support</h1><p className="mt-3 text-slate-600">Need help with an order, payment, or account? Contact our support team.</p></div><div className="grid md:grid-cols-3 gap-5 mt-10"><a href={`mailto:${email}`} className="bg-white border rounded-xl p-6 hover:shadow-sm"><Mail className="text-indigo-600 mb-3"/><h2 className="font-bold">Email Support</h2><p className="text-sm text-slate-500 mt-2">{email}</p></a><div className="bg-white border rounded-xl p-6"><MessageCircle className="text-emerald-600 mb-3"/><h2 className="font-bold">Response</h2><p className="text-sm text-slate-500 mt-2">Please include your order ID and account email for faster assistance.</p></div><div className="bg-white border rounded-xl p-6"><Ticket className="text-orange-600 mb-3"/><h2 className="font-bold">Support Tickets</h2><p className="text-sm text-slate-500 mt-2">Registered customers can open and manage support tickets from the dashboard.</p></div></div><div className="mt-8 bg-white border rounded-xl p-6"><h2 className="font-bold text-lg">What we can help with</h2><ul className="mt-3 space-y-2 text-sm text-slate-600 list-disc pl-5"><li>Order status and delivery questions</li><li>Payment and balance issues</li><li>Service selection and quantity limits</li><li>Account and API assistance</li></ul></div></main></div>
+ const email=c.supportEmail || 'support@example.com';
+ return <PublicPageShell title="Customer Support">
+   <p className="rapid-public-lead">Need help with an order, payment, account, or service? Choose the fastest support path below.</p>
+   <div className="rapid-public-cards">
+    <a href={`mailto:${email}`} className="rapid-public-card"><span className="rapid-public-icon"><Mail/></span><h2>Email support</h2><p>{email}</p><strong>Contact support <ArrowRight/></strong></a>
+    <div className="rapid-public-card"><span className="rapid-public-icon green"><MessageCircle/></span><h2>Order assistance</h2><p>Include your order ID, account email and a short description so the team can investigate faster.</p><strong>Clear details = faster help</strong></div>
+    <div className="rapid-public-card"><span className="rapid-public-icon orange"><Ticket/></span><h2>Support tickets</h2><p>Registered customers can open and manage support tickets directly from the dashboard.</p><Link to="/dashboard/tickets"><strong>Open dashboard <ArrowRight/></strong></Link></div>
+   </div>
+   <section className="rapid-public-info"><ShieldCheck/><div><h2>What we can help with</h2><ul><li>Order status and delivery questions</li><li>Payments and wallet balance</li><li>Service selection and quantity limits</li><li>Account and API assistance</li></ul></div></section>
+ </PublicPageShell>
 }

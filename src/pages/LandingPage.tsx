@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowRight, ChevronDown, Globe2, Headphones, Layers3, Menu, ShieldCheck, Sparkles, Wallet, X, Zap } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from '../lib/i18n';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
@@ -21,6 +21,7 @@ const FAQS = [
 
 export default function LandingPage() {
   const { t, dir } = useTranslation();
+  const navigate = useNavigate();
   const { user, dbUser, signIn, registerWithEmail, loginWithEmail } = useAuth();
   const [menu, setMenu] = useState(false);
   const [auth, setAuth] = useState<'login' | 'register' | null>(null);
@@ -54,7 +55,14 @@ export default function LandingPage() {
       } else {
         await loginWithEmail(email.trim(), password);
       }
+      // Close the auth modal immediately after Firebase accepts the credentials
+      // and move the user into the protected client area. ClientLayout keeps a
+      // proper loading state until the database sync is complete.
       setAuth(null);
+      setEmail('');
+      setPassword('');
+      setName('');
+      navigate('/dashboard', { replace: true });
     } catch (err: any) { toast.error(err?.message || 'Authentication failed'); }
   };
 

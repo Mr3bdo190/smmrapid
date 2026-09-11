@@ -8,25 +8,21 @@ import { LayoutDashboard, ShoppingCart, ListOrdered, Wallet, LogOut, Menu, X, Us
 import { cn } from '../../lib/utils';
 
 const navItems = [
-  { key: 'nav.dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { key: 'nav.newOrder', href: '/dashboard/new-order', icon: ShoppingCart },
-
-  { key: 'nav.services', href: '/dashboard/services', icon: Tags },
-  { key: 'nav.massOrder', href: '/dashboard/mass-order', icon: ListOrdered },
-  { key: 'nav.earnMoney', href: '/dashboard/earn', icon: Link2 },
-
-  { key: 'nav.orderHistory', href: '/dashboard/orders', icon: ListOrdered },
-  { key: 'nav.addFunds', href: '/dashboard/add-funds', icon: Wallet },
-  { key: 'nav.transactions', href: '/dashboard/transactions', icon: Wallet },
-  { key: 'nav.profile', href: '/dashboard/profile', icon: User },
-  { key: 'nav.lottery', href: '/dashboard/lottery', icon: Ticket },
-  { key: 'nav.tickets', href: '/dashboard/tickets', icon: LifeBuoy },
-
-  { key: 'nav.api', href: '/dashboard/api', icon: Code },
-  { key: 'nav.affiliates', href: '/dashboard/affiliates', icon: Users },
-  { key: 'nav.mysteryBoxes', href: '/dashboard/mystery-boxes', icon: Gift },
-  { key: 'nav.game', href: '/dashboard/game', icon: Gamepad2 },
-
+  { key: 'nav.dashboard', href: '/dashboard', icon: LayoutDashboard, group: 'main' },
+  { key: 'nav.newOrder', href: '/dashboard/new-order', icon: ShoppingCart, group: 'main' },
+  { key: 'nav.orderHistory', href: '/dashboard/orders', icon: ListOrdered, group: 'orders' },
+  { key: 'nav.massOrder', href: '/dashboard/mass-order', icon: ListOrdered, group: 'orders' },
+  { key: 'nav.services', href: '/dashboard/services', icon: Tags, group: 'orders' },
+  { key: 'nav.addFunds', href: '/dashboard/add-funds', icon: Wallet, group: 'wallet' },
+  { key: 'nav.transactions', href: '/dashboard/transactions', icon: Wallet, group: 'wallet' },
+  { key: 'nav.earnMoney', href: '/dashboard/earn', icon: Link2, group: 'growth' },
+  { key: 'nav.affiliates', href: '/dashboard/affiliates', icon: Users, group: 'growth' },
+  { key: 'nav.api', href: '/dashboard/api', icon: Code, group: 'tools' },
+  { key: 'nav.tickets', href: '/dashboard/tickets', icon: LifeBuoy, group: 'tools' },
+  { key: 'nav.profile', href: '/dashboard/profile', icon: User, group: 'account' },
+  { key: 'nav.lottery', href: '/dashboard/lottery', icon: Ticket, group: 'extras' },
+  { key: 'nav.mysteryBoxes', href: '/dashboard/mystery-boxes', icon: Gift, group: 'extras' },
+  { key: 'nav.game', href: '/dashboard/game', icon: Gamepad2, group: 'extras' },
 ];
 
 export default function ClientLayout() {
@@ -88,15 +84,18 @@ export default function ClientLayout() {
           <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden text-gray-400 hover:text-gray-900"><X className="w-6 h-6" /></button>
         </div>
         <nav className="rapid-sidebar-nav flex-1 overflow-y-auto py-5">
+          <div className="px-4 pb-3"><div className="rapid-nav-label">Workspace</div></div>
           <ul className="space-y-1 px-3">
-            {navItems.map((item) => (
-              <li key={item.key}>
-                <Link to={item.href} onClick={() => setIsMobileMenuOpen(false)} className={cn("rapid-nav-item flex items-center gap-3 px-3 py-3 rounded-2xl text-sm font-bold transition-colors", location.pathname === item.href ? "is-active" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900")}>
-                  <item.icon className="w-5 h-5" /> {t(item.key)}
-                </Link>
-              </li>
+            {navItems.filter(i => i.group === 'main').map((item) => (
+              <li key={item.key}><Link to={item.href} onClick={() => setIsMobileMenuOpen(false)} className={cn("rapid-nav-item flex items-center gap-3 px-3 py-3 rounded-2xl text-sm font-bold", location.pathname === item.href ? "is-active" : "")}>
+                <span className="rapid-nav-icon"><item.icon className="w-4 h-4" /></span><span>{t(item.key)}</span>{item.href === '/dashboard/new-order' && <span className="rapid-nav-hot">Fast</span>}
+              </Link></li>
             ))}
           </ul>
+          {(['orders','wallet','growth','tools','account','extras'] as const).map(group => {
+            const labels:any={orders:'Orders',wallet:'Wallet',growth:'Growth',tools:'Support & API',account:'Account',extras:'Extras'};
+            return <div key={group} className="mt-5"><div className="px-4 pb-2 rapid-nav-label">{labels[group]}</div><ul className="space-y-1 px-3">{navItems.filter(i=>i.group===group).map(item=><li key={item.key}><Link to={item.href} onClick={()=>setIsMobileMenuOpen(false)} className={cn("rapid-nav-item flex items-center gap-3 px-3 py-2.5 rounded-2xl text-sm font-bold", location.pathname===item.href ? "is-active" : "")}><span className="rapid-nav-icon"><item.icon className="w-4 h-4"/></span><span>{t(item.key)}</span></Link></li>)}</ul></div>
+          })}
         </nav>
         <div className="rapid-sidebar-foot p-4 space-y-2">
           <LanguageSwitcher className="w-full justify-center border-gray-300 text-gray-600 hover:bg-gray-50" />
@@ -119,9 +118,10 @@ export default function ClientLayout() {
             <Link to="/dashboard/profile" className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold border border-violet-200 transition-colors">{(freshUser || dbUser).email[0].toUpperCase()}</Link>
           </div>
         </header>
-        <div className="rapid-content flex-1 overflow-y-auto p-4 md:p-8"><div className="mx-auto max-w-[1480px]">
+        <div className="rapid-content flex-1 overflow-y-auto p-4 md:p-8"><div className="mx-auto max-w-[1480px] client-page-frame">
           <Outlet />
         </div></div>
+        <nav className="rapid-mobile-nav md:hidden">{navItems.slice(0,5).map(item=><Link key={item.key} to={item.href} className={location.pathname===item.href?'active':''}><item.icon/><span>{t(item.key)}</span></Link>)}</nav>
       </main>
     </div>
   );

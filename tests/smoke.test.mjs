@@ -61,8 +61,9 @@ test('frontend routes are represented by backend handlers', () => {
   }
 });
 
-test('production build does not silently use Kashier test mode', () => {
-  assert.ok(server.includes("isProd && mode !== 'live'"));
+test('removed Kashier gateway is not wired into the client', () => {
+  const client = fs.readFileSync('src/pages/client/ClientAddFunds.tsx', 'utf8');
+  assert.equal(client.includes('Kashier'), false);
 });
 
 test('Heleket gateway and verification file are wired', () => {

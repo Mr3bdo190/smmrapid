@@ -26,18 +26,6 @@ services:
         sync: false
       - key: FIREBASE_PRIVATE_KEY
         sync: false
-      - key: KASHIER_MERCHANT_ID
-        sync: false
-      - key: KASHIER_API_KEY
-        sync: false
-      - key: KASHIER_WEBHOOK_SECRET
-        sync: false
-      - key: KASHIER_MODE
-        value: live
-      - key: KASHIER_CHECKOUT_URL
-        value: https://checkout.kashier.io/
-      - key: KASHIER_CURRENCY
-        value: EGP
       - key: CURRENCY
         value: USD
       - key: HELEKET_CURRENCY

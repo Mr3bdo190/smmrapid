@@ -194,7 +194,7 @@ app.get('/api/health', async (_req, res) => {
 app.get('/api/client/config', async (_req, res) => {
   const rows = await db.select().from(settings);
   const s = Object.fromEntries(rows.map(x => [x.key, x.value]));
-  res.json({ siteName: s.site_name || 'RapidSMM', currencySymbol: '$', currencyCode: 'USD', vodafoneCashNumber: s.vodafone_cash_number || '', siteDescription: s.site_description || '', supportEmail: s.support_email || process.env.SUPPORT_EMAIL || 'support@smmrapid.store', siteLogo: s.site_logo || '', usdExchangeRate: num(s.usd_exchange_rate || '50'), heleketCurrency: process.env.HELEKET_CURRENCY || 'USD' });
+  res.json({ siteName: s.site_name || 'RapidSMM', currencySymbol: '$', currencyCode: 'USD', vodafoneCashNumber: s.vodafone_cash_number || '', shahnawyEnabled: s.shahnawy_enabled === 'true', shahnawyMerchantWalletNumber: s.shahnawy_merchant_wallet_number || s.vodafone_cash_number || '', shahnawyMinAmount: num(s.shahnawy_min_amount || '5'), shahnawyMaxAmount: num(s.shahnawy_max_amount || '10000'), siteDescription: s.site_description || '', supportEmail: s.support_email || process.env.SUPPORT_EMAIL || 'support@smmrapid.store', siteLogo: s.site_logo || '', usdExchangeRate: num(s.usd_exchange_rate || '50'), heleketCurrency: process.env.HELEKET_CURRENCY || 'USD' });
 });
 
 // Public, read-only preview used by the landing page — no pricing/account secrets, safe to expose logged-out.
@@ -439,12 +439,12 @@ const applyAffiliateCommission = async (tx:any, payment:any) => {
   }
 };
 
-const GATEWAY_VERIFIED_METHODS = new Set(['Heleket', 'Kashier']);
+const GATEWAY_VERIFIED_METHODS = new Set(['Heleket', 'المحفظة الإلكترونية']);
 const paymentApprove = async (paymentId: string, adminId: string) => {
   return db.transaction(async tx => {
     const [p] = await tx.select().from(payments).where(eq(payments.id, paymentId)).for('update');
     if (!p) throw new Error('Payment not found');
-    if (GATEWAY_VERIFIED_METHODS.has(p.method)) throw Object.assign(new Error(`${p.method} payments are confirmed automatically by their own signed webhook and cannot be approved manually — approving without a real webhook would credit a wallet for a payment that was never verified.`), { status: 400 });
+    if (GATEWAY_VERIFIED_METHODS.has(p.method)) throw Object.assign(new Error(`${p.method} payments are confirmed automatically by server-side gateway verification and cannot be approved manually — approving without a real webhook would credit a wallet for a payment that was never verified.`), { status: 400 });
     if (p.status !== 'Pending') return false;
     await tx.update(payments).set({ status: 'Approved', resolvedAt: new Date() }).where(eq(payments.id, p.id));
     await creditWallet(tx, p.userId, num(p.amount), `Funds added via ${p.method}`, p.id);
@@ -453,7 +453,7 @@ const paymentApprove = async (paymentId: string, adminId: string) => {
   });
 };
 app.put('/api/admin/payments/:id/approve', requireAuth, requireAdmin, async (req: any, res) => { try { const changed = await paymentApprove(req.params.id, req.dbUser.id); if (!changed) return apiError(res, 409, 'Payment already resolved', 'ALREADY_RESOLVED'); await audit(req.dbUser.id, 'APPROVE_PAYMENT', 'PAYMENT', req.params.id); res.json({ success: true }); } catch (e: any) { apiError(res, e.status || 400, e.message); } });
-app.put('/api/admin/payments/:id/reject', requireAuth, requireAdmin, async (req: any, res) => { try { await db.transaction(async tx => { const [p] = await tx.select().from(payments).where(eq(payments.id, req.params.id)).for('update'); if (!p) throw new Error('Payment not found'); if (GATEWAY_VERIFIED_METHODS.has(p.method)) throw Object.assign(new Error(`${p.method} payments are resolved automatically by their own webhook and cannot be rejected manually. If it's genuinely stuck, wait for the invoice to expire.`), { status: 400 }); if (p.status !== 'Pending') throw new Error('Payment already resolved'); await tx.update(payments).set({ status: 'Rejected', resolvedAt: new Date() }).where(eq(payments.id, p.id)); }); await audit(req.dbUser.id, 'REJECT_PAYMENT', 'PAYMENT', req.params.id); res.json({ success: true }); } catch (e: any) { apiError(res, e.status || 400, e.message); } });
+app.put('/api/admin/payments/:id/reject', requireAuth, requireAdmin, async (req: any, res) => { try { await db.transaction(async tx => { const [p] = await tx.select().from(payments).where(eq(payments.id, req.params.id)).for('update'); if (!p) throw new Error('Payment not found'); if (GATEWAY_VERIFIED_METHODS.has(p.method)) throw Object.assign(new Error(`${p.method} payments are resolved automatically by server-side gateway verification and cannot be rejected manually. If it's genuinely stuck, wait for the invoice to expire.`), { status: 400 }); if (p.status !== 'Pending') throw new Error('Payment already resolved'); await tx.update(payments).set({ status: 'Rejected', resolvedAt: new Date() }).where(eq(payments.id, p.id)); }); await audit(req.dbUser.id, 'REJECT_PAYMENT', 'PAYMENT', req.params.id); res.json({ success: true }); } catch (e: any) { apiError(res, e.status || 400, e.message); } });
 
 // Heleket crypto payment gateway.
 // API authentication: MD5(base64(JSON body) + payment API key).
@@ -521,7 +521,7 @@ app.post('/api/heleket/create', requireAuth, async (req: any, res) => {
   try {
     // The site's base currency is USD, and Heleket is charged in USD too — so the amount the
     // client enters is credited to their wallet at face value, no conversion needed here.
-    // (Vodafone Cash and Kashier take EGP and convert to USD instead — see those handlers.)
+    // (Electronic-wallet deposits are paid in EGP and converted to USD using the admin exchange rate.)
     const amount = num(req.body?.amount);
     if (!positiveMoney(amount) || amount < 1 || amount > 1000000) return apiError(res, 400, 'Invalid amount', 'INVALID_AMOUNT');
     getHeleketCredentials(); // fails fast with a clear message if HELEKET_MERCHANT_ID/HELEKET_PAYMENT_API_KEY are missing or malformed
@@ -615,166 +615,172 @@ app.post('/api/heleket/webhook', async (req, res) => {
   }
 });
 
-// Kashier integration. Signature verification must be configured for live mode.
-app.post('/api/kashier/create', requireAuth, async (req: any, res) => {
-  try {
-    // Kashier charges Egyptian cards in EGP — the client enters the EGP amount they want to
-    // pay, and we convert it to the site's base currency (USD) for the wallet credit using the
-    // admin-configured rate. Kashier itself is still invoiced in EGP (that's what the card sees).
-    const amountEgp = num(req.body?.amount);
-    if (!positiveMoney(amountEgp) || amountEgp < 1 || amountEgp > 10000000) throw new Error('Invalid amount');
-    const merchantId = process.env.KASHIER_MERCHANT_ID;
-    const apiKey = process.env.KASHIER_API_KEY;
-    if (!merchantId || !apiKey) return apiError(res, 503, 'Payment gateway is not configured', 'GATEWAY_NOT_CONFIGURED');
-    const currency = process.env.KASHIER_CURRENCY || 'EGP';
-    const settingsRows = await db.select().from(settings);
-    const rate = num(settingsRows.find(s => s.key === 'usd_exchange_rate')?.value ?? '50');
-    if (!Number.isFinite(rate) || rate <= 0) return apiError(res, 503, 'Exchange rate is not configured — set it in Admin Settings', 'RATE_NOT_CONFIGURED');
-    const usdAmount = money(amountEgp / rate);
-    if (!positiveMoney(usdAmount)) throw new Error('Invalid amount');
-    const [p] = await db.insert(payments).values({ userId: req.dbUser.id, amount: usdAmount.toFixed(4), method: 'Kashier', status: 'Pending', transactionDetails: { egpAmount: amountEgp.toFixed(2), rate, currency } }).returning();
-    const mode = process.env.KASHIER_MODE === 'live' ? 'live' : 'test'; if (isProd && mode !== 'live') return apiError(res,503,'Live payment gateway is not enabled','GATEWAY_NOT_LIVE');
-    const baseUrl = process.env.KASHIER_CHECKOUT_URL || 'https://checkout.kashier.io/';
-    const pathToSign = `/?payment=${merchantId}.${p.id}.${amountEgp}.${currency}`;
-    const hash = crypto.createHmac('sha256', apiKey).update(pathToSign).digest('hex');
-    res.json({ orderId: p.id, amount: amountEgp, usdAmount: usdAmount.toFixed(2), currency, merchantId, paymentUrl: `${baseUrl}?merchantId=${encodeURIComponent(merchantId)}&orderId=${encodeURIComponent(p.id)}&amount=${encodeURIComponent(amountEgp)}&currency=${encodeURIComponent(currency)}&hash=${encodeURIComponent(hash)}` });
-  } catch (e: any) { apiError(res, 400, e.message); }
-});
-app.post('/api/kashier/webhook', async (req, res) => {
-  try {
-    const secret = process.env.KASHIER_WEBHOOK_SECRET || process.env.KASHIER_API_KEY;
-    if (!secret) return apiError(res, 503, 'Gateway not configured', 'GATEWAY_NOT_CONFIGURED');
-    const provided = String(req.headers['x-kashier-signature'] || req.headers['x-signature'] || '');
-    const raw = JSON.stringify(req.body || {});
-    const expected = crypto.createHmac('sha256', secret).update(raw).digest('hex');
-    if (!provided || provided.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected))) return apiError(res, 401, 'Invalid signature', 'INVALID_SIGNATURE');
-    const { merchantOrderId, amount, merchantId, paymentStatus, transactionId } = req.body || {};
-    if (!merchantOrderId || merchantId !== process.env.KASHIER_MERCHANT_ID) return apiError(res, 400, 'Invalid payment', 'INVALID_PAYMENT');
-    const [p] = await db.select().from(payments).where(eq(payments.id, String(merchantOrderId)));
-    if (!p) return apiError(res, 404, 'Payment not found', 'PAYMENT_NOT_FOUND');
-    // Kashier reports back the EGP amount it actually charged — compare against the EGP amount
-    // we invoiced (stored separately from payments.amount, which now holds the USD credit).
-    const expectedEgp = num((p.transactionDetails as any)?.egpAmount ?? p.amount);
-    if (money(num(amount)) !== money(expectedEgp)) return apiError(res, 400, 'Payment mismatch', 'PAYMENT_MISMATCH');
-    if (paymentStatus === 'SUCCESS') {
-      await db.transaction(async tx => {
-        const [locked] = await tx.select().from(payments).where(eq(payments.id, p.id)).for('update');
-        if (!locked || locked.status !== 'Pending') return;
-        await tx.update(payments).set({ status: 'Approved', transactionId: transactionId ? String(transactionId) : null, transactionDetails: { ...(locked.transactionDetails as any || {}), webhook: req.body }, resolvedAt: new Date() }).where(eq(payments.id, locked.id));
-        // This webhook is the ONLY thing that credits a Kashier payment — admins cannot manually
-        // approve Kashier payments (see the guard in /api/admin/payments/:id/approve).
-        await creditWallet(tx, locked.userId, num(locked.amount), 'Kashier Deposit', locked.id);
-        await applyAffiliateCommission(tx, locked);
-      });
-    } else if (['FAILED', 'CANCELLED'].includes(paymentStatus)) {
-      await db.update(payments).set({ status: 'Rejected', transactionId: transactionId ? String(transactionId) : null, transactionDetails: { ...(p.transactionDetails as any || {}), webhook: req.body }, resolvedAt: new Date() }).where(and(eq(payments.id, p.id), eq(payments.status, 'Pending')));
-    }
-    res.sendStatus(200);
-  } catch (e: any) { console.error('Kashier webhook:', e); apiError(res, 400, 'Webhook processing failed', 'WEBHOOK_ERROR'); }
-});
-
-// Tickets
-app.get('/api/client/tickets', requireAuth, async (req: any, res) => res.json(await db.query.tickets.findMany({ where: eq(tickets.userId, req.dbUser.id), orderBy: [desc(tickets.createdAt)] })));
-app.post('/api/client/tickets', requireAuth, async (req: any, res) => {
-  const subject = String(req.body?.subject || '').trim(), message = String(req.body?.message || '').trim();
-  if (subject.length < 3 || subject.length > 200 || message.length < 1 || message.length > 5000) return apiError(res, 400, 'Invalid ticket data', 'VALIDATION_ERROR');
-  const created = await db.transaction(async tx => { const [t] = await tx.insert(tickets).values({ userId: req.dbUser.id, subject, status: 'Open' }).returning(); await tx.insert(ticketMessages).values({ ticketId: t.id, senderId: req.dbUser.id, message, isAdmin: false }); return t; });
-  res.status(201).json(created);
-});
-app.get('/api/client/tickets/:id', requireAuth, async (req: any, res) => { const t = await db.query.tickets.findFirst({ where: eq(tickets.id, req.params.id) }); if (!t || t.userId !== req.dbUser.id) return apiError(res,404,'Ticket not found','NOT_FOUND'); const messages = await db.query.ticketMessages.findMany({ where: eq(ticketMessages.ticketId,t.id), orderBy:[desc(ticketMessages.createdAt)] }); res.json({ ticket:t, messages }); });
-app.post('/api/client/tickets/:id/messages', requireAuth, async (req: any, res) => { const message=String(req.body?.message||'').trim(); if(!message||message.length>5000)return apiError(res,400,'Invalid message','VALIDATION_ERROR'); const t=await db.query.tickets.findFirst({where:eq(tickets.id,req.params.id)}); if(!t||t.userId!==req.dbUser.id)return apiError(res,404,'Ticket not found','NOT_FOUND'); if(t.status==='Closed')return apiError(res,409,'Ticket is closed','TICKET_CLOSED'); const [m]=await db.insert(ticketMessages).values({ticketId:t.id,senderId:req.dbUser.id,message,isAdmin:false}).returning(); await db.update(tickets).set({status:'Open'}).where(eq(tickets.id,t.id)); res.status(201).json(m); });
-
-// Affiliate / Referral system
-const ensureReferralCode = async (userId: string, current?: string) => {
-  if (current) return current;
-  for (let i = 0; i < 8; i++) {
-    const code = crypto.randomBytes(6).toString('hex').toUpperCase();
-    try {
-      const [updated] = await db.update(users).set({ referralCode: code }).where(and(eq(users.id, userId), isNull(users.referralCode))).returning({ referralCode: users.referralCode });
-      if (updated?.referralCode) return updated.referralCode;
-      const row = await db.query.users.findFirst({ where: eq(users.id, userId), columns: { referralCode: true } });
-      if (row?.referralCode) return row.referralCode;
-    } catch { /* retry on the unique referral_code constraint */ }
+// Sha7nawy Gate electronic-wallet gateway.
+// The uploaded Postman collection defines:
+// - POST /api/payment/create with Public Key
+// - POST /api/payment/confirm with Public Key
+// - GET /api/payment/info/{transaction_id} with Secret Key
+// Webhooks are verified again server-side by querying the transaction with Secret Key
+// before any wallet credit is issued. The collection does not document a webhook signature.
+const getSha7nawyConfig = async (requireEnabled=true) => {
+  const rows = await db.select().from(settings);
+  const s: any = Object.fromEntries(rows.map((r:any) => [r.key, r.value]));
+  const enabled = s.shahnawy_enabled === 'true';
+  const baseUrl = String(s.shahnawy_base_url || 'https://gate.sha7nawy.com').replace(/\/+$/, '');
+  const publicKey = String(s.shahnawy_public_key || '').trim();
+  const secretKey = String(s.shahnawy_secret_key || '').trim();
+  const merchantWalletNumber = String(s.shahnawy_merchant_wallet_number || s.vodafone_cash_number || '').trim();
+  const minAmount = num(s.shahnawy_min_amount || '5');
+  const maxAmount = num(s.shahnawy_max_amount || '10000');
+  if (requireEnabled && !enabled) throw Object.assign(new Error('Electronic wallet payments are currently disabled'), { code: 'GATEWAY_DISABLED' });
+  if (!publicKey || !secretKey || !baseUrl) throw Object.assign(new Error('Electronic wallet gateway is not configured'), { code: 'GATEWAY_NOT_CONFIGURED' });
+  return { baseUrl, publicKey, secretKey, merchantWalletNumber, minAmount, maxAmount };
+};
+const sha7nawyRequest = async (cfg:any, pathName:string, init:any={}) => {
+  const response = await fetch(`${cfg.baseUrl}${pathName}`, {
+    ...init,
+    headers: { Accept: 'application/json', ...(init.headers || {}) },
+  });
+  const text = await response.text();
+  let body:any = {};
+  try { body = text ? JSON.parse(text) : {}; } catch { body = { message: text }; }
+  if (!response.ok || body?.status === false) {
+    const err:any = new Error(body?.message || `Sha7nawy Gate request failed (${response.status})`);
+    err.httpStatus = response.status;
+    err.gatewayBody = body;
+    throw err;
   }
-  throw new Error('Could not generate referral code');
+  return body;
+};
+const sha7nawyCreate = async (cfg:any, payload:any) => sha7nawyRequest(cfg, '/api/payment/create', {
+  method: 'POST', headers: { Authorization: cfg.publicKey, 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+});
+const sha7nawyConfirm = async (cfg:any, reference:string) => sha7nawyRequest(cfg, '/api/payment/confirm', {
+  method: 'POST', headers: { Authorization: cfg.publicKey, 'Content-Type': 'application/json' }, body: JSON.stringify({ ref_code: reference })
+});
+const sha7nawyInfo = async (cfg:any, transactionId:string) => sha7nawyRequest(cfg, `/api/payment/info/${encodeURIComponent(transactionId)}`, {
+  method: 'GET', headers: { Authorization: cfg.secretKey }
+});
+
+app.post('/api/shahnawy/create', requireAuth, async (req:any, res) => {
+  try {
+    const cfg = await getSha7nawyConfig();
+    const amountEgp = num(req.body?.amount);
+    const number = String(req.body?.number || '').replace(/\s+/g, '');
+    const method = String(req.body?.method || 'vf_cash');
+    if (!/^01\d{9}$/.test(number)) return apiError(res, 400, 'Enter a valid 11-digit Egyptian wallet number', 'INVALID_WALLET_NUMBER');
+    if (!['vf_cash','or_cash','et_cash'].includes(method)) return apiError(res, 400, 'Unsupported electronic wallet', 'INVALID_WALLET_METHOD');
+    if (!positiveMoney(amountEgp) || amountEgp < cfg.minAmount || amountEgp > cfg.maxAmount) return apiError(res, 400, `Amount must be between ${cfg.minAmount} and ${cfg.maxAmount} EGP`, 'INVALID_AMOUNT');
+    const rate = num((await db.select().from(settings)).find((s:any)=>s.key==='usd_exchange_rate')?.value || '50');
+    if (!Number.isFinite(rate) || rate <= 0) return apiError(res, 503, 'Exchange rate is not configured', 'RATE_NOT_CONFIGURED');
+    const usdAmount = money(amountEgp / rate);
+    const [p] = await db.insert(payments).values({
+      userId: req.dbUser.id,
+      amount: usdAmount.toFixed(4),
+      method: 'المحفظة الإلكترونية',
+      status: 'Pending',
+      transactionDetails: { gateway:'shahnawy', walletMethod:method, senderWallet:number, egpAmount:amountEgp.toFixed(2), rate, merchantWalletNumber:cfg.merchantWalletNumber }
+    }).returning();
+    try {
+      const baseUrl = process.env.PUBLIC_APP_URL || `${req.protocol}://${req.get('host')}`;
+      const result = await sha7nawyCreate(cfg, {
+        number,
+        amount: Number(amountEgp.toFixed(2)),
+        method,
+        client: req.dbUser.email || req.dbUser.id,
+        details: `RapidSMM wallet deposit ${p.id}`,
+        webhook_url: `${baseUrl}/api/shahnawy/webhook`,
+      });
+      const d = result?.data || {};
+      await db.update(payments).set({
+        transactionId: d.id || d.transaction_id ? String(d.id || d.transaction_id) : null,
+        transactionDetails: { gateway:'shahnawy', walletMethod:method, senderWallet:number, egpAmount:amountEgp.toFixed(2), rate, merchantWalletNumber:cfg.merchantWalletNumber, reference:d.reference || null, gatewayResponse:result }
+      }).where(eq(payments.id,p.id));
+      res.status(201).json({ paymentId:p.id, transactionId:d.id, reference:d.reference, status:d.status || 'pending', amountEgp, usdAmount:usdAmount.toFixed(2), merchantWalletNumber:cfg.merchantWalletNumber });
+    } catch (e:any) {
+      await db.update(payments).set({ status:'Rejected', transactionDetails:{ gateway:'shahnawy', error:e?.message || String(e), gatewayBody:e?.gatewayBody || null } }).where(eq(payments.id,p.id));
+      throw e;
+    }
+  } catch(e:any) {
+    console.error('Sha7nawy create:', e?.message || e);
+    const code=e?.code || (e?.httpStatus===401?'GATEWAY_UNAUTHORIZED':'SHA7NAWY_CREATE_ERROR');
+    const status=e?.httpStatus===401?503:(e?.code==='GATEWAY_DISABLED'?503:e?.code==='GATEWAY_NOT_CONFIGURED'?503:400);
+    apiError(res,status,e?.message || 'Electronic wallet payment initialization failed',code);
+  }
+});
+
+const finalizeSha7nawyPayment = async (paymentId:string, gatewayInfo:any, source:string) => {
+  return db.transaction(async tx => {
+    const [p] = await tx.select().from(payments).where(eq(payments.id,paymentId)).for('update');
+    if (!p || p.method !== 'المحفظة الإلكترونية') throw new Error('Payment not found');
+    if (p.status !== 'Pending') return false;
+    const td:any = p.transactionDetails || {};
+    const gatewayAmount = num(gatewayInfo?.amount);
+    const expectedEgp = num(td.egpAmount);
+    if (!positiveMoney(gatewayAmount) || money(gatewayAmount) !== money(expectedEgp)) throw Object.assign(new Error('Payment amount mismatch'),{code:'PAYMENT_MISMATCH'});
+    const gatewayStatus = String(gatewayInfo?.status || '').toLowerCase();
+    if (gatewayStatus !== 'completed') return false;
+    await tx.update(payments).set({ status:'Approved', transactionId:String(gatewayInfo?.transaction_id || gatewayInfo?.id || p.transactionId || ''), transactionDetails:{...td, gatewayStatus, verifiedBy:source, gatewayInfo}, resolvedAt:new Date() }).where(eq(payments.id,p.id));
+    await creditWallet(tx,p.userId,num(p.amount),`Funds added via ${p.method}`,p.id);
+    await applyAffiliateCommission(tx,p);
+    return true;
+  });
 };
 
-app.post('/api/client/affiliates/click', async (req,res)=>{
+app.post('/api/shahnawy/confirm', requireAuth, async (req:any,res) => {
   try {
-    const code=String(req.body?.referralCode||'').trim().toUpperCase();
-    if(!/^[A-Z0-9]{6,32}$/.test(code))return apiError(res,400,'Invalid referral code','VALIDATION_ERROR');
-    const ref=await db.query.users.findFirst({where:eq(users.referralCode,code),columns:{id:true,referralCode:true}});
-    if(!ref)return res.status(404).json({error:'Referral code not found',code:'REFERRAL_NOT_FOUND'});
-    await db.insert(referralClicks).values({referralCode:code});
-    res.json({success:true});
-  } catch(e:any){ apiError(res,500,e.message||'Unable to record referral click','REFERRAL_CLICK_ERROR'); }
-});
-
-app.get('/api/client/affiliates/stats', requireAuth, async (req:any,res)=>{
-  try {
-    const code = await ensureReferralCode(req.dbUser.id, req.dbUser.referralCode);
-    const [clickRow] = await db.select({count:sql<number>`count(*)`}).from(referralClicks).where(eq(referralClicks.referralCode,code));
-    const [signupRow] = await db.select({count:sql<number>`count(*)`}).from(users).where(eq(users.referredBy,req.dbUser.id));
-    const [paidRow] = await db.select({count:sql<number>`count(distinct ${affiliateCommissions.referredUserId})`}).from(affiliateCommissions).where(eq(affiliateCommissions.affiliateId,req.dbUser.id));
-    const [depositRow] = await db.select({amount:sql<string>`coalesce(sum(${payments.amount}),0)`}).from(affiliateCommissions).innerJoin(payments,eq(payments.id,affiliateCommissions.paymentId)).where(eq(affiliateCommissions.affiliateId,req.dbUser.id));
-    const [commissionRow] = await db.select({amount:sql<string>`coalesce(sum(${affiliateCommissions.amount}),0)`}).from(affiliateCommissions).where(eq(affiliateCommissions.affiliateId,req.dbUser.id));
-    const referred = await db.select({id:users.id,name:users.name,email:users.email,status:users.status,createdAt:users.createdAt}).from(users).where(eq(users.referredBy,req.dbUser.id)).orderBy(desc(users.createdAt)).limit(100);
-    const commissions = await db.select({id:affiliateCommissions.id,amount:affiliateCommissions.amount,paymentId:affiliateCommissions.paymentId,createdAt:affiliateCommissions.createdAt,referredEmail:users.email}).from(affiliateCommissions).innerJoin(users,eq(users.id,affiliateCommissions.referredUserId)).where(eq(affiliateCommissions.affiliateId,req.dbUser.id)).orderBy(desc(affiliateCommissions.createdAt)).limit(100);
-    const totalCommission=money(num(commissionRow?.amount||0));
-    res.json({referralCode:code,referralLink:`${process.env.PUBLIC_APP_URL || `${req.protocol}://${req.get('host')}`}/?ref=${encodeURIComponent(code)}`,clicks:Number(clickRow?.count||0),signups:Number(signupRow?.count||0),paidReferrals:Number(paidRow?.count||0),referralDeposits:money(num(depositRow?.amount||0)),totalCommission,referred,commissions});
-  } catch(e:any){ console.error('affiliate stats',e); apiError(res,500,'Unable to load affiliate statistics','AFFILIATE_STATS_ERROR'); }
-});
-
-app.get('/api/admin/affiliates', requireAuth, requireAdmin, async (_req,res)=>{
-  try {
-    const [settingsRows, usersRows, clicksRows, commissionRows] = await Promise.all([
-      db.select().from(settings),
-      db.select({id:users.id,name:users.name,email:users.email,referralCode:users.referralCode,createdAt:users.createdAt}).from(users).orderBy(desc(users.createdAt)),
-      db.select({referralCode:referralClicks.referralCode,count:sql<number>`count(*)`}).from(referralClicks).groupBy(referralClicks.referralCode),
-      db.select({id:affiliateCommissions.id,affiliateId:affiliateCommissions.affiliateId,referredUserId:affiliateCommissions.referredUserId,paymentId:affiliateCommissions.paymentId,amount:affiliateCommissions.amount,createdAt:affiliateCommissions.createdAt}).from(affiliateCommissions).orderBy(desc(affiliateCommissions.createdAt)).limit(500)
-    ]);
-    const clickMap=new Map(clicksRows.map((r:any)=>[r.referralCode,Number(r.count||0)]));
-    const ids=commissionRows.map((r:any)=>r.affiliateId).filter(Boolean);
-    const refIds=commissionRows.map((r:any)=>r.referredUserId).filter(Boolean);
-    const payIds=commissionRows.map((r:any)=>r.paymentId).filter(Boolean);
-    const [commissionUsers,paymentRows]=await Promise.all([
-      ids.length?db.select({id:users.id,email:users.email,name:users.name,referredBy:users.referredBy}).from(users).where(inArray(users.id,[...new Set([...ids,...refIds])])):Promise.resolve([]),
-      payIds.length?db.select({id:payments.id,amount:payments.amount}).from(payments).where(inArray(payments.id,[...new Set(payIds)])):Promise.resolve([])
-    ]);
-    const userMap=new Map((commissionUsers as any[]).map((u:any)=>[u.id,u]));
-    const payMap=new Map((paymentRows as any[]).map((p:any)=>[p.id,num(p.amount)]));
-    const byAffiliate=new Map<string,any>();
-    for(const u of usersRows){
-      byAffiliate.set(u.id,{...u,clicks:Number(clickMap.get(u.referralCode)||0),signups:0,paidReferrals:new Set<string>(),referralDeposits:0,totalCommission:0});
+    const cfg=await getSha7nawyConfig();
+    const paymentId=String(req.body?.paymentId||'');
+    const [p]=await db.select().from(payments).where(and(eq(payments.id,paymentId),eq(payments.userId,req.dbUser.id)));
+    if(!p || p.method!=='المحفظة الإلكترونية') return apiError(res,404,'Payment not found','PAYMENT_NOT_FOUND');
+    if(p.status==='Approved') return res.json({success:true,status:'completed',alreadyApproved:true});
+    const td:any=p.transactionDetails||{};
+    if(!td.reference) return apiError(res,400,'Payment reference is missing','REFERENCE_MISSING');
+    try {
+      const result=await sha7nawyConfirm(cfg,td.reference);
+      const info=result?.data||{};
+      if(String(info.status||'').toLowerCase()==='completed') {
+        await finalizeSha7nawyPayment(p.id,info,'confirm');
+        return res.json({success:true,status:'completed',data:info});
+      }
+      return res.status(202).json({success:false,status:String(info.status||'pending'),message:result?.message||'Payment is still pending'});
+    } catch(e:any) {
+      const msg=String(e?.message||'');
+      if(/pending|معلقة|يرجى إعادة المحاولة/i.test(msg)) return res.status(202).json({success:false,status:'pending',message:msg});
+      throw e;
     }
-    const signupMap=new Map<string,number>();
-    for(const u of (await db.select({id:users.id,referredBy:users.referredBy}).from(users))) if(u.referredBy) signupMap.set(u.referredBy,(signupMap.get(u.referredBy)||0)+1);
-    for(const [id,row] of byAffiliate) row.signups=signupMap.get(id)||0;
-    for(const c of commissionRows){ const row=byAffiliate.get(c.affiliateId); if(row){row.paidReferrals.add(c.referredUserId);row.referralDeposits+=payMap.get(c.paymentId)||0;row.totalCommission+=num(c.amount);} }
-    const affiliates=[...byAffiliate.values()].map(r=>({...r,paidReferrals:r.paidReferrals.size,referralDeposits:money(r.referralDeposits),totalCommission:money(r.totalCommission)})).filter(r=>r.referralCode||r.signups||r.totalCommission!=='0.0000');
-    const summary={clicks:[...clickMap.values()].reduce((a,b)=>a+b,0),signups:[...signupMap.values()].reduce((a,b)=>a+b,0),deposited:money(commissionRows.reduce((a,c)=>a+(payMap.get(c.paymentId)||0),0)),commissions:money(commissionRows.reduce((a,c)=>a+num(c.amount),0)),commissionPercentage:settingsRows.find((x:any)=>x.key==='affiliate_commission_percentage')?.value||'5'};
-    const recentCommissions=commissionRows.slice(0,100).map((c:any)=>({id:c.id,affiliateEmail:userMap.get(c.affiliateId)?.email||'-',referredEmail:userMap.get(c.referredUserId)?.email||'-',paymentId:c.paymentId,amount:c.amount,createdAt:c.createdAt}));
-    res.json({summary,affiliates,recentCommissions});
-  } catch(e:any){ console.error('admin affiliates',e); apiError(res,500,'Unable to load affiliate report','AFFILIATE_ADMIN_ERROR'); }
+  } catch(e:any){ apiError(res,e?.httpStatus===401?503:400,e?.message||'Payment confirmation failed',e?.code||'SHA7NAWY_CONFIRM_ERROR'); }
 });
 
-// Game/rewards
-app.post('/api/client/game/claim', requireAuth, async (req:any,res)=>{ try { let result:any; await db.transaction(async tx=>{ const [u]=await tx.select().from(users).where(eq(users.id,req.dbUser.id)).for('update'); const now=new Date(); if(u.lastClaimDate && now.getTime()-new Date(u.lastClaimDate).getTime()<24*60*60*1000)throw new Error('Daily claim is not available yet'); const last=u.lastClaimDate?new Date(u.lastClaimDate):null; const within=last && now.getTime()-last.getTime()<=48*60*60*1000; const streak=within?(u.currentStreak+1):1; const points=10+Math.min(streak,30)*2; await tx.update(users).set({gamePoints:u.gamePoints+points,currentStreak:streak,lastClaimDate:now}).where(eq(users.id,u.id)); result={points,currentStreak:streak}; }); res.json(result); } catch(e:any){apiError(res,400,e.message);} });
-app.post('/api/client/game/exchange', requireAuth, async (req:any,res)=>{ try { await db.transaction(async tx=>{const [u]=await tx.select().from(users).where(eq(users.id,req.dbUser.id)).for('update'); if(u.gamePoints<100)throw new Error('Need at least 100 points'); await tx.update(users).set({gamePoints:u.gamePoints-100,keys:u.keys+1}).where(eq(users.id,u.id));}); res.json({success:true,keys:1}); }catch(e:any){apiError(res,400,e.message);} });
-
-// Shortlinks with signed one-time claim tokens.
-app.get('/api/client/shortlinks', requireAuth, async (req:any,res)=>{const rows=await db.select().from(shortlinks).where(eq(shortlinks.status,'active')); const claims=await db.select().from(shortlinkClaims).where(eq(shortlinkClaims.userId,req.dbUser.id)); const claimed=new Set(claims.map(c=>c.shortlinkId)); res.json(rows.map(s=>({...s,claimed:claimed.has(s.id)})));});
-app.post('/api/client/shortlinks/:id/start', requireAuth, async (req:any,res)=>{const s=await db.query.shortlinks.findFirst({where:and(eq(shortlinks.id,req.params.id),eq(shortlinks.status,'active'))}); if(!s)return apiError(res,404,'Shortlink not found','NOT_FOUND'); const existing=await db.query.shortlinkClaims.findFirst({where:and(eq(shortlinkClaims.userId,req.dbUser.id),eq(shortlinkClaims.shortlinkId,s.id))}); if(existing)return apiError(res,409,'Already claimed','ALREADY_CLAIMED'); const token=crypto.randomBytes(32).toString('hex'); await db.insert(shortlinkTokens).values({token,userId:req.dbUser.id,shortlinkId:s.id,expiresAt:new Date(Date.now()+30*60*1000)}); res.json({token,url:s.url});});
-app.post('/api/client/shortlinks/:id/claim', requireAuth, async (req:any,res)=>{try{const token=String(req.body?.token||''); if(!token)throw new Error('Open the shortlink first'); await db.transaction(async tx=>{const [t]=await tx.select().from(shortlinkTokens).where(and(eq(shortlinkTokens.token,token),eq(shortlinkTokens.userId,req.dbUser.id),eq(shortlinkTokens.shortlinkId,req.params.id))).for('update'); if(!t||!t.expiresAt||new Date(t.expiresAt)<new Date())throw new Error('Claim token expired'); if(Date.now()-new Date(t.createdAt).getTime()<10_000)throw new Error('Please wait a few seconds after visiting the shortlink'); const [s]=await tx.select().from(shortlinks).where(eq(shortlinks.id,req.params.id)); if(!s||s.status!=='active')throw new Error('Shortlink unavailable'); const [already]=await tx.select().from(shortlinkClaims).where(and(eq(shortlinkClaims.userId,req.dbUser.id),eq(shortlinkClaims.shortlinkId,s.id))); if(already)throw new Error('Already claimed'); await tx.insert(shortlinkClaims).values({userId:req.dbUser.id,shortlinkId:s.id}); await creditWallet(tx,req.dbUser.id,num(s.rewardAmount),'Shortlink reward',s.id); await tx.delete(shortlinkTokens).where(eq(shortlinkTokens.token,t.token));}); res.json({success:true});}catch(e:any){apiError(res,400,e.message);}});
-
-// Raffles
-app.get('/api/client/raffles', requireAuth, async (req:any,res)=>{const rs=await db.select().from(raffles).orderBy(desc(raffles.createdAt)); const out=[]; for(const r of rs){const ts=await db.select().from(raffleTickets).where(eq(raffleTickets.raffleId,r.id)); out.push({...r,ticketsCount:ts.length,userTicketsCount:ts.filter(t=>t.userId===req.dbUser.id).length});} res.json(out);});
-app.post('/api/client/raffles/:id/buy', requireAuth, async(req:any,res)=>{try{const qty=Number(req.body?.qty||1); if(!Number.isInteger(qty)||qty<1||qty>100)throw new Error('Invalid quantity'); await db.transaction(async tx=>{const [r]=await tx.select().from(raffles).where(eq(raffles.id,req.params.id)).for('update'); if(!r)throw new Error('Raffle not found'); if(r.status!=='Open'||new Date(r.endDate)<=new Date())throw new Error('Raffle is closed'); const [countRow]=await tx.select({count:sql<number>`count(*)`}).from(raffleTickets).where(eq(raffleTickets.raffleId,r.id)); const total=Number(countRow.count||0); const [userCountRow]=await tx.select({count:sql<number>`count(*)`}).from(raffleTickets).where(and(eq(raffleTickets.raffleId,r.id),eq(raffleTickets.userId,req.dbUser.id))); const uc=Number(userCountRow.count||0); if(r.maxTickets && total+qty>r.maxTickets)throw new Error('Maximum tickets reached'); if(r.maxTicketsPerUser&&uc+qty>r.maxTicketsPerUser)throw new Error('User ticket limit reached'); const cost=money(num(r.ticketPrice)*qty); await debitWallet(tx,req.dbUser.id,cost,`Raffle tickets: ${r.title}`,r.id); await tx.insert(raffleTickets).values(Array.from({length:qty},()=>({raffleId:r.id,userId:req.dbUser.id})));}); res.json({success:true});}catch(e:any){apiError(res,400,e.message);}});
+app.post('/api/shahnawy/webhook', async (req:any,res) => {
+  try {
+    const cfg=await getSha7nawyConfig(false);
+    const txId=String(req.headers['x-transaction-id']||req.body?.transaction?.id||'');
+    const reference=String(req.headers['x-transaction-reference']||req.body?.transaction?.reference||'');
+    const event=String(req.headers['x-webhook-event']||req.body?.event||'');
+    if(!txId && !reference) return apiError(res,400,'Missing transaction reference','INVALID_WEBHOOK');
+    let payment:any=null;
+    if(txId){ [payment]=await db.select().from(payments).where(and(eq(payments.transactionId,txId),eq(payments.method,'المحفظة الإلكترونية'))); }
+    if(!payment && reference){
+      const rows=await db.select().from(payments).where(eq(payments.method,'المحفظة الإلكترونية'));
+      payment=rows.find((x:any)=>String((x.transactionDetails as any)?.reference||'')===reference) || null;
+    }
+    if(!payment) return res.sendStatus(200); // Do not leak payment existence to a third party.
+    // Never trust webhook amount/status blindly: re-query Sha7nawy with the Secret Key.
+    const verified=await sha7nawyInfo(cfg,txId || String(payment.transactionId));
+    const info=verified?.data||{};
+    const gatewayStatus=String(info.status||req.body?.transaction?.status||'').toLowerCase();
+    if(gatewayStatus==='completed') await finalizeSha7nawyPayment(payment.id,info,'webhook');
+    else if(['rejected','failed','expired','cancelled'].includes(gatewayStatus)) await db.update(payments).set({status:'Rejected',transactionDetails:{...(payment.transactionDetails as any||{}),gatewayStatus,event,webhook:req.body},resolvedAt:new Date()}).where(and(eq(payments.id,payment.id),eq(payments.status,'Pending')));
+    else await db.update(payments).set({transactionDetails:{...(payment.transactionDetails as any||{}),gatewayStatus,event,webhook:req.body}}).where(eq(payments.id,payment.id));
+    res.sendStatus(200);
+  } catch(e:any){ console.error('Sha7nawy webhook:',e?.message||e); res.sendStatus(200); }
+});
 
 // Admin settings/users/categories/services/providers/orders/payments/tickets/reports/audit/raffles/mystery
-const secretKeys = new Set(['KASHIER_API_KEY','KASHIER_WEBHOOK_SECRET','provider_api_key']);
+const secretKeys = new Set(['shahnawy_public_key','shahnawy_secret_key','provider_api_key']);
 app.get('/api/admin/settings',requireAuth,requireAdmin,async(_req,res)=>{const rows=await db.select().from(settings); const out:any={}; for(const r of rows)out[r.key]=secretKeys.has(r.key)?'********':r.value; res.json(out);});
-app.put('/api/admin/settings',requireAuth,requireAdmin,async(req:any,res)=>{const allowed=new Set(['site_name','currency_symbol','vodafone_cash_number','site_description','support_email','site_logo','affiliate_commission_percentage','usd_exchange_rate','default_profit_margin']); for(const [key,val] of Object.entries(req.body||{})){if(!allowed.has(key))return apiError(res,400,`Setting not allowed: ${key}`,'INVALID_SETTING'); const value=String(val).trim(); if(key==='affiliate_commission_percentage'&&(!Number.isFinite(num(value))||num(value)<0||num(value)>100))return apiError(res,400,'Invalid commission percentage','INVALID_SETTING'); if(key==='usd_exchange_rate'&&(!Number.isFinite(num(value))||num(value)<=0||num(value)>100000))return apiError(res,400,'Invalid exchange rate','INVALID_SETTING'); if(key==='default_profit_margin'&&(!Number.isFinite(num(value))||num(value)<0||num(value)>10000))return apiError(res,400,'Invalid default profit margin','INVALID_SETTING'); await db.insert(settings).values({key,value}).onConflictDoUpdate({target:settings.key,set:{value}});} await audit(req.dbUser.id,'UPDATE_SETTINGS','SETTINGS','settings'); res.json({success:true});});
+app.put('/api/admin/settings',requireAuth,requireAdmin,async(req:any,res)=>{const allowed=new Set(['site_name','currency_symbol','vodafone_cash_number','site_description','support_email','site_logo','affiliate_commission_percentage','usd_exchange_rate','default_profit_margin','shahnawy_enabled','shahnawy_base_url','shahnawy_public_key','shahnawy_secret_key','shahnawy_merchant_wallet_number','shahnawy_min_amount','shahnawy_max_amount']); for(const [key,val] of Object.entries(req.body||{})){if(!allowed.has(key))return apiError(res,400,`Setting not allowed: ${key}`,'INVALID_SETTING'); const value=String(val).trim(); if(secretKeys.has(key)&&value==='********') continue; if(key==='shahnawy_enabled'&&!['true','false'].includes(value))return apiError(res,400,'Invalid gateway enabled value','INVALID_SETTING'); if(key==='shahnawy_base_url'&&!/^https?:\/\//i.test(value))return apiError(res,400,'Invalid Sha7nawy base URL','INVALID_SETTING'); if(['shahnawy_min_amount','shahnawy_max_amount'].includes(key)&&(!Number.isFinite(num(value))||num(value)<1||num(value)>10000000))return apiError(res,400,'Invalid Sha7nawy amount limit','INVALID_SETTING'); if(key==='affiliate_commission_percentage'&&(!Number.isFinite(num(value))||num(value)<0||num(value)>100))return apiError(res,400,'Invalid commission percentage','INVALID_SETTING'); if(key==='usd_exchange_rate'&&(!Number.isFinite(num(value))||num(value)<=0||num(value)>100000))return apiError(res,400,'Invalid exchange rate','INVALID_SETTING'); if(key==='default_profit_margin'&&(!Number.isFinite(num(value))||num(value)<0||num(value)>10000))return apiError(res,400,'Invalid default profit margin','INVALID_SETTING'); await db.insert(settings).values({key,value}).onConflictDoUpdate({target:settings.key,set:{value}});} await audit(req.dbUser.id,'UPDATE_SETTINGS','SETTINGS','settings'); res.json({success:true});});
 app.get('/api/admin/users',requireAuth,requireAdmin,async(req:any,res)=>{
   const page=Math.max(1,parseInt(req.query.page)||1);
   const pageSize=Math.min(200,Math.max(1,parseInt(req.query.pageSize)||50));
@@ -1100,7 +1106,6 @@ function validateEnv() {
     if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !process.env.FIREBASE_PRIVATE_KEY) {
       missing.push('FIREBASE_PROJECT_ID / FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY');
     }
-    if (process.env.KASHIER_MODE !== 'live') console.warn('[startup] KASHIER_MODE is not "live" — real deposits via Kashier will be refused in production.');
   }
   if (missing.length) {
     console.error(`[startup] Missing required environment variables: ${missing.join(', ')}`);

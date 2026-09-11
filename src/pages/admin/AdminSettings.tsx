@@ -17,6 +17,13 @@ export default function AdminSettings() {
   const [affiliateComm, setAffiliateComm] = useState('5');
   const [usdExchangeRate, setUsdExchangeRate] = useState('50');
   const [defaultProfitMargin, setDefaultProfitMargin] = useState('50');
+  const [shahnawyEnabled, setShahnawyEnabled] = useState(false);
+  const [shahnawyBaseUrl, setShahnawyBaseUrl] = useState('https://gate.sha7nawy.com');
+  const [shahnawyPublicKey, setShahnawyPublicKey] = useState('');
+  const [shahnawySecretKey, setShahnawySecretKey] = useState('');
+  const [shahnawyMerchantWalletNumber, setShahnawyMerchantWalletNumber] = useState('');
+  const [shahnawyMinAmount, setShahnawyMinAmount] = useState('5');
+  const [shahnawyMaxAmount, setShahnawyMaxAmount] = useState('10000');
 
   const { data: settings } = useQuery({
     queryKey: ['admin-settings'],
@@ -40,6 +47,13 @@ export default function AdminSettings() {
       if (settings.affiliate_commission_percentage) setAffiliateComm(settings.affiliate_commission_percentage);
       if (settings.usd_exchange_rate) setUsdExchangeRate(settings.usd_exchange_rate);
       if (settings.default_profit_margin) setDefaultProfitMargin(settings.default_profit_margin);
+      setShahnawyEnabled(settings.shahnawy_enabled === 'true');
+      if (settings.shahnawy_base_url) setShahnawyBaseUrl(settings.shahnawy_base_url);
+      if (settings.shahnawy_public_key) setShahnawyPublicKey(settings.shahnawy_public_key);
+      if (settings.shahnawy_secret_key) setShahnawySecretKey(settings.shahnawy_secret_key);
+      if (settings.shahnawy_merchant_wallet_number) setShahnawyMerchantWalletNumber(settings.shahnawy_merchant_wallet_number);
+      if (settings.shahnawy_min_amount) setShahnawyMinAmount(settings.shahnawy_min_amount);
+      if (settings.shahnawy_max_amount) setShahnawyMaxAmount(settings.shahnawy_max_amount);
     }
   }, [settings]);
 
@@ -71,6 +85,13 @@ export default function AdminSettings() {
       affiliate_commission_percentage: affiliateComm,
       usd_exchange_rate: usdExchangeRate,
       default_profit_margin: defaultProfitMargin,
+      shahnawy_enabled: String(shahnawyEnabled),
+      shahnawy_base_url: shahnawyBaseUrl,
+      shahnawy_public_key: shahnawyPublicKey,
+      shahnawy_secret_key: shahnawySecretKey,
+      shahnawy_merchant_wallet_number: shahnawyMerchantWalletNumber,
+      shahnawy_min_amount: shahnawyMinAmount,
+      shahnawy_max_amount: shahnawyMaxAmount,
     });
   };
 
@@ -109,7 +130,7 @@ export default function AdminSettings() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Support Email <span className="text-red-500">*</span></label>
             <input type="email" value={supportEmail} onChange={e => setSupportEmail(e.target.value)} className="input-primary w-full" placeholder="support@yourdomain.com" />
             {!supportEmail && (
-              <p className="text-xs text-amber-600 mt-1">Required for payment processors (e.g. Heleket, Kashier) — set a real, monitored email here so it appears on your public Contact page.</p>
+              <p className="text-xs text-amber-600 mt-1">Required for payment processors (e.g. Heleket and electronic-wallet gateway) — set a real, monitored email here so it appears on your public Contact page.</p>
             )}
           </div>
         </div>
@@ -128,42 +149,40 @@ export default function AdminSettings() {
         </div>
         <div className="border-t pt-6">
           <h4 className="text-sm font-bold text-gray-900 mb-4">Payment Methods Settings</h4>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Vodafone Cash Number</label>
-              <input type="text" value={vodafoneCashNumber} onChange={e => setVodafoneCashNumber(e.target.value)} className="input-primary w-full" placeholder="e.g. 010xxxxxxxx" />
-              <p className="text-xs text-gray-500 mt-1">This number will be displayed to clients when they choose to add funds via Vodafone Cash.</p>
+          <div className="rounded-2xl border border-indigo-100 bg-indigo-50 p-5 space-y-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h5 className="font-bold text-gray-900">المحفظة الإلكترونية — Sha7nawy Gate</h5>
+                <p className="text-xs text-gray-600 mt-1">Vodafone Cash / Orange Cash / Etisalat Cash. بيانات البوابة تبقى على السيرفر ولا يتم إرسال Secret Key للعميل.</p>
+              </div>
+              <button type="button" onClick={() => setShahnawyEnabled(v => !v)} className={`px-4 py-2 rounded-lg text-sm font-semibold ${shahnawyEnabled ? 'bg-emerald-600 text-white' : 'bg-gray-200 text-gray-700'}`}>{shahnawyEnabled ? 'Enabled' : 'Disabled'}</button>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Exchange Rate (EGP per 1 USD)
-              </label>
-              <input type="number" step="0.01" min="0.01" value={usdExchangeRate} onChange={e => setUsdExchangeRate(e.target.value)} className="input-primary w-full max-w-xs" />
-              <p className="text-xs text-gray-500 mt-1">
-                The site's wallet currency is USD. Vodafone Cash and Kashier collect EGP, so this rate converts what a client pays in EGP into the USD amount credited to their wallet. Heleket already charges in USD, so it's credited with no conversion.
-                Update this whenever the real USD/EGP rate moves meaningfully — you control it, not a live market feed.
-              </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div><label className="block text-sm font-medium text-gray-700 mb-1">Base URL</label><input value={shahnawyBaseUrl} onChange={e=>setShahnawyBaseUrl(e.target.value)} className="input-primary w-full" placeholder="https://gate.sha7nawy.com" /></div>
+              <div><label className="block text-sm font-medium text-gray-700 mb-1">Merchant Wallet Number</label><input value={shahnawyMerchantWalletNumber} onChange={e=>setShahnawyMerchantWalletNumber(e.target.value.replace(/\D/g,'').slice(0,11))} className="input-primary w-full" placeholder="01XXXXXXXXX" /></div>
+              <div><label className="block text-sm font-medium text-gray-700 mb-1">Public Key</label><input value={shahnawyPublicKey} onChange={e=>setShahnawyPublicKey(e.target.value)} className="input-primary w-full" placeholder="Public API key" /></div>
+              <div><label className="block text-sm font-medium text-gray-700 mb-1">Secret Key</label><input type="password" value={shahnawySecretKey} onChange={e=>setShahnawySecretKey(e.target.value)} className="input-primary w-full" placeholder="Secret API key" /></div>
+              <div><label className="block text-sm font-medium text-gray-700 mb-1">Minimum EGP</label><input type="number" min="1" value={shahnawyMinAmount} onChange={e=>setShahnawyMinAmount(e.target.value)} className="input-primary w-full" /></div>
+              <div><label className="block text-sm font-medium text-gray-700 mb-1">Maximum EGP</label><input type="number" min="1" value={shahnawyMaxAmount} onChange={e=>setShahnawyMaxAmount(e.target.value)} className="input-primary w-full" /></div>
             </div>
-            <div className="border-t pt-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Heleket Connection</label>
-              <p className="text-xs text-gray-500 mb-2">Tests HELEKET_MERCHANT_ID / HELEKET_PAYMENT_API_KEY against Heleket's servers directly — this is the fastest way to confirm a "Merchant unknown" or similar error is fixed.</p>
-              <button type="button" onClick={() => heleketStatus.refetch()} disabled={heleketStatus.isFetching} className="btn-secondary inline-flex items-center gap-2">
-                {heleketStatus.isFetching ? <Loader2 className="w-4 h-4 animate-spin" /> : <PlugZap className="w-4 h-4" />}
-                Test Heleket Connection
-              </button>
-              {heleketStatus.data && (
-                <div className={`mt-3 text-sm rounded-lg p-3 flex items-start gap-2 ${heleketStatus.data.connectionOk ? 'bg-emerald-50 text-emerald-800' : 'bg-red-50 text-red-800'}`}>
-                  {heleketStatus.data.connectionOk ? <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" /> : <XCircle className="w-4 h-4 mt-0.5 shrink-0" />}
-                  <div>
-                    {heleketStatus.data.connectionOk ? (
-                      <span>Connected. Merchant {heleketStatus.data.maskedMerchant} is recognized by Heleket — crypto payments should work.</span>
-                    ) : (
-                      <span>{heleketStatus.data.error || 'Connection failed.'}</span>
-                    )}
-                  </div>
-                </div>
-              )}
+            <div className="rounded-xl bg-white border border-indigo-100 p-4 text-xs text-gray-600 space-y-2">
+              <p><strong>Webhook:</strong> <code>/api/shahnawy/webhook</code> — يتم إنشاؤه تلقائياً من PUBLIC_APP_URL.</p>
+              <p><strong>أمان إضافي:</strong> النظام لا يثق في Webhook وحده؛ عند وصوله يعيد الاستعلام عن العملية باستخدام Secret Key ويتأكد من المبلغ والحالة قبل إضافة الرصيد.</p>
+              <p><strong>ملاحظة:</strong> رقم المحفظة هنا هو رقم المحفظة المستقبلة الذي تريد عرضه للعملاء. ملف الـAPI المرفق لا يرسل رقم المستلم ضمن طلب Create، لذلك لا يتم اختراع باراميتر غير موجود في التوثيق.</p>
             </div>
+          </div>
+          <div className="mt-5">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Exchange Rate (EGP per 1 USD)</label>
+            <input type="number" step="0.01" min="0.01" value={usdExchangeRate} onChange={e => setUsdExchangeRate(e.target.value)} className="input-primary w-full max-w-xs" />
+            <p className="text-xs text-gray-500 mt-1">المحفظة الداخلية بالدولار. المبلغ المدفوع بالجنيه يتم تحويله للدولار بهذا السعر قبل إضافة الرصيد.</p>
+          </div>
+          <div className="border-t mt-5 pt-5">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Heleket Connection</label>
+            <p className="text-xs text-gray-500 mb-2">اختبار بوابة العملات الرقمية الموجودة حالياً.</p>
+            <button type="button" onClick={() => heleketStatus.refetch()} disabled={heleketStatus.isFetching} className="btn-secondary inline-flex items-center gap-2">
+              {heleketStatus.isFetching ? <Loader2 className="w-4 h-4 animate-spin" /> : <PlugZap className="w-4 h-4" />} Test Heleket Connection
+            </button>
+            {heleketStatus.data && <div className={`mt-3 text-sm rounded-lg p-3 flex items-start gap-2 ${heleketStatus.data.connectionOk ? 'bg-emerald-50 text-emerald-800' : 'bg-red-50 text-red-800'}`}>{heleketStatus.data.connectionOk ? <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" /> : <XCircle className="w-4 h-4 mt-0.5 shrink-0" />}<div>{heleketStatus.data.connectionOk ? <span>Connected. Merchant {heleketStatus.data.maskedMerchant} is recognized by Heleket.</span> : <span>{heleketStatus.data.error || 'Connection failed.'}</span>}</div></div>}
           </div>
         </div>
       </div>

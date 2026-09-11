@@ -12,7 +12,7 @@ RapidSMM 2.0 is a clean rebuild of the public experience and data-install path w
 - Provider names are hidden from customers. Provider-supplied service metadata is stored in `services.provider_meta` and used for customer-facing details.
 - Provider sync calculates selling price from provider cost + provider margin.
 - Admin Settings now has a default provider profit margin; each provider can still have its own margin.
-- USD is the wallet currency. Kashier/Vodafone Cash can settle externally in EGP and are converted before wallet credit; Heleket is USD.
+- USD is the wallet currency. Electronic wallets can settle externally in EGP and are converted before wallet credit; Heleket is USD.
 - Render is pinned to Node 20.19.5 and uses `npm ci` for reproducible builds.
 - Auth failure no longer shows a misleading red Access Denied screen during a temporary sync problem; the dashboard shows a reconnect state with retry/sign-out actions.
 - No fake customer/order statistics are used as real business claims.
@@ -40,7 +40,7 @@ Admin → Settings also contains a default margin used when creating a new provi
 
 Wallet: USD.
 
-Kashier / Vodafone Cash: external EGP settlement, converted to USD before wallet credit using the configured exchange rate.
+Electronic wallets: external EGP settlement, converted to USD before wallet credit using the configured exchange rate.
 
 Heleket: USD wallet and USD gateway; no conversion when both currencies match.
 

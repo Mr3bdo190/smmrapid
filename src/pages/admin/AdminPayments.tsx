@@ -75,7 +75,7 @@ export default function AdminPayments() {
               {!isLoading && rows.length === 0 && <tr><td colSpan={5} className="px-6 py-10 text-center text-gray-500">No payments found.</td></tr>}
               {rows.map((p: any) => {
                 const pending = p.status === 'Pending';
-                const gatewayVerified = p.method === 'Heleket' || p.method === 'Kashier';
+                const gatewayVerified = p.method === 'Heleket' || p.method === 'المحفظة الإلكترونية';
                 const egpAmount = p.transactionDetails?.egpAmount;
                 return <tr key={p.id} className="hover:bg-gray-50/50">
                   <td className="px-6 py-4 text-sm text-gray-900">{p.user?.email || p.userId}</td>
@@ -83,7 +83,7 @@ export default function AdminPayments() {
                   <td className="px-6 py-4 text-sm font-bold text-emerald-600">${Number(p.amount).toFixed(4)}{egpAmount && <div className="text-xs font-normal text-gray-400">({Number(egpAmount).toFixed(2)} EGP @ {p.transactionDetails?.rate})</div>}</td>
                   <td className="px-6 py-4 text-sm"><div><span className={`px-2 py-1 rounded text-xs ${p.status === 'Approved' ? 'bg-emerald-100 text-emerald-800' : p.status === 'Rejected' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>{p.status}</span></div><span className="text-xs text-gray-500 mt-1 block">{p.createdAt ? new Date(p.createdAt).toLocaleString() : '-'}</span></td>
                   <td className="px-6 py-4 text-right text-sm">
-                    {pending && gatewayVerified && <span className="text-xs text-gray-400 italic">Awaiting webhook confirmation</span>}
+                    {pending && gatewayVerified && <span className="text-xs text-gray-400 italic">Awaiting gateway confirmation</span>}
                     {pending && !gatewayVerified && <div className="flex justify-end gap-2">
                       <button type="button" disabled={resolveMutation.isPending} onClick={() => resolveMutation.mutate({ id: p.id, action: 'approve' })} className="text-emerald-600 bg-emerald-50 p-2 rounded hover:bg-emerald-100 disabled:opacity-50" title="Approve"><Check className="w-4 h-4" /></button>
                       <button type="button" disabled={resolveMutation.isPending} onClick={() => resolveMutation.mutate({ id: p.id, action: 'reject' })} className="text-red-600 bg-red-50 p-2 rounded hover:bg-red-100 disabled:opacity-50" title="Reject"><X className="w-4 h-4" /></button>

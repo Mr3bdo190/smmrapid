@@ -11,7 +11,6 @@ This package is a production-oriented SMM panel with Firebase authentication, Po
 5. Create PostgreSQL database and apply Drizzle migrations in order, including `drizzle/0002_security_and_indexes.sql`.
 6. Fill `.env` from `.env.example`.
 7. Use Firebase Admin credentials belonging to the same Firebase project as the client config.
-8. Set `ADMIN_EMAILS` explicitly to the administrator account(s).
 9. In production set `KASHIER_MODE=live` and configure the real gateway credentials/webhook according to the current Kashier merchant integration instructions.
 10. Configure at least one real SMM provider and test its balance/services/order/status endpoints.
 11. Enable HTTPS and configure a reverse proxy/load balancer.
@@ -68,7 +67,6 @@ This repo includes a `render.yaml` Blueprint, so Render can provision the web se
 
 1. Push this project to a GitHub/GitLab repository.
 2. In the Render dashboard: **New → Blueprint**, point it at the repo. Render reads `render.yaml` and proposes a web service (`smm-panel`) plus a Postgres database (`smm-panel-db`).
-3. Click **Apply**. `DATABASE_URL` is wired automatically from the database. Fill in the remaining secrets it prompts for (they're `sync: false` so Render asks you): `ADMIN_EMAILS`, `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`, `KASHIER_MERCHANT_ID`, `KASHIER_API_KEY`, `KASHIER_WEBHOOK_SECRET`.
 4. After the first deploy, open a Render **Shell** on the service (or run locally against the same `DATABASE_URL`) and apply the migrations in order:
    ```
    psql "$DATABASE_URL" -f drizzle/0000_worried_scourge.sql
@@ -81,7 +79,6 @@ This repo includes a `render.yaml` Blueprint, so Render can provision the web se
    psql "$DATABASE_URL" -f drizzle/0007_refill_cancel_and_indexes.sql
    ```
 5. Confirm `GET /api/health` returns `{"ok":true}` — this is also the Render health check path.
-6. Log in once with the account you listed in `ADMIN_EMAILS` so it gets promoted to admin, then go to `/admin/providers` and add a real SMM provider, and `/admin/settings` to set the site name/currency/support email.
 7. Only switch `KASHIER_MODE` to `live` (already the default in `render.yaml`) once you've completed one real end-to-end payment test against your Kashier merchant account.
 
 If you deploy without the Blueprint (manual Web Service), set the **Build Command** to `npm ci && npm run build`, the **Start Command** to `npm start`, and add the same environment variables from `.env.example` in the Render dashboard.

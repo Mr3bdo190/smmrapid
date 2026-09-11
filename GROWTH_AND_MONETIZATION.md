@@ -33,7 +33,6 @@
 
 ## Production checklist
 - Set `DATABASE_URL` and Firebase credentials in Render environment variables.
-- Set `ADMIN_EMAILS` explicitly.
 - Configure payment webhook secrets and verify webhook signatures.
 - Use a paid PostgreSQL plan before serious traffic; do not rely on a free database for a revenue-critical production workload.
 - Submit `https://smmrapid.store/sitemap.xml` to Google Search Console and Bing Webmaster Tools.

@@ -20,8 +20,6 @@ services:
         fromDatabase:
           name: smm-panel-db
           property: connectionString
-      - key: ADMIN_EMAILS
-        sync: false
       - key: FIREBASE_PROJECT_ID
         sync: false
       - key: FIREBASE_CLIENT_EMAIL

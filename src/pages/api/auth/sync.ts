@@ -35,8 +35,8 @@ export default async function handler(req: AuthenticatedRequest, res: Response) 
       const email = decoded.email;
       if (!email) return apiError(res, 400, 'Verified account has no email', 'INVALID_ACCOUNT');
       const referralCode = crypto.randomBytes(6).toString('hex').toUpperCase();
-      const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map((x: string) => x.trim().toLowerCase()).filter(Boolean);
-      const role = adminEmails.includes(email.toLowerCase()) ? 'admin' : 'user';
+      // New accounts are regular users. Promote an administrator explicitly in the database.
+      const role = 'user';
       const name = decoded.name || req.body?.name || null;
       try {
         const [created] = await db.insert(users).values({ uid: decoded.uid, email, name, role, status: 'active', referralCode }).returning();

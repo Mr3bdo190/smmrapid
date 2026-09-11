@@ -143,10 +143,9 @@ const requireAuth = async (req: any, res: any, next: any) => {
       const email = decoded.email;
       if (!email) return apiError(res, 400, 'Verified account has no email', 'INVALID_ACCOUNT');
       const referralCode = crypto.randomBytes(6).toString('hex').toUpperCase();
-      const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map((x:string)=>x.trim().toLowerCase()).filter(Boolean);
-      const role = adminEmails.includes(email.toLowerCase()) ? 'admin' : 'user';
+      // New accounts are regular users by default. Admin promotion is explicit in the database.
       try {
-        const [created] = await db.insert(users).values({ uid: decoded.uid, email, name: decoded.name || null, role, status: 'active', referralCode }).returning();
+        const [created] = await db.insert(users).values({ uid: decoded.uid, email, name: decoded.name || null, role: 'user', status: 'active', referralCode }).returning();
         userRecord = created;
       } catch (insertError: any) {
         // A concurrent first request may have created the same user.
@@ -1063,7 +1062,6 @@ function validateEnv() {
     if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !process.env.FIREBASE_PRIVATE_KEY) {
       missing.push('FIREBASE_PROJECT_ID / FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY');
     }
-    if (!process.env.ADMIN_EMAILS) console.warn('[startup] ADMIN_EMAILS is not set — no account will be auto-promoted to admin.');
     if (process.env.KASHIER_MODE !== 'live') console.warn('[startup] KASHIER_MODE is not "live" — real deposits via Kashier will be refused in production.');
   }
   if (missing.length) {

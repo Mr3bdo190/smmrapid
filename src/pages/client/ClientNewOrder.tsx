@@ -87,13 +87,18 @@ export default function ClientNewOrder() {
 
   const order = useMutation({
     mutationFn: async () => {
+      if (!selectedService) throw new Error('SERVICE_UNAVAILABLE');
+      if (!validQty) throw new Error('INVALID_QUANTITY');
+      if (!link.trim()) throw new Error('INVALID_LINK');
+      const estimated = Number(totalPrice) - Number(couponResult?.discount || 0);
+      if (Number(dbUser?.balance || 0) + 0.0000001 < estimated) throw new Error('INSUFFICIENT_BALANCE');
       const tok = await user!.getIdToken();
       const r = await apiFetch('/api/client/orders', user, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` }, body: JSON.stringify({ serviceId, link, quantity: Number(quantity), couponCode: couponCode.trim() || undefined }) });
       if (!r.ok) throw new Error(await readError(r, 'Failed to place order'));
       return r.json();
     },
     onSuccess: () => { notify.success(t('newOrder.orderPlaced')); setLink(''); setQuantity(''); qc.invalidateQueries({ queryKey: ['client-orders'] }); qc.invalidateQueries({ queryKey: ['client-dashboard'] }); qc.invalidateQueries({ queryKey: ['client-me'] }); },
-    onError: (e: any) => notify.error(e.message)
+    onError: (e: any) => notify.error(e.message || e.code || 'ORDER_CREATION_FAILED', t('newOrder.orderFailed'))
   });
 
   return <div className="space-y-6 max-w-7xl mx-auto" dir="auto">

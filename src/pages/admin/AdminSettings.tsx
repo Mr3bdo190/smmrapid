@@ -24,6 +24,13 @@ export default function AdminSettings() {
   const [shahnawyMerchantWalletNumber, setShahnawyMerchantWalletNumber] = useState('');
   const [shahnawyMinAmount, setShahnawyMinAmount] = useState('5');
   const [shahnawyMaxAmount, setShahnawyMaxAmount] = useState('10000');
+  const [walletIntroAr, setWalletIntroAr] = useState(''); const [walletIntroEn, setWalletIntroEn] = useState('');
+  const [walletVerificationAr, setWalletVerificationAr] = useState(''); const [walletVerificationEn, setWalletVerificationEn] = useState('');
+  const [vfAr, setVfAr] = useState(''); const [vfEn, setVfEn] = useState('');
+  const [orAr, setOrAr] = useState(''); const [orEn, setOrEn] = useState('');
+  const [etAr, setEtAr] = useState(''); const [etEn, setEtEn] = useState('');
+  const [cryptoIntroAr, setCryptoIntroAr] = useState(''); const [cryptoIntroEn, setCryptoIntroEn] = useState('');
+  const [cryptoInvoiceAr, setCryptoInvoiceAr] = useState(''); const [cryptoInvoiceEn, setCryptoInvoiceEn] = useState('');
 
   const { data: settings } = useQuery({
     queryKey: ['admin-settings'],
@@ -54,6 +61,13 @@ export default function AdminSettings() {
       if (settings.shahnawy_merchant_wallet_number) setShahnawyMerchantWalletNumber(settings.shahnawy_merchant_wallet_number);
       if (settings.shahnawy_min_amount) setShahnawyMinAmount(settings.shahnawy_min_amount);
       if (settings.shahnawy_max_amount) setShahnawyMaxAmount(settings.shahnawy_max_amount);
+      setWalletIntroAr(settings.add_funds_wallet_intro_ar || 'أدخل رقم محفظتك الشخصية. سيتم إرسال طلب الدفع إلى هذه المحفظة.'); setWalletIntroEn(settings.add_funds_wallet_intro_en || 'Enter your personal wallet number. A payment request will be sent to that wallet.');
+      setWalletVerificationAr(settings.add_funds_wallet_verification_ar || 'يتم التحقق من عملية الدفع تلقائياً قبل إضافة الرصيد.'); setWalletVerificationEn(settings.add_funds_wallet_verification_en || 'The payment is verified automatically before the balance is added.');
+      setVfAr(settings.add_funds_vf_instruction_ar || 'بعد إنشاء طلب الدفع، قم بتأكيد العملية من محفظة Vodafone Cash.'); setVfEn(settings.add_funds_vf_instruction_en || 'After creating the payment request, confirm it from Vodafone Cash.');
+      setOrAr(settings.add_funds_or_instruction_ar || 'بعد إنشاء طلب الدفع، وافق على العملية من محفظة Orange Cash.'); setOrEn(settings.add_funds_or_instruction_en || 'After creating the payment request, approve it from Orange Cash.');
+      setEtAr(settings.add_funds_et_instruction_ar || 'بعد إنشاء طلب الدفع، وافق على العملية من e& Money / Etisalat Cash.'); setEtEn(settings.add_funds_et_instruction_en || 'After creating the payment request, approve it from e& Money / Etisalat Cash.');
+      setCryptoIntroAr(settings.add_funds_crypto_intro_ar || 'ادفع بالدولار باستخدام بوابة الدفع بالعملات الرقمية المتاحة.'); setCryptoIntroEn(settings.add_funds_crypto_intro_en || 'Pay in USD using the available crypto payment gateway.');
+      setCryptoInvoiceAr(settings.add_funds_crypto_invoice_ar || 'افتح الفاتورة وأكمل الدفع. تتم إضافة الرصيد بعد تأكيد العملية من بوابة الدفع.'); setCryptoInvoiceEn(settings.add_funds_crypto_invoice_en || 'Open the invoice and complete the payment. Your balance is credited after the gateway confirms it.');
     }
   }, [settings]);
 
@@ -92,6 +106,10 @@ export default function AdminSettings() {
       shahnawy_merchant_wallet_number: shahnawyMerchantWalletNumber,
       shahnawy_min_amount: shahnawyMinAmount,
       shahnawy_max_amount: shahnawyMaxAmount,
+      add_funds_wallet_intro_ar: walletIntroAr, add_funds_wallet_intro_en: walletIntroEn,
+      add_funds_wallet_verification_ar: walletVerificationAr, add_funds_wallet_verification_en: walletVerificationEn,
+      add_funds_vf_instruction_ar: vfAr, add_funds_vf_instruction_en: vfEn, add_funds_or_instruction_ar: orAr, add_funds_or_instruction_en: orEn, add_funds_et_instruction_ar: etAr, add_funds_et_instruction_en: etEn,
+      add_funds_crypto_intro_ar: cryptoIntroAr, add_funds_crypto_intro_en: cryptoIntroEn, add_funds_crypto_invoice_ar: cryptoInvoiceAr, add_funds_crypto_invoice_en: cryptoInvoiceEn,
     });
   };
 
@@ -145,6 +163,19 @@ export default function AdminSettings() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Commission Percentage (%)</label>
             <input type="number" step="0.1" value={affiliateComm} onChange={e => setAffiliateComm(e.target.value)} className="input-primary w-full max-w-xs" />
             <p className="text-xs text-gray-500 mt-1">Percentage earned by affiliates on approved payments.</p>
+          </div>
+        </div>
+        <div className="border-t pt-6">
+          <h4 className="text-sm font-bold text-gray-900 mb-2">Add Funds — Customer Instructions</h4>
+          <p className="text-xs text-gray-500 mb-4">Edit the instructions customers see on the Add Funds page. Keep both languages clear and actionable.</p>
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div><label className="block text-sm font-medium mb-1">Wallet introduction — العربية</label><textarea value={walletIntroAr} onChange={e=>setWalletIntroAr(e.target.value)} className="input-primary min-h-24 w-full" /></div>
+              <div><label className="block text-sm font-medium mb-1">Wallet introduction — English</label><textarea value={walletIntroEn} onChange={e=>setWalletIntroEn(e.target.value)} className="input-primary min-h-24 w-full" /></div>
+              <div><label className="block text-sm font-medium mb-1">Automatic verification — العربية</label><textarea value={walletVerificationAr} onChange={e=>setWalletVerificationAr(e.target.value)} className="input-primary min-h-24 w-full" /></div>
+              <div><label className="block text-sm font-medium mb-1">Automatic verification — English</label><textarea value={walletVerificationEn} onChange={e=>setWalletVerificationEn(e.target.value)} className="input-primary min-h-24 w-full" /></div>
+            </div>
+            {[['Vodafone Cash',vfAr,setVfAr,vfEn,setVfEn],['Orange Cash',orAr,setOrAr,orEn,setOrEn],['Etisalat Cash',etAr,setEtAr,etEn,setEtEn],['Crypto payment',cryptoIntroAr,setCryptoIntroAr,cryptoIntroEn,setCryptoIntroEn],['Crypto invoice',cryptoInvoiceAr,setCryptoInvoiceAr,cryptoInvoiceEn,setCryptoInvoiceEn]].map(([label,arv,setar,env,seten]:any)=><div key={label} className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label className="block text-sm font-medium mb-1">{label} — العربية</label><textarea value={arv} onChange={e=>setar(e.target.value)} className="input-primary min-h-20 w-full" /></div><div><label className="block text-sm font-medium mb-1">{label} — English</label><textarea value={env} onChange={e=>seten(e.target.value)} className="input-primary min-h-20 w-full" /></div></div>)}
           </div>
         </div>
         <div className="border-t pt-6">

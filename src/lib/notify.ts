@@ -24,6 +24,10 @@ const messages: Record<string, string> = {
   'Failed to load ticket': 'تعذر تحميل التذكرة',
   'Failed to send message': 'تعذر إرسال الرسالة',
   'Authentication failed': 'تعذر إتمام تسجيل الدخول. راجع البيانات وحاول مرة أخرى.',
+  'Your balance is not enough to complete this order.': 'رصيدك الحالي غير كافٍ لإتمام هذا الطلب.',
+  'Please enter a valid service link.': 'من فضلك أدخل رابط الخدمة بشكل صحيح.',
+  'This service is currently unavailable. Please choose another service.': 'الخدمة غير متاحة حالياً. من فضلك اختر خدمة أخرى.',
+  'We could not create your order right now. Your balance was not charged. Please try again.': 'تعذر إنشاء الطلب حالياً. لم يتم خصم أي مبلغ من رصيدك. حاول مرة أخرى.',
 };
 
 const ar = () => {
@@ -48,6 +52,10 @@ export function friendlyError(error: any, fallback?: string) {
   if (upper.includes('NETWORK-REQUEST-FAILED') || upper.includes('FAILED TO FETCH')) return ar() ? 'تعذر الاتصال بالخادم. تحقق من الإنترنت وحاول مرة أخرى.' : 'Could not connect to the server. Check your connection and try again.';
   if (upper.includes('SYNC_IN_PROGRESS')) return ar() ? 'المزامنة تعمل بالفعل. انتظر حتى تكتمل قبل بدء مزامنة جديدة.' : 'Synchronization is already running. Please wait until it finishes.';
   if (upper.includes('INSUFFICIENT')) return ar() ? 'رصيدك غير كافٍ لإتمام العملية.' : 'Your balance is not sufficient for this operation.';
+  if (upper.includes('INVALID_QUANTITY')) return ar() ? 'الكمية غير صحيحة. اختر كمية داخل حدود الخدمة.' : 'The quantity is invalid. Choose an amount within the service limits.';
+  if (upper.includes('INVALID_LINK')) return ar() ? 'من فضلك أدخل رابط الخدمة بشكل صحيح.' : 'Please enter a valid service link.';
+  if (upper.includes('ORDER_CREATION_FAILED') || upper.includes('ORDER_ERROR')) return ar() ? 'تعذر إنشاء الطلب حالياً. لم يتم خصم أي مبلغ من رصيدك. حاول مرة أخرى.' : 'We could not create your order right now. Your balance was not charged. Please try again.';
+  if (upper.includes('SERVICE_UNAVAILABLE')) return ar() ? 'الخدمة غير متاحة حالياً. من فضلك اختر خدمة أخرى.' : 'This service is currently unavailable. Please choose another service.';
   if (upper.includes('NOT_FOUND')) return ar() ? 'العنصر المطلوب غير موجود أو لم يعد متاحًا.' : 'The requested item was not found or is no longer available.';
   const translated = translateMessage(raw);
   // Never expose stack traces, raw JSON, internal codes, or developer wording to customers.

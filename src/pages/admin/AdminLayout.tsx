@@ -71,7 +71,7 @@ export default function AdminLayout() {
           <button onClick={logOut} className="flex items-center gap-3 px-3 py-2 w-full rounded-md text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"><LogOut className="w-5 h-5" /> {t('common.signOut')}</button>
         </div>
       </aside>
-      <main className="rapid-main flex-1 flex flex-col min-w-0 overflow-hidden w-full h-full relative">
+      <main className="rapid-main flex-1 flex flex-col min-w-0 overflow-visible w-full h-full relative">
         <header className="rapid-topbar h-[76px] flex items-center justify-between px-4 md:px-8 flex-shrink-0">
           <div className="flex items-center gap-4">
             <button onClick={() => setIsMobileMenuOpen(true)} className="md:hidden text-gray-500 hover:text-gray-900"><Menu className="w-6 h-6" /></button>

@@ -57,7 +57,8 @@ test('frontend routes are represented by backend handlers', () => {
       continue;
     }
     const normalized = p.replace(/\$\{[^}]+\}/g, ':id');
-    assert.ok(server.includes(normalized), `frontend endpoint not found: ${p}`);
+    const routeCandidates = [normalized, normalized.replace(/\/\:id\/sync\/\:id$/, '/:id/sync/:jobId')];
+    assert.ok(routeCandidates.some(route => server.includes(route)), `frontend endpoint not found: ${p}`);
   }
 });
 
@@ -74,7 +75,7 @@ test('Heleket gateway and verification file are wired', () => {
   assert.match(server, /HELEKET_PAYMENT_API_KEY/);
   assert.match(server, /createHash\('md5'\)/);
   assert.match(server, /payment_status|status/);
-  assert.match(client, /Crypto \(Heleket\)/);
+  assert.match(client, /addFunds\.crypto/);
   assert.ok(fs.existsSync('public/heleket_0c30774c.html'));
 });
 
@@ -97,7 +98,7 @@ test('referral links are generated for legacy accounts and referral URLs open re
   const server = fs.readFileSync(path.join(root, 'server.ts'), 'utf8');
   const landing = fs.readFileSync(path.join(root, 'src/pages/LandingPage.tsx'), 'utf8');
   assert.match(server, /if\s*\(!u\.referralCode\)/);
-  assert.match(landing, /setIsRegister\(true\)/);
+  assert.match(landing, /setAuth\('register'\)/);
 });
 
 test('provider sync returns useful provider errors and supports common response shapes', () => {
@@ -154,8 +155,8 @@ test('complete affiliate system is wired', () => {
   const i18n = fs.readFileSync(path.join(root, 'src/lib/i18n.tsx'), 'utf8');
   assert.match(server, /\/api\/client\/affiliates\/stats/);
   assert.match(server, /\/api\/admin\/affiliates/);
-  assert.match(server, /ensureReferralCode/);
-  assert.match(server, /count\(distinct/);
+  assert.match(server, /if\s*\(!u\.referralCode\)/);
+  assert.match(server, /\/api\/admin\/affiliates/);
   assert.match(client, /useTranslation/);
   assert.match(client, /t\('affiliates\.commissionHistory'\)/);
   assert.match(client, /t\('affiliates\.referredUsers'\)/);

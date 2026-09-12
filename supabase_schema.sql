@@ -302,8 +302,7 @@ CREATE TABLE raffle_tickets (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     raffle_id UUID REFERENCES raffles(id) NOT NULL,
     user_id UUID REFERENCES users(id) NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-    UNIQUE (raffle_id, user_id)
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
 -- Raffle tickets indexes

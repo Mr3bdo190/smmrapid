@@ -1,5 +1,5 @@
 import { relations } from 'drizzle-orm';
-import { boolean, decimal, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid, numeric, unique, index } from 'drizzle-orm/pg-core';
+import { boolean, decimal, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid, numeric, index } from 'drizzle-orm/pg-core';
 
 export const roleEnum = pgEnum('role', ['admin', 'user']);
 export const userStatusEnum = pgEnum('user_status', ['active', 'suspended', 'banned']);
@@ -240,7 +240,6 @@ export const raffleTickets = pgTable('raffle_tickets', {
 }, (t) => ({
   raffleIdx: index('raffle_tickets_raffle_idx').on(t.raffleId),
   userIdx: index('raffle_tickets_user_idx').on(t.userId),
-  unq: unique().on(t.raffleId, t.userId),
 }));
 
 export const mysteryBoxTiers = pgTable('mystery_box_tiers', {

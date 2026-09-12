@@ -2,13 +2,17 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { User, onAuthStateChanged, setPersistence, browserLocalPersistence, signInWithPopup, GoogleAuthProvider, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, sendEmailVerification, sendPasswordResetEmail } from 'firebase/auth';
 import { initializeApp } from 'firebase/app';
 import { getAuth, type Auth } from 'firebase/auth';
-import { apiJson, isAuthDbUnavailableError, AUTH_DB_UNAVAILABLE } from '../lib/api';
+import { apiJson, isAuthDbUnavailableError } from '../lib/api';
+import firebaseAppletConfig from '../../firebase-applet-config.json';
 
+// Firebase's web configuration is public by design. Prefer explicit Vite env vars
+// when provided, but fall back to the bundled app config so Render deployments do
+// not silently disable authentication when VITE_* variables were not configured.
 const config = {
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || firebaseAppletConfig.projectId,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || firebaseAppletConfig.appId,
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || firebaseAppletConfig.apiKey,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || firebaseAppletConfig.authDomain,
 };
 
 // Never let a missing/misconfigured public Firebase env crash the entire SPA.
@@ -96,7 +100,12 @@ export const AuthProvider = ({ children }: any) => {
     await setPersistence(auth, browserLocalPersistence);
     const cred = await createUserWithEmailAndPassword(auth, email, pass);
     if (name && cred.user) { await updateProfile(cred.user, { displayName: name }); }
-    if (cred.user && !cred.user.emailVerified) await sendEmailVerification(cred.user);
+    // Verification email delivery must never turn a successful account creation
+    // into a false error. Firebase has already created the account at this point.
+    if (cred.user && !cred.user.emailVerified) {
+      try { await sendEmailVerification(cred.user); }
+      catch (verificationError) { console.warn('[auth] Verification email could not be sent:', verificationError); }
+    }
   };
   const loginWithEmail = async (email: string, pass: string) => {
     if (!auth) throw new Error('Authentication is temporarily unavailable.');
@@ -105,7 +114,10 @@ export const AuthProvider = ({ children }: any) => {
   };
   const logOut = () => auth ? signOut(auth) : Promise.resolve();
   const sendVerification = async () => { if (user && !user.emailVerified) await sendEmailVerification(user); };
-  const resetPassword = async (email: string) => { await sendPasswordResetEmail(auth, email.trim()); };
+  const resetPassword = async (email: string) => {
+    if (!auth) throw new Error('Authentication is temporarily unavailable.');
+    await sendPasswordResetEmail(auth, email.trim());
+  };
 
   const updateUserName = async (newName: string) => {
     if (!user) return;

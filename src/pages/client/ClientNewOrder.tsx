@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import toast from 'react-hot-toast';
+import { notify } from '../../lib/notify';
 import { Search, Star, CheckCircle2, RefreshCw, Info, Zap } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
@@ -81,8 +81,8 @@ export default function ClientNewOrder() {
       const tok = await user!.getIdToken();
       const r = await apiFetch('/api/client/coupons/validate', user, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` }, body: JSON.stringify({ code: couponCode, subtotal: totalPrice }) });
       const data = await r.json(); if (!r.ok) throw new Error(data?.error || 'Invalid coupon');
-      setCouponResult(data); toast.success(`Coupon applied: -$${Number(data.discount).toFixed(4)}`);
-    } catch (e:any) { setCouponResult(null); toast.error(e.message || 'Invalid coupon'); }
+      setCouponResult(data); notify.success(`Coupon applied: -$${Number(data.discount).toFixed(4)}`);
+    } catch (e:any) { setCouponResult(null); notify.error(e.message || 'Invalid coupon'); }
   };
 
   const order = useMutation({
@@ -92,8 +92,8 @@ export default function ClientNewOrder() {
       if (!r.ok) throw new Error(await readError(r, 'Failed to place order'));
       return r.json();
     },
-    onSuccess: () => { toast.success(t('newOrder.orderPlaced')); setLink(''); setQuantity(''); qc.invalidateQueries({ queryKey: ['client-orders'] }); qc.invalidateQueries({ queryKey: ['client-dashboard'] }); qc.invalidateQueries({ queryKey: ['client-me'] }); },
-    onError: (e: any) => toast.error(e.message)
+    onSuccess: () => { notify.success(t('newOrder.orderPlaced')); setLink(''); setQuantity(''); qc.invalidateQueries({ queryKey: ['client-orders'] }); qc.invalidateQueries({ queryKey: ['client-dashboard'] }); qc.invalidateQueries({ queryKey: ['client-me'] }); },
+    onError: (e: any) => notify.error(e.message)
   });
 
   return <div className="space-y-6 max-w-7xl mx-auto" dir="auto">
@@ -120,7 +120,7 @@ export default function ClientNewOrder() {
       <div className="p-6 space-y-6">
         <div className="grid grid-cols-2 lg:grid-cols-6 gap-3"><div className="p-4 rounded-xl bg-indigo-50"><span className="text-xs text-gray-500">{singleUnit ? 'Price / item' : 'Rate / 1K'}</span><b className="block text-lg text-indigo-700">{num(selectedService.pricePer1k).toFixed(4)} {currency}</b></div><div className="p-4 rounded-xl bg-gray-50"><span className="text-xs text-gray-500">{t('newOrder.minimum')}</span><b className="block">{Number(selectedService.minQuantity).toLocaleString()}</b></div><div className="p-4 rounded-xl bg-gray-50"><span className="text-xs text-gray-500">{t('newOrder.maximum')}</span><b className="block">{Number(selectedService.maxQuantity).toLocaleString()}</b></div><div className="p-4 rounded-xl bg-emerald-50"><span className="text-xs text-gray-500">Refill</span><b className="block text-emerald-700">{selectedService.refillable ? 'Available' : 'No'}</b></div><div className="p-4 rounded-xl bg-blue-50"><span className="text-xs text-gray-500">Cancel</span><b className="block text-blue-700">{selectedService.cancelable ? 'Available' : 'No'}</b></div><div className="p-4 rounded-xl bg-gray-50"><span className="text-xs text-gray-500">Cashback</span><b className="block">{selectedService.cashbackPercentage || 0}%</b></div></div>
         <div className="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-5"><div className="flex gap-2 items-center font-bold text-gray-900"><Info className="w-4 h-4 text-indigo-600" /> Service information</div><p className="text-sm text-gray-700 mt-3 whitespace-pre-wrap leading-7">{serviceDetails(selectedService)}</p><div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-4 text-xs"><div className="rounded-xl bg-white border p-3"><span className="text-gray-500">Type</span><b className="block mt-1">{providerMeta.type || "Default"}</b></div><div className="rounded-xl bg-white border p-3"><span className="text-gray-500">Provider ID</span><b className="block mt-1 font-mono">{providerMeta.sourceServiceId || selectedService.providerServiceId || "—"}</b></div><div className="rounded-xl bg-white border p-3"><span className="text-gray-500">Refill</span><b className="block mt-1">{providerMeta.refillable ?? selectedService.refillable ? "Yes" : "No"}</b></div><div className="rounded-xl bg-white border p-3"><span className="text-gray-500">Cancel</span><b className="block mt-1">{providerMeta.cancelable ?? selectedService.cancelable ? "Yes" : "No"}</b></div></div></div>
-        <form onSubmit={e => { e.preventDefault(); if (!validQty) return toast.error(singleUnit ? 'This service accepts exactly 1 item.' : t('newOrder.quantityRange', { min: selectedService.minQuantity, max: selectedService.maxQuantity })); if (totalPrice > num(dbUser?.balance)) return toast.error(t('newOrder.insufficientBalance')); order.mutate(); }} className="grid grid-cols-1 lg:grid-cols-[1fr_1fr_260px] gap-4 items-end border-t pt-5">
+        <form onSubmit={e => { e.preventDefault(); if (!validQty) return notify.error(singleUnit ? 'This service accepts exactly 1 item.' : t('newOrder.quantityRange', { min: selectedService.minQuantity, max: selectedService.maxQuantity })); if (totalPrice > num(dbUser?.balance)) return notify.error(t('newOrder.insufficientBalance')); order.mutate(); }} className="grid grid-cols-1 lg:grid-cols-[1fr_1fr_260px] gap-4 items-end border-t pt-5">
           <div><label className="label-primary">{singleUnit ? 'Email / Account / Required data' : 'Link'}</label><input required type="text" value={link} onChange={e => setLink(e.target.value)} className="input-primary" placeholder={singleUnit ? 'Enter the email, account ID, or required data' : 'https://...'} /></div>
           {singleUnit ? <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 p-4"><div className="text-xs text-gray-500">Quantity</div><div className="text-xl font-black text-indigo-700 mt-1">1 item — fixed</div><div className="text-xs text-gray-500 mt-1">This service is sold as one package/item. The price above is charged once.</div></div> : <div><label className="label-primary">Quantity</label><input required type="number" value={quantity} min={selectedService.minQuantity} max={selectedService.maxQuantity} onChange={e => setQuantity(e.target.value === '' ? '' : Number(e.target.value))} className="input-primary" placeholder={`${selectedService.minQuantity} - ${selectedService.maxQuantity}`} /><div className="flex flex-wrap gap-2 mt-2">{[selectedService.minQuantity, Math.min(selectedService.maxQuantity, selectedService.minQuantity * 2), Math.min(selectedService.maxQuantity, 1000), Math.min(selectedService.maxQuantity, 10000)].filter((v: number, i: number, a: number[]) => v > 0 && a.indexOf(v) === i).map((v: number) => <button type="button" key={v} onClick={() => setQuantity(v)} className="text-xs px-2 py-1 rounded border hover:border-indigo-400">{v.toLocaleString()}</button>)}</div></div>}
           <div className="rounded-xl bg-gray-950 text-white p-4"><div className="text-xs text-gray-400">{t('newOrder.estimatedCharge')}</div><div className="text-2xl font-black mt-1">{totalPrice.toFixed(4)} {currency}</div><div className="text-xs mt-2">{t('common.balance')}: {num(dbUser?.balance).toFixed(4)} {currency}</div><div className="mt-2 text-xs">{validQty ? <span className="text-emerald-400 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Valid quantity</span> : <span className="text-amber-300">Enter a quantity within the limits</span>}</div></div>

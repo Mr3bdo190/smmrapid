@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Send, CheckCircle } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { notify } from '../../lib/notify';
 
 export default function AdminTicketView() {
   const { id } = useParams();
@@ -52,7 +52,7 @@ export default function AdminTicketView() {
       return res.json();
     },
     onSuccess: (_, newStatus) => {
-      toast.success(`Ticket ${newStatus.toLowerCase()}`);
+      notify.success(`Ticket ${newStatus.toLowerCase()}`);
       queryClient.invalidateQueries({ queryKey: ['admin-ticket', id] });
       queryClient.invalidateQueries({ queryKey: ['admin-tickets'] });
     }

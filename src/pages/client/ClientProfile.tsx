@@ -2,7 +2,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { User, Save } from 'lucide-react';
 import { useTranslation } from '../../lib/i18n';
 import { useState } from 'react';
-import toast from 'react-hot-toast';
+import { notify } from '../../lib/notify';
 
 export default function ClientProfile() {
   const { dbUser, updateUserName } = useAuth();
@@ -13,13 +13,13 @@ export default function ClientProfile() {
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
-    if (!name.trim()) return toast.error(t('common.nameRequired'));
+    if (!name.trim()) return notify.error(t('common.nameRequired'));
     setSaving(true);
     const success = await updateUserName(name.trim());
     if (success) {
-      toast.success(t('profile.saved'));
+      notify.success(t('profile.saved'));
     } else {
-      toast.error(t('profile.saveFailed'));
+      notify.error(t('profile.saveFailed'));
     }
     setSaving(false);
   };

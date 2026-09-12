@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Mail, LifeBuoy } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { notify } from '../lib/notify';
 import PublicPageShell from './PublicPageShell';
 import { useTranslation } from '../lib/i18n';
 
@@ -31,7 +31,7 @@ export default function Contact() {
       return data;
     },
     onSuccess: () => { setSent(true); setName(''); setEmail(''); setSubject(''); setMessage(''); },
-    onError: (e: any) => toast.error(e.message || t('contact.error')),
+    onError: (e: any) => notify.error(e.message || t('contact.error')),
   });
 
   return (

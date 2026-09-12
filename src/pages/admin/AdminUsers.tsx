@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
 import { useTranslation } from '../../lib/i18n';
 import { Shield, ShieldAlert, DollarSign, Eye, X, Search, RefreshCw } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { notify } from '../../lib/notify';
 import AdminPagination from './AdminPagination';
 
 const PAGE_SIZE = 50;
@@ -140,7 +140,7 @@ export default function AdminUsers() {
       return res.json();
     },
     onSuccess: () => {
-      toast.success('Balance updated successfully');
+      notify.success('Balance updated successfully');
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       queryClient.invalidateQueries({ queryKey: ['admin-user-details'] });
     },
@@ -169,7 +169,7 @@ export default function AdminUsers() {
       return res.json();
     },
     onSuccess: () => {
-      toast.success('User status updated');
+      notify.success('User status updated');
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       queryClient.invalidateQueries({ queryKey: ['admin-user-details'] });
     },

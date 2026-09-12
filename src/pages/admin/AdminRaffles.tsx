@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
 import { Ticket, Plus, Play, XCircle } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { notify } from '../../lib/notify';
 
 export default function AdminRaffles() {
   const { user } = useAuth();
@@ -42,9 +42,9 @@ export default function AdminRaffles() {
       queryClient.invalidateQueries({ queryKey: ['admin-raffles'] });
       setIsModalOpen(false);
       setFormData({ title: 'Weekly Raffle', prizeAmount: '', ticketPrice: '', maxTickets: '', maxTicketsPerUser: '', endDate: '' });
-      toast.success('Raffle created successfully');
+      notify.success('Raffle created successfully');
     },
-    onError: (err: any) => toast.error(err.message)
+    onError: (err: any) => notify.error(err.message)
   });
 
   const actionMutation = useMutation({
@@ -62,9 +62,9 @@ export default function AdminRaffles() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['admin-raffles'] });
-      toast.success(`Raffle ${variables.action}d successfully`);
+      notify.success(`Raffle ${variables.action}d successfully`);
     },
-    onError: (err: any) => toast.error(err.message)
+    onError: (err: any) => notify.error(err.message)
   });
 
   return (

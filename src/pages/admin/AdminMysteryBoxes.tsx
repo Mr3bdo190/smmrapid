@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
 import { Gift, Plus } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { notify } from '../../lib/notify';
 
 export default function AdminMysteryBoxes() {
   const { user } = useAuth();
@@ -37,9 +37,9 @@ export default function AdminMysteryBoxes() {
       queryClient.invalidateQueries({ queryKey: ['admin-mystery-tiers'] });
       setIsModalOpen(false);
       setFormData({ name: '', minAmount: '', maxAmount: '', probability: '' });
-      toast.success('Tier created successfully');
+      notify.success('Tier created successfully');
     },
-    onError: (err: any) => toast.error(err.message)
+    onError: (err: any) => notify.error(err.message)
   });
 
   return (
@@ -67,7 +67,7 @@ export default function AdminMysteryBoxes() {
                 <td className="px-6 py-4 text-sm text-gray-500">${Number(t.minAmount).toFixed(2)} - ${Number(t.maxAmount).toFixed(2)}</td>
                 <td className="px-6 py-4 text-sm">{t.probability}%</td>
                 <td className="px-6 py-4 text-sm"><span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">{t.status}</span></td>
-                <td className="px-6 py-4 text-sm"><button onClick={async()=>{const token=await user?.getIdToken();const res=await apiFetch(`/api/admin/mystery-boxes/${t.id}`, user,{method:'DELETE',headers:{Authorization:`Bearer ${token}`}});if(res.ok){toast.success('Tier deactivated');queryClient.invalidateQueries({queryKey:['admin-mystery-tiers']});}else toast.error('Action failed')}} className="text-red-600 hover:underline">Deactivate</button></td>
+                <td className="px-6 py-4 text-sm"><button onClick={async()=>{const token=await user?.getIdToken();const res=await apiFetch(`/api/admin/mystery-boxes/${t.id}`, user,{method:'DELETE',headers:{Authorization:`Bearer ${token}`}});if(res.ok){notify.success('Tier deactivated');queryClient.invalidateQueries({queryKey:['admin-mystery-tiers']});}else notify.error('Action failed')}} className="text-red-600 hover:underline">Deactivate</button></td>
               </tr>
             ))}
             {tiers.length === 0 && <tr><td colSpan={4} className="px-6 py-8 text-center text-gray-500">No tiers found.</td></tr>}

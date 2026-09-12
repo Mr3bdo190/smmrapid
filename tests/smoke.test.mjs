@@ -225,3 +225,14 @@ test('phase 3 schema import and monetization features are wired', () => {
   assert.match(migration, /CREATE TABLE IF NOT EXISTS coupons/);
   assert.match(migration, /CREATE TABLE IF NOT EXISTS coupon_uses/);
 });
+
+
+test('phase 5 final UX hardening is wired', () => {
+  const notify = fs.readFileSync(path.join(root, 'src/lib/notify.ts'), 'utf8');
+  const main = fs.readFileSync(path.join(root, 'src/main.tsx'), 'utf8');
+  const providers = fs.readFileSync(path.join(root, 'src/pages/admin/AdminProviders.tsx'), 'utf8');
+  assert.match(notify, /Never expose stack traces/);
+  assert.match(notify, /تعذر إتمام العملية/);
+  assert.doesNotMatch(main, /<pre[^>]*>\{this\.state\.error\.message\}<\/pre>/);
+  assert.match(providers, /enabled:!!user&&showBalance/);
+});

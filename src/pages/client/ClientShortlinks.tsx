@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
 import { Link2 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { notify } from '../../lib/notify';
 import { useTranslation } from '../../lib/i18n';
 
 export default function ClientShortlinks() {
@@ -33,7 +33,7 @@ export default function ClientShortlinks() {
       setClaimTokens(prev => ({ ...prev, [id]: data.token }));
       return data;
     },
-    onError: (err: any) => toast.error(err.message)
+    onError: (err: any) => notify.error(err.message)
   });
 
   const claimMutation = useMutation({
@@ -49,11 +49,11 @@ export default function ClientShortlinks() {
       return data;
     },
     onSuccess: () => {
-      toast.success(t('shortlinks.rewardClaimed'));
+      notify.success(t('shortlinks.rewardClaimed'));
       queryClient.invalidateQueries({ queryKey: ['client-user-info'] });
       queryClient.invalidateQueries({ queryKey: ['client-shortlinks'] });
     },
-    onError: (err: any) => toast.error(err.message)
+    onError: (err: any) => notify.error(err.message)
   });
 
   return (

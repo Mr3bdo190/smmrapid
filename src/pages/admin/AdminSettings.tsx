@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
-import toast from 'react-hot-toast';
+import { notify } from '../../lib/notify';
 import { Save, PlugZap, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 
 export default function AdminSettings() {
@@ -69,7 +69,7 @@ export default function AdminSettings() {
       return res.json();
     },
     onSuccess: () => {
-      toast.success('Settings updated');
+      notify.success('Settings updated');
       queryClient.invalidateQueries({ queryKey: ['admin-settings'] });
     }
   });

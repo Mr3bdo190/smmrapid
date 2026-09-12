@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
 import { Code, Key } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { notify } from '../../lib/notify';
 import { useTranslation } from '../../lib/i18n';
 
 export default function ClientApi() {
@@ -32,14 +32,14 @@ export default function ClientApi() {
       if (res.ok) {
         const data = await res.json();
         setNewApiKey(data.apiKey);
-        toast.success(t('api.generated'));
+        notify.success(t('api.generated'));
         refetch();
       } else {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || 'Failed to generate key');
       }
     } catch (err) {
-      toast.error(t('api.failedToGenerate'));
+      notify.error(t('api.failedToGenerate'));
     }
   };
 
@@ -59,7 +59,7 @@ export default function ClientApi() {
               className="input-field w-full md:w-96 font-mono text-sm bg-gray-50"
             />
             <button
-              onClick={() => { navigator.clipboard.writeText(newApiKey); toast.success(t('api.keyCopied')); }}
+              onClick={() => { navigator.clipboard.writeText(newApiKey); notify.success(t('api.keyCopied')); }}
               className="btn-secondary"
             >
               {t('api.copy')}

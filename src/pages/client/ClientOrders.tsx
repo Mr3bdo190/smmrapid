@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Search, Download, RefreshCw, RotateCcw, XCircle } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext'; import { apiFetch } from '../../lib/api'; import toast from 'react-hot-toast';
+import { useAuth } from '../../contexts/AuthContext'; import { apiFetch } from '../../lib/api'; import { notify } from '../../lib/notify';
 
 const readErr = async (r: Response, fallback: string) => { const b = await r.json().catch(() => ({})); return b?.error || fallback; };
 const CANCELABLE_STATUSES = ['Pending', 'Processing', 'In Progress'];
@@ -19,19 +19,19 @@ export default function ClientOrders() {
 
   const refill = useMutation({
     mutationFn: async (id: string) => { const t = await user!.getIdToken(); const r = await apiFetch(`/api/client/orders/${id}/refill`, user, { method: 'POST', headers: { Authorization: `Bearer ${t}` } }); if (!r.ok) throw new Error(await readErr(r, 'Refill request failed')); return r.json(); },
-    onSuccess: () => { toast.success('Refill requested — we\'ll update the order once the provider responds'); qc.invalidateQueries({ queryKey: ['client-orders'] }); },
-    onError: (e: any) => toast.error(e.message),
+    onSuccess: () => { notify.success('Refill requested — we\'ll update the order once the provider responds'); qc.invalidateQueries({ queryKey: ['client-orders'] }); },
+    onError: (e: any) => notify.error(e.message),
   });
   const cancel = useMutation({
     mutationFn: async (id: string) => { const t = await user!.getIdToken(); const r = await apiFetch(`/api/client/orders/${id}/cancel`, user, { method: 'POST', headers: { Authorization: `Bearer ${t}` } }); if (!r.ok) throw new Error(await readErr(r, 'Cancel request failed')); return r.json(); },
-    onSuccess: () => { toast.success('Order canceled — refund will reflect in your wallet shortly'); qc.invalidateQueries({ queryKey: ['client-orders'] }); qc.invalidateQueries({ queryKey: ['client-me'] }); },
-    onError: (e: any) => toast.error(e.message),
+    onSuccess: () => { notify.success('Order canceled — refund will reflect in your wallet shortly'); qc.invalidateQueries({ queryKey: ['client-orders'] }); qc.invalidateQueries({ queryKey: ['client-me'] }); },
+    onError: (e: any) => notify.error(e.message),
   });
 
   const rows = orders.filter((o: any) => (status === 'all' || o.status === status) && (`${o.id} ${o.service?.name || ''} ${o.link}`.toLowerCase().includes(q.toLowerCase())));
   const exportCsv = () => {
     const csv = ['Order ID,Service,Link,Quantity,Charge,Status,Created', ...rows.map((o: any) => [o.id, o.service?.name || '', o.link, o.quantity, o.charge, o.status, o.createdAt].map(v => `"${String(v ?? '').replaceAll('"', '""')}"`).join(','))].join('\n');
-    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = 'orders.csv'; a.click(); toast.success('Orders exported');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = 'orders.csv'; a.click(); notify.success('Orders exported');
   };
 
   return (

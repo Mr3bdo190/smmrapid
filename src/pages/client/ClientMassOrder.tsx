@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
-import toast from 'react-hot-toast';
+import { notify } from '../../lib/notify';
 import { ListOrdered } from 'lucide-react';
 import { useTranslation } from '../../lib/i18n';
 
@@ -12,7 +12,7 @@ export default function ClientMassOrder() {
 
   const handleMassOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!ordersText.trim()) return toast.error(t('massOrder.pleaseEnter'));
+    if (!ordersText.trim()) return notify.error(t('massOrder.pleaseEnter'));
 
     const token = await user?.getIdToken();
     try {
@@ -26,10 +26,10 @@ export default function ClientMassOrder() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to place orders');
-      toast.success(data.message || 'Mass orders processed');
+      notify.success(data.message || 'Mass orders processed');
       setOrdersText('');
     } catch (err: any) {
-      toast.error(err.message);
+      notify.error(err.message);
     }
   };
 

@@ -4,7 +4,7 @@ import { apiFetch } from '../../lib/api';
 
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import toast from 'react-hot-toast';
+import { notify } from '../../lib/notify';
 
 import { LifeBuoy, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -35,9 +35,9 @@ export default function ClientTickets() {
       setIsModalOpen(false);
       setSubject('');
       setMessage('');
-      toast.success(t('tickets.created'));
+      notify.success(t('tickets.created'));
     },
-    onError: (err: any) => toast.error(err.message)
+    onError: (err: any) => notify.error(err.message)
   });
 
   const { data: tickets = [] } = useQuery({

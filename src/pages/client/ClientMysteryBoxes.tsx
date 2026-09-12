@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
 import { Gift } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { notify } from '../../lib/notify';
 import { useTranslation } from '../../lib/i18n';
 
 export default function ClientMysteryBoxes() {
@@ -34,9 +34,9 @@ export default function ClientMysteryBoxes() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['client-user-info'] });
-      toast.success(t('mysteryBoxes.wonReward', { amount: Number(data.reward).toFixed(4), tier: data.tier }));
+      notify.success(t('mysteryBoxes.wonReward', { amount: Number(data.reward).toFixed(4), tier: data.tier }));
     },
-    onError: (err: any) => toast.error(err.message)
+    onError: (err: any) => notify.error(err.message)
   });
 
   return (

@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
 import { Gamepad2, Coins, Key } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { notify } from '../../lib/notify';
 import { useTranslation } from '../../lib/i18n';
 
 export default function ClientGame() {
@@ -34,9 +34,9 @@ export default function ClientGame() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['client-user-info'] });
-      toast.success(t('game.claimedPoints', { points: data.points }));
+      notify.success(t('game.claimedPoints', { points: data.points }));
     },
-    onError: (err: any) => toast.error(err.message)
+    onError: (err: any) => notify.error(err.message)
   });
 
   const exchangeMutation = useMutation({
@@ -52,9 +52,9 @@ export default function ClientGame() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-user-info'] });
-      toast.success(t('game.exchangedKey'));
+      notify.success(t('game.exchangedKey'));
     },
-    onError: (err: any) => toast.error(err.message)
+    onError: (err: any) => notify.error(err.message)
   });
 
   const canClaim = !userInfo?.lastClaimDate || (new Date().getTime() - new Date(userInfo.lastClaimDate).getTime()) > (24 * 60 * 60 * 1000);

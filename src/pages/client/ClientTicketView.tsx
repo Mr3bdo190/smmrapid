@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Send } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { notify } from '../../lib/notify';
 import { useTranslation } from '../../lib/i18n';
 
 export default function ClientTicketView() {
@@ -40,7 +40,7 @@ export default function ClientTicketView() {
       setMessage('');
       queryClient.invalidateQueries({ queryKey: ['client-ticket', id] });
     },
-    onError: (err: any) => toast.error(err.message)
+    onError: (err: any) => notify.error(err.message)
   });
 
   const handleReply = (e: React.FormEvent) => {

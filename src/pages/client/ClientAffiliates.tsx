@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
 import { Users, Copy, MousePointerClick, UserPlus, Wallet, RefreshCw } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { notify } from '../../lib/notify';
 import { useTranslation } from '../../lib/i18n';
 
 export default function ClientAffiliates() {
@@ -11,13 +11,13 @@ export default function ClientAffiliates() {
   const { t } = useTranslation();
   const [amount,setAmount]=useState(''); const [method,setMethod]=useState(''); const [destination,setDestination]=useState('');
   const withdrawals=useQuery({queryKey:['affiliate-withdrawals'],enabled:!!user,queryFn:async()=>{const token=await user!.getIdToken();const r=await apiFetch('/api/client/affiliates/withdrawals',user,{headers:{Authorization:`Bearer ${token}`}});return r.ok?r.json():[];}});
-  const requestWithdrawal=async()=>{try{const token=await user!.getIdToken();const r=await apiFetch('/api/client/affiliates/withdrawals',user,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({amount,method,destination})});const b=await r.json();if(!r.ok)throw new Error(b.error||'Withdrawal failed');toast.success('Withdrawal requested');setAmount('');setDestination('');await withdrawals.refetch();}catch(e:any){toast.error(e.message)}};
+  const requestWithdrawal=async()=>{try{const token=await user!.getIdToken();const r=await apiFetch('/api/client/affiliates/withdrawals',user,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({amount,method,destination})});const b=await r.json();if(!r.ok)throw new Error(b.error||'Withdrawal failed');notify.success('Withdrawal requested');setAmount('');setDestination('');await withdrawals.refetch();}catch(e:any){notify.error(e.message)}};
   const query = useQuery({ queryKey:['client-affiliates-stats'], enabled:!!user, queryFn:async()=>{
     const token=await user!.getIdToken(); const res=await apiFetch('/api/client/affiliates/stats',user,{headers:{Authorization:`Bearer ${token}`}});
     if(!res.ok){let b:any={};try{b=await res.json()}catch{} throw new Error(b.error||'Failed to load affiliate stats');} return res.json();
   }});
   const stats=query.data; const refLink=stats?.referralLink || (stats?.referralCode?`${window.location.origin}/?ref=${stats.referralCode}`:'');
-  const copy=async()=>{if(!refLink)return toast.error(t('affiliates.linkNotReady'));try{await navigator.clipboard.writeText(refLink);toast.success(t('affiliates.linkCopied'));}catch{toast.error(t('affiliates.copyFailed'))}};
+  const copy=async()=>{if(!refLink)return notify.error(t('affiliates.linkNotReady'));try{await navigator.clipboard.writeText(refLink);notify.success(t('affiliates.linkCopied'));}catch{notify.error(t('affiliates.copyFailed'))}};
   return <div className="space-y-6 max-w-6xl">
     <div className="flex items-center justify-between"><div><h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><Users className="text-indigo-600"/> {t('affiliates.title')}</h2><p className="text-sm text-gray-500 mt-1">{t('affiliates.subtitle')}</p></div><button className="btn-secondary" onClick={()=>query.refetch()}><RefreshCw className="w-4 h-4 inline mr-1"/>{t('common.refresh')}</button></div>
     <div className="bg-white rounded-xl border p-6"><h3 className="font-bold mb-2">{t('affiliates.yourLink')}</h3><p className="text-sm text-gray-500 mb-4">{t('affiliates.linkHint')}</p><div className="flex flex-col md:flex-row gap-3"><input readOnly value={query.isLoading?t('common.loading'):refLink||t('affiliates.generating')} className="input-field flex-1 font-mono text-sm bg-gray-50"/><button onClick={copy} className="btn-primary"><Copy className="w-4 h-4 inline mr-1"/>{t('affiliates.copyLink')}</button></div><div className="mt-3 text-xs text-gray-500">{t('affiliates.code')} <span className="font-mono font-bold">{stats?.referralCode||'—'}</span></div></div>

@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
 import { useState } from 'react';
 import { Plus, Link2 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { notify } from '../../lib/notify';
 
 export default function AdminShortlinks() {
   const { user } = useAuth();
@@ -36,7 +36,7 @@ export default function AdminShortlinks() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-shortlinks'] });
       setIsModalOpen(false);
-      toast.success('Shortlink added');
+      notify.success('Shortlink added');
     }
   });
 
@@ -65,7 +65,7 @@ export default function AdminShortlinks() {
                 <td className="px-6 py-4 text-sm text-gray-500 truncate max-w-[200px]">{s.url}</td>
                 <td className="px-6 py-4 text-sm font-bold text-emerald-600">${Number(s.rewardAmount).toFixed(4)}</td>
                 <td className="px-6 py-4 text-sm"><span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">{s.status}</span></td>
-                <td className="px-6 py-4 text-sm"><button onClick={async()=>{const token=await user?.getIdToken();const res=await apiFetch(`/api/admin/shortlinks/${s.id}`, user,{method:'DELETE',headers:{Authorization:`Bearer ${token}`}});if(res.ok){toast.success('Shortlink deactivated');queryClient.invalidateQueries({queryKey:['admin-shortlinks']});}else toast.error('Action failed')}} className="text-red-600 hover:underline">Deactivate</button></td>
+                <td className="px-6 py-4 text-sm"><button onClick={async()=>{const token=await user?.getIdToken();const res=await apiFetch(`/api/admin/shortlinks/${s.id}`, user,{method:'DELETE',headers:{Authorization:`Bearer ${token}`}});if(res.ok){notify.success('Shortlink deactivated');queryClient.invalidateQueries({queryKey:['admin-shortlinks']});}else notify.error('Action failed')}} className="text-red-600 hover:underline">Deactivate</button></td>
               </tr>
             ))}
           </tbody>

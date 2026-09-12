@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
 import { Ticket, Trophy, Clock, Users, Tag } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { notify } from '../../lib/notify';
 import { useTranslation } from '../../lib/i18n';
 
 export default function ClientLottery() {
@@ -39,9 +39,9 @@ export default function ClientLottery() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-user-info'] });
       queryClient.invalidateQueries({ queryKey: ['client-raffles'] });
-      toast.success(t('lottery.ticketsPurchased'));
+      notify.success(t('lottery.ticketsPurchased'));
     },
-    onError: (err: any) => toast.error(err.message)
+    onError: (err: any) => notify.error(err.message)
   });
 
   if (isLoading) {

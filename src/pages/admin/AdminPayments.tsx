@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
 import { Check, X, Search, RefreshCw } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { notify } from '../../lib/notify';
 import { useState, useMemo, useEffect } from 'react';
 import AdminPagination from './AdminPagination';
 
@@ -42,13 +42,13 @@ export default function AdminPayments() {
       return { action, data: await res.json() };
     },
     onSuccess: ({ action }) => {
-      toast.success(action === 'approve' ? 'Payment approved and balance credited' : 'Payment rejected');
+      notify.success(action === 'approve' ? 'Payment approved and balance credited' : 'Payment rejected');
       queryClient.invalidateQueries({ queryKey: ['admin-payments'] });
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       queryClient.invalidateQueries({ queryKey: ['client-me'] });
       queryClient.invalidateQueries({ queryKey: ['client-transactions'] });
     },
-    onError: (e: any) => toast.error(e.message || 'Payment operation failed'),
+    onError: (e: any) => notify.error(e.message || 'Payment operation failed'),
   });
 
   const payments = data?.data || [];

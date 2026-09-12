@@ -263,6 +263,20 @@ app.post('/api/auth/sync', authLimiter, requireAuth, async (req: any, res) => {
       if (updated) user = updated;
     }
   }
+  // Keep the application profile synchronized with Firebase for newly created users.
+  // Never touch role/status/referral ownership here.
+  const firebaseName = typeof req.user?.name === 'string' ? req.user.name.trim() : '';
+  const firebaseEmail = typeof req.user?.email === 'string' ? req.user.email.trim().toLowerCase() : '';
+  if ((firebaseName && !user.name) || (firebaseEmail && firebaseEmail !== user.email)) {
+    const patch:any = {};
+    if (firebaseName && !user.name) patch.name = firebaseName;
+    if (firebaseEmail && firebaseEmail !== user.email) patch.email = firebaseEmail;
+    if (Object.keys(patch).length) {
+      const [updated] = await db.update(users).set(patch).where(eq(users.id, user.id)).returning();
+      if (updated) user = updated;
+    }
+  }
+  res.setHeader('Cache-Control','no-store');
   res.json(user);
 });
 
@@ -808,6 +822,9 @@ const secretKeys = new Set(['shahnawy_public_key','shahnawy_secret_key','provide
 app.get('/api/admin/settings',requireAuth,requireAdmin,async(_req,res)=>{const rows=await db.select().from(settings); const out:any={}; for(const r of rows)out[r.key]=secretKeys.has(r.key)?'********':r.value; res.json(out);});
 app.put('/api/admin/settings',requireAuth,requireAdmin,async(req:any,res)=>{const allowed=new Set(['site_name','currency_symbol','vodafone_cash_number','site_description','support_email','site_logo','affiliate_commission_percentage','usd_exchange_rate','default_profit_margin','shahnawy_enabled','shahnawy_base_url','shahnawy_public_key','shahnawy_secret_key','shahnawy_merchant_wallet_number','shahnawy_min_amount','shahnawy_max_amount']); for(const [key,val] of Object.entries(req.body||{})){if(!allowed.has(key))return apiError(res,400,`Setting not allowed: ${key}`,'INVALID_SETTING'); const value=String(val).trim(); if(secretKeys.has(key)&&value==='********') continue; if(key==='shahnawy_enabled'&&!['true','false'].includes(value))return apiError(res,400,'Invalid gateway enabled value','INVALID_SETTING'); if(key==='shahnawy_base_url'&&!/^https?:\/\//i.test(value))return apiError(res,400,'Invalid Sha7nawy base URL','INVALID_SETTING'); if(['shahnawy_min_amount','shahnawy_max_amount'].includes(key)&&(!Number.isFinite(num(value))||num(value)<1||num(value)>10000000))return apiError(res,400,'Invalid Sha7nawy amount limit','INVALID_SETTING'); if(key==='affiliate_commission_percentage'&&(!Number.isFinite(num(value))||num(value)<0||num(value)>100))return apiError(res,400,'Invalid commission percentage','INVALID_SETTING'); if(key==='usd_exchange_rate'&&(!Number.isFinite(num(value))||num(value)<=0||num(value)>100000))return apiError(res,400,'Invalid exchange rate','INVALID_SETTING'); if(key==='default_profit_margin'&&(!Number.isFinite(num(value))||num(value)<0||num(value)>10000))return apiError(res,400,'Invalid default profit margin','INVALID_SETTING'); await db.insert(settings).values({key,value}).onConflictDoUpdate({target:settings.key,set:{value}});} await audit(req.dbUser.id,'UPDATE_SETTINGS','SETTINGS','settings'); res.json({success:true});});
 app.get('/api/admin/users',requireAuth,requireAdmin,async(req:any,res)=>{
+  res.setHeader('Cache-Control','no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma','no-cache');
+  res.setHeader('Expires','0');
   const page=Math.max(1,parseInt(req.query.page)||1);
   const pageSize=Math.min(200,Math.max(1,parseInt(req.query.pageSize)||50));
   const q=typeof req.query.q==='string'?req.query.q.trim():'';

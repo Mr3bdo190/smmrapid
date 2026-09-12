@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
+import { useTranslation } from '../../lib/i18n';
 import { Shield, ShieldAlert, DollarSign, Eye, X, Search, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AdminPagination from './AdminPagination';
@@ -10,7 +11,8 @@ const PAGE_SIZE = 50;
 
 function UserDetailsModal({ userId, onClose }: { userId: string, onClose: () => void }) {
   const { user } = useAuth();
-  const { data, isLoading } = useQuery({
+  const { t } = useTranslation();
+  const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ['admin-user-details', userId],
     queryFn: async () => {
       const token = await user?.getIdToken();
@@ -22,7 +24,7 @@ function UserDetailsModal({ userId, onClose }: { userId: string, onClose: () => 
 
   if (isLoading) return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg p-6 max-w-4xl w-full shadow-xl">Loading details...</div>
+      <div className="bg-white rounded-lg p-6 max-w-4xl w-full shadow-xl">{t('common.loading')}</div>
     </div>
   );
   if (!data) return null;
@@ -36,32 +38,32 @@ function UserDetailsModal({ userId, onClose }: { userId: string, onClose: () => 
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
       <div className="bg-white rounded-lg max-w-5xl w-full shadow-xl my-8 flex flex-col max-h-[90vh]">
         <div className="flex justify-between items-center p-6 border-b border-gray-100">
-          <h2 className="text-2xl font-bold text-gray-900">User Details: {u.email}</h2>
+          <h2 className="text-2xl font-bold text-gray-900">{t('admin.users.details')}: {u.email}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-6 h-6"/></button>
         </div>
         
         <div className="p-6 overflow-y-auto flex-1 space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
-              <p className="text-sm font-medium text-indigo-800">Current Balance</p>
+              <p className="text-sm font-medium text-indigo-800">{t('common.currentBalance')}</p>
               <p className="text-2xl font-bold text-indigo-900">${Number(u.balance).toFixed(4)}</p>
             </div>
             <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100">
-              <p className="text-sm font-medium text-emerald-800">Total Spent</p>
+              <p className="text-sm font-medium text-emerald-800">{t('admin.users.totalSpent')}</p>
               <p className="text-2xl font-bold text-emerald-900">${totalSpent.toFixed(4)}</p>
             </div>
             <div className="bg-amber-50 p-4 rounded-xl border border-amber-100">
-              <p className="text-sm font-medium text-amber-800">Total Orders</p>
+              <p className="text-sm font-medium text-amber-800">{t('admin.users.totalOrders')}</p>
               <p className="text-2xl font-bold text-amber-900">{orders.length}</p>
             </div>
             <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
-              <p className="text-sm font-medium text-blue-800">Completed Orders</p>
+              <p className="text-sm font-medium text-blue-800">{t('admin.users.completedOrders')}</p>
               <p className="text-2xl font-bold text-blue-900">{completedOrders}</p>
             </div>
           </div>
 
           <div className="space-y-4">
-            <h3 className="text-lg font-bold text-gray-900 border-b pb-2">Recent Orders</h3>
+            <h3 className="text-lg font-bold text-gray-900 border-b pb-2">{t('admin.users.recentOrders')}</h3>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-100 text-sm">
                 <thead><tr><th className="text-left py-2 text-gray-500">Service</th><th className="text-left py-2 text-gray-500">Quantity</th><th className="text-left py-2 text-gray-500">Charge</th><th className="text-left py-2 text-gray-500">Status</th></tr></thead>
@@ -69,14 +71,14 @@ function UserDetailsModal({ userId, onClose }: { userId: string, onClose: () => 
                   {orders.slice(0, 5).map((o: any) => (
                     <tr key={o.id}><td className="py-2">{o.service?.name}</td><td className="py-2">{o.quantity}</td><td className="py-2">${Number(o.charge).toFixed(4)}</td><td className="py-2">{o.status}</td></tr>
                   ))}
-                  {orders.length === 0 && <tr><td colSpan={4} className="py-2 text-gray-500">No orders found.</td></tr>}
+                  {orders.length === 0 && <tr><td colSpan={4} className="py-2 text-gray-500">{t('common.noResults')}</td></tr>}
                 </tbody>
               </table>
             </div>
           </div>
 
           <div className="space-y-4">
-            <h3 className="text-lg font-bold text-gray-900 border-b pb-2">Recent Payments</h3>
+            <h3 className="text-lg font-bold text-gray-900 border-b pb-2">{t('admin.users.recentPayments')}</h3>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-100 text-sm">
                 <thead><tr><th className="text-left py-2 text-gray-500">Date</th><th className="text-left py-2 text-gray-500">Method</th><th className="text-left py-2 text-gray-500">Amount</th><th className="text-left py-2 text-gray-500">Status</th></tr></thead>
@@ -84,7 +86,7 @@ function UserDetailsModal({ userId, onClose }: { userId: string, onClose: () => 
                   {payments.slice(0, 5).map((p: any) => (
                     <tr key={p.id}><td className="py-2">{new Date(p.createdAt).toLocaleDateString()}</td><td className="py-2">{p.method}</td><td className="py-2 text-emerald-600 font-bold">${Number(p.amount).toFixed(4)}</td><td className="py-2">{p.status}</td></tr>
                   ))}
-                  {payments.length === 0 && <tr><td colSpan={4} className="py-2 text-gray-500">No payments found.</td></tr>}
+                  {payments.length === 0 && <tr><td colSpan={4} className="py-2 text-gray-500">{t('common.noResults')}</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -98,6 +100,7 @@ function UserDetailsModal({ userId, onClose }: { userId: string, onClose: () => 
 
 export default function AdminUsers() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [balanceModal, setBalanceModal] = useState<{id: string, email: string} | null>(null);
@@ -110,7 +113,7 @@ export default function AdminUsers() {
   useEffect(() => { const t = setTimeout(() => { setQ(qInput); setPage(1); }, 400); return () => clearTimeout(t); }, [qInput]);
   useEffect(() => { setPage(1); }, [statusFilter]);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ['admin-users', page, q, statusFilter],
     queryFn: async () => {
       const token = await user?.getIdToken();
@@ -120,6 +123,9 @@ export default function AdminUsers() {
       return res.json();
     },
     enabled: !!user,
+    refetchInterval: 5000,
+    refetchOnWindowFocus: true,
+    retry: 2,
   });
 
   const balanceMutation = useMutation({
@@ -171,12 +177,13 @@ export default function AdminUsers() {
 
   const rows = data?.data || [];
   const total = data?.total || 0;
-  if (isLoading) return <div>Loading users...</div>;
+  if (isLoading) return <div className="p-6 text-center text-slate-500">{t('common.loading')}</div>;
+  if (isError) return <div className="bg-white border rounded-xl p-6 text-center"><p className="font-bold text-red-600">{t('admin.users.loadError')}</p><p className="text-sm text-slate-500 mt-2">{String((error as any)?.message || '')}</p><button className="btn-primary mt-4" onClick={() => refetch()}>{t('common.refresh')}</button></div>;
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between flex-wrap gap-3"><h3 className="text-xl font-bold text-gray-900 tracking-tight">User Management</h3><button className="btn-secondary" onClick={()=>queryClient.invalidateQueries({queryKey:['admin-users']})}><RefreshCw className="w-4 h-4 inline mr-1"/>Refresh</button></div>
-      <div className="bg-white border rounded-xl p-4 flex gap-3 flex-wrap"><div className="relative flex-1 min-w-[220px]"><Search className="absolute left-3 top-3 w-4 h-4 text-gray-400"/><input className="input-primary pl-9" placeholder="Search email or name" value={qInput} onChange={e=>setQInput(e.target.value)}/></div><select className="input-primary w-auto" value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}><option value="all">All statuses</option><option value="active">Active</option><option value="suspended">Suspended</option><option value="banned">Banned</option></select></div>
+      <div className="flex justify-between flex-wrap gap-3"><div><h3 className="text-xl font-bold text-gray-900 tracking-tight">{t('admin.users.title')}</h3><p className="text-sm text-slate-500 mt-1">{t('admin.users.subtitle')}</p></div><button className="btn-secondary" onClick={()=>refetch()} disabled={isFetching}><RefreshCw className="w-4 h-4 inline mr-1"/> {t('common.refresh')}</button></div>
+      <div className="bg-white border rounded-xl p-4 flex gap-3 flex-wrap"><div className="relative flex-1 min-w-[220px]"><Search className="absolute left-3 top-3 w-4 h-4 text-gray-400"/><input className="input-primary pl-9" placeholder={t('admin.users.search')} value={qInput} onChange={e=>setQInput(e.target.value)}/></div><select className="input-primary w-auto" value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}><option value="all">{t('common.allStatuses')}</option><option value="active">{t('admin.users.active')}</option><option value="suspended">{t('admin.users.suspended')}</option><option value="banned">{t('admin.users.banned')}</option></select></div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden w-full">
         <div className="overflow-x-auto w-full">

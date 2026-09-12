@@ -93,7 +93,7 @@ export default function ClientLayout() {
             ))}
           </ul>
           {(['orders','wallet','growth','tools','account','extras'] as const).map(group => {
-            const labels:any={orders:'Orders',wallet:'Wallet',growth:'Growth',tools:'Support & API',account:'Account',extras:'Extras'};
+            const labels:any={orders:t('nav.orderHistory'),wallet:t('nav.addFunds'),growth:t('nav.earnMoney'),tools:t('nav.tickets')+' & API',account:t('nav.profile'),extras:t('nav.mysteryBoxes')};
             return <div key={group} className="mt-5"><div className="px-4 pb-2 rapid-nav-label">{labels[group]}</div><ul className="space-y-1 px-3">{navItems.filter(i=>i.group===group).map(item=><li key={item.key}><Link to={item.href} onClick={()=>setIsMobileMenuOpen(false)} className={cn("rapid-nav-item flex items-center gap-3 px-3 py-2.5 rounded-2xl text-sm font-bold", location.pathname===item.href ? "is-active" : "")}><span className="rapid-nav-icon"><item.icon className="w-4 h-4"/></span><span>{t(item.key)}</span></Link></li>)}</ul></div>
           })}
         </nav>
@@ -109,7 +109,8 @@ export default function ClientLayout() {
             <h2 className="text-xl font-semibold text-gray-800 truncate">{navItems.find(i => i.href === location.pathname) ? t(navItems.find(i => i.href === location.pathname)!.key) : t('nav.clientArea')}</h2>
           </div>
           <div className="flex items-center gap-3">
-            <Link to="/dashboard/add-funds" className="hidden sm:flex btn-primary py-2"><Plus className="h-4 w-4"/> Add funds</Link>
+            <button onClick={logOut} className="hidden md:inline-flex btn-ghost items-center gap-1.5"><LogOut className="h-4 w-4"/> {t('common.signOut')}</button>
+            <Link to="/dashboard/add-funds" className="hidden sm:flex btn-primary py-2"><Plus className="h-4 w-4"/> {t('nav.addFunds')}</Link>
             <button className="rounded-xl border border-slate-200 p-2 text-slate-500"><Bell className="h-4 w-4"/></button>
             <div className={dir === 'rtl' ? "flex flex-col text-left" : "flex flex-col text-right"}>
               <span className="text-sm font-black text-slate-900">{config?.currencySymbol || '$'}{Number((freshUser || dbUser).balance).toFixed(4)}</span>

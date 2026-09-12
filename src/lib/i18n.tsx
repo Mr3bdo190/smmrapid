@@ -88,6 +88,19 @@ export const translations: Dict = {
   'nav.admin.settings': { en: 'Settings', ar: 'الإعدادات' },
   'nav.admin.panel': { en: 'Admin Panel', ar: 'لوحة الإدارة' },
   'nav.admin.title': { en: 'Admin', ar: 'الإدارة' },
+  'admin.users.title': { en: 'User Management', ar: 'إدارة المستخدمين' },
+  'admin.users.subtitle': { en: 'All registered users, newest first. The list refreshes automatically.', ar: 'كل المستخدمين المسجلين، الأحدث أولاً. القائمة تتحدث تلقائياً.' },
+  'admin.users.search': { en: 'Search by email or name', ar: 'ابحث بالبريد الإلكتروني أو الاسم' },
+  'admin.users.active': { en: 'Active', ar: 'نشط' },
+  'admin.users.suspended': { en: 'Suspended', ar: 'موقوف' },
+  'admin.users.banned': { en: 'Banned', ar: 'محظور' },
+  'admin.users.loadError': { en: 'Could not load users', ar: 'تعذر تحميل المستخدمين' },
+  'admin.users.details': { en: 'User Details', ar: 'بيانات المستخدم' },
+  'admin.users.totalSpent': { en: 'Total Spent', ar: 'إجمالي الإنفاق' },
+  'admin.users.totalOrders': { en: 'Total Orders', ar: 'إجمالي الطلبات' },
+  'admin.users.completedOrders': { en: 'Completed Orders', ar: 'الطلبات المكتملة' },
+  'admin.users.recentOrders': { en: 'Recent Orders', ar: 'أحدث الطلبات' },
+  'admin.users.recentPayments': { en: 'Recent Payments', ar: 'أحدث المدفوعات' },
 
   // Landing page
   'landing.defaultTagline': { en: 'Automated social media growth, dispatched instantly', ar: 'نمو تلقائي لحساباتك على السوشيال ميديا، يبدأ فوراً' },
@@ -235,6 +248,26 @@ export const translations: Dict = {
 
   // Add funds
   'addFunds.title': { en: 'Add Funds', ar: 'إضافة رصيد' },
+
+  'addFunds.chooseMethod': { en: 'Choose a payment method to fund your account securely.', ar: 'اختر وسيلة الدفع المناسبة لإضافة الرصيد إلى حسابك بأمان.' },
+  'addFunds.eWallet': { en: 'Electronic Wallet', ar: 'المحفظة الإلكترونية' },
+  'addFunds.walletMethods': { en: 'Vodafone Cash / Orange Cash / Etisalat Cash', ar: 'فودافون كاش / أورنج كاش / اتصالات كاش' },
+  'addFunds.crypto': { en: 'Cryptocurrency — Heleket', ar: 'العملات الرقمية — Heleket' },
+  'addFunds.cryptoDesc': { en: 'Automatic payment by cryptocurrency invoice', ar: 'دفع تلقائي عبر فاتورة العملات الرقمية' },
+  'addFunds.walletIntro': { en: 'Use the wallet number associated with the payment request.', ar: 'استخدم رقم المحفظة المرتبط بعملية الدفع.' },
+  'addFunds.autoVerify': { en: 'The transaction is verified automatically before your balance is credited.', ar: 'يتم التحقق من العملية تلقائياً قبل إضافة الرصيد.' },
+  'addFunds.chooseWallet': { en: 'Choose wallet', ar: 'اختر المحفظة' },
+  'addFunds.autoPayment': { en: 'Automatic payment', ar: 'دفع تلقائي' },
+  'addFunds.amountEgp': { en: 'Amount (EGP)', ar: 'المبلغ (EGP)' },
+  'addFunds.amountUsd': { en: 'Amount (USD)', ar: 'المبلغ (USD)' },
+  'addFunds.paymentWallet': { en: 'Payment wallet number', ar: 'رقم المحفظة المستخدمة للدفع' },
+  'addFunds.creating': { en: 'Creating payment request...', ar: 'جاري إنشاء طلب الدفع...' },
+  'addFunds.create': { en: 'Create payment request', ar: 'إنشاء طلب الدفع' },
+  'addFunds.invoiceReady': { en: 'Payment invoice is ready', ar: 'فاتورة الدفع جاهزة' },
+  'addFunds.invoiceInstruction': { en: 'Open the invoice and complete the payment. Your balance will be credited automatically after success.', ar: 'افتح الفاتورة وأكمل الدفع. سيتم إضافة الرصيد تلقائياً بعد نجاح العملية.' },
+  'addFunds.openInvoice': { en: 'Open invoice', ar: 'فتح الفاتورة' },
+  'addFunds.noInvoice': { en: 'No invoice link was received.', ar: 'لم يتم استلام رابط الفاتورة.' },
+  'addFunds.cryptoWalletDesc': { en: 'The amount is in USD. Your balance is credited automatically after successful payment.', ar: 'المبلغ بالدولار، وبعد نجاح الدفع يتم إضافة الرصيد تلقائياً.' },
 
   // Transactions
   'transactions.title': { en: 'Transactions', ar: 'المعاملات' },
@@ -438,6 +471,71 @@ function translate(lang: Lang, key: string, vars?: Record<string, string | numbe
   return str;
 }
 
+
+// Compatibility dictionary for UI strings that still live directly in older pages.
+// This lets the whole existing application follow the selected language while pages are
+// progressively migrated to explicit t(...) keys. Dynamic provider/service/user data is
+// never translated because only exact UI phrases are included here.
+const uiPhrasePairs: Array<[string, string]> = [
+  ['Add Funds','إضافة رصيد'],['Choose a category, then choose the exact service. All synchronized service details appear automatically.','اختر القسم ثم الخدمة المطلوبة. ستظهر كل تفاصيل الخدمة المتزامنة تلقائياً.'],
+  ['Choose your service','اختر الخدمة'],['Select category','اختر القسم'],['Service information','معلومات الخدمة'],['Quantity','الكمية'],['Valid quantity','الكمية الصحيحة'],['Provider ID','معرّف المزود'],['Cashback','كاش باك'],['Refill','إعادة تعبئة'],['Cancel','إلغاء'],['Loading...','جاري التحميل...'],['Refresh','تحديث'],['Actions','الإجراءات'],['Status','الحالة'],['Active','نشط'],['Inactive','غير نشط'],['Edit','تعديل'],['Delete','حذف'],['Save','حفظ'],['Create','إنشاء'],['Close','إغلاق'],['Open','فتح'],['Search','بحث'],['Name','الاسم'],['Email','البريد الإلكتروني'],['Password','كلمة المرور'],['Balance','الرصيد'],['Amount','المبلغ'],['Date','التاريخ'],['Type','النوع'],['Service','الخدمة'],['Category','القسم'],['Orders','الطلبات'],['User','المستخدم'],['Method','الطريقة'],['Price','السعر'],['Prize','الجائزة'],['Tickets','التذاكر'],['Title','العنوان'],['Role','الدور'],['Quantity','الكمية'],
+  ['No users found.','لا يوجد مستخدمون.'],['No orders found.','لا توجد طلبات.'],['No services match.','لا توجد خدمات مطابقة.'],['No services found.','لا توجد خدمات.'],['No categories found.','لا توجد أقسام.'],['No providers found.','لا يوجد مزودون.'],['No payments found.','لا توجد مدفوعات.'],['No raffles found. Create one to get started.','لا توجد سحوبات. أنشئ سحباً للبدء.'],['No tiers found.','لا توجد مستويات.'],['No messages yet.','لا توجد رسائل بعد.'],['No support tickets found.','لا توجد تذاكر دعم.'],['No reports found.','لا توجد تقارير.'],['No audit logs found.','لا توجد سجلات نشاط.'],
+  ['Dashboard Overview','نظرة عامة على لوحة التحكم'],["Monitor your platform's core metrics and activity.",'تابع أهم مؤشرات ونشاط منصتك.'],['Total Orders','إجمالي الطلبات'],['Total Users','إجمالي المستخدمين'],['User Management','إدارة المستخدمين'],['API Providers','مزودو الخدمة'],['Provider cost','تكلفة المزود'],['Selling / 1K','سعر البيع / 1000'],['Margin','الهامش'],['Services','الخدمات'],['Shortlinks','الروابط المختصرة'],['Mystery Boxes','الصناديق الغامضة'],['Raffles Management','إدارة السحوبات'],['Support Tickets','تذاكر الدعم'],['Contact Messages','رسائل التواصل'],['System Reports','تقارير النظام'],['Audit Logs','سجل النشاطات'],['Affiliate Control Center','مركز إدارة الإحالات'],['Settings','الإعدادات'],
+  ['Add Provider','إضافة مزود'],['Add Service','إضافة خدمة'],['Add Category','إضافة قسم'],['Add Link','إضافة رابط'],['Add Shortlink','إضافة رابط مختصر'],['Add Mystery Box Tier','إضافة مستوى صندوق غامض'],['Add Tier','إضافة مستوى'],['Create New Raffle','إنشاء سحب جديد'],['Create Raffle','إنشاء السحب'],['Activate','تفعيل'],['Deactivate','تعطيل'],['Keep status','الإبقاء على الحالة'],['Control','تحكم'],['Select','اختيار'],['Select services, change status, or adjust selling price in bulk.','اختر الخدمات وغيّر حالتها أو عدّل أسعار البيع بشكل جماعي.'],
+  ['All statuses','كل الحالات'],['All categories','كل الأقسام'],['All providers','كل المزودين'],['Unresolved','غير محلولة'],['Resolved','تم الحل'],['Approved','مقبول'],['Pending','قيد الانتظار'],['Rejected','مرفوض'],['Awaiting gateway confirmation','في انتظار تأكيد بوابة الدفع'],
+  ['Order Control Center','مركز التحكم في الطلبات'],['Order History','سجل الطلبات'],['Transactions & Payments','المعاملات والمدفوعات'],['Payment Methods Settings','إعدادات وسائل الدفع'],['Heleket Connection','اتصال Heleket'],['Affiliate System','نظام الإحالة'],['Commission Percentage (%)','نسبة العمولة (%)'],['Currency Symbol','رمز العملة'],['Support Email','بريد الدعم'],['Site Name','اسم الموقع'],['Site Description (SEO)','وصف الموقع (SEO)'],['Base URL','الرابط الأساسي'],['Public Key','المفتاح العام'],['Secret Key','المفتاح السري'],['Save Settings','حفظ الإعدادات'],
+  ['Sign out','تسجيل الخروج'],['Sign Out','تسجيل الخروج'],['Retry','إعادة المحاولة'],['Return home','العودة للرئيسية'],['Workspace','مساحة العمل'],['Admin Panel','لوحة الإدارة'],['Client Area','منطقة العميل'],['Blog','المدونة'],['Support','الدعم'],['Home','الرئيسية'],['Pricing','الأسعار'],['Privacy','الخصوصية'],['Terms','الشروط'],['Refunds','الاسترجاع'],['FAQ','الأسئلة الشائعة'],
+  ['Create account','إنشاء حساب'],['Create your RapidSMM account','أنشئ حسابك في RapidSMM'],['Sign in','تسجيل الدخول'],['Get started','ابدأ الآن'],['Start for free','ابدأ مجاناً'],['Start free, connect your provider network and let RapidSMM handle the repetitive parts.','ابدأ مجاناً، اربط شبكة مزوديك ودع RapidSMM يتولى المهام المتكررة.'],['Browse services','تصفح الخدمات'],['Open catalog','فتح الكتالوج'],['Open dashboard','فتح لوحة التحكم'],['View all services →','عرض كل الخدمات ←'],['How it works','كيف يعمل الموقع'],['Questions, answered.','إجابات عن أهم الأسئلة.'],['Ready to build your next order flow?','جاهز لتنفيذ طلبك التالي؟'],
+  ['Category','القسم'],['Section','القسم الفرعي'],['Service','الخدمة'],['Estimated charge','التكلفة المتوقعة'],['Followers','متابعون'],['Live','مباشر'],['Live services','الخدمات المتاحة'],['Wallet balance','رصيد المحفظة'],['Wallet currency','عملة المحفظة'],['USD wallet','محفظة بالدولار'],['Provider sync','مزامنة المزود'],['Reseller API','واجهة API للموزعين'],['Ticket support','دعم التذاكر'],
+  ['Vodafone Cash / Orange Cash / Etisalat Cash','فودافون كاش / أورنج كاش / اتصالات كاش'],['Electronic Wallet','المحفظة الإلكترونية'],['Digital currencies','العملات الرقمية'],['Payment failed','فشل الدفع'],['Payment request created','تم إنشاء طلب الدفع'],['Create Payment Request','إنشاء طلب الدفع'],['Open invoice','فتح الفاتورة'],['Invoice is ready','الفاتورة جاهزة'],['No invoice link was received.','لم يتم استلام رابط الفاتورة.'],
+  ['Reference:','المرجع:'],['Amount:','المبلغ:'],['Daily Reward','المكافأة اليومية'],['Rewards Hub','مركز المكافآت'],['Earn via Shortlinks','اربح عبر الروابط المختصرة'],['Affiliates','برنامج الإحالة'],['Raffles & Lottery','السحوبات واليانصيب'],
+  ['Fast','سريع'],['ADMIN','الإدارة'],['(Ended)','(منتهي)'],['Winner Drawn','تم اختيار الفائز'],['Max Per User','الحد الأقصى للمستخدم'],['Max Total Tickets','إجمالي التذاكر الأقصى'],['Ticket Price ($)','سعر التذكرة ($)'],['Prize Amount ($)','قيمة الجائزة ($)'],
+  ['Mark as replied','تحديد كمُجاب عليه'],['Reply by email','الرد عبر البريد الإلكتروني'],['Resolve','حل المشكلة'],['Reopen Ticket','إعادة فتح التذكرة'],['Close Ticket','إغلاق التذكرة'],['Ticket not found','التذكرة غير موجودة'],
+];
+const uiPhraseMap: Record<string,string> = Object.fromEntries(uiPhrasePairs.flatMap(([en,ar]) => [[en,ar],[ar,en]]));
+
+function installDomTranslator(lang: Lang) {
+  if (typeof document === 'undefined') return () => {};
+  const originals = new WeakMap<Text,string>();
+  let lastLang = lang;
+  const shouldSkip = (node: Node) => {
+    const p = node.parentElement;
+    if (!p) return true;
+    return ['SCRIPT','STYLE','NOSCRIPT','TEXTAREA'].includes(p.tagName) || p.closest('[data-no-auto-translate]') !== null;
+  };
+  const translateNode = (node: Text) => {
+    if (shouldSkip(node)) return;
+    const current = node.nodeValue ?? '';
+    let original = originals.get(node);
+    if (original === undefined || (current !== original && current !== uiPhraseMap[original])) {
+      original = current;
+      originals.set(node, original);
+    }
+    const trimmed = original.trim();
+    if (!trimmed) return;
+    const mapped = uiPhraseMap[trimmed];
+    if (!mapped) return;
+    const out = lang === 'ar' ? (uiPhraseMap[mapped] === original ? mapped : mapped) : mapped;
+    // The pair map is symmetric; determine target from the original language.
+    const pair = uiPhrasePairs.find(([en, ar]) => en === original.trim() || ar === original.trim());
+    if (!pair) return;
+    const target = lang === 'ar' ? pair[1] : pair[0];
+    node.nodeValue = original.replace(trimmed, target);
+  };
+  const scan = (root: Node) => {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    let n: Node | null;
+    while ((n = walker.nextNode())) translateNode(n as Text);
+  };
+  scan(document.body);
+  const observer = new MutationObserver(muts => muts.forEach(m => {
+    m.addedNodes.forEach(scan);
+    m.target && m.target.nodeType === Node.TEXT_NODE && translateNode(m.target as Text);
+  }));
+  observer.observe(document.body,{subtree:true,childList:true,characterData:true});
+  return () => observer.disconnect();
+}
+
 interface LanguageContextValue {
   lang: Lang;
   dir: 'ltr' | 'rtl';
@@ -458,9 +556,10 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<Lang>(() => {
     const stored = typeof window !== 'undefined' ? window.localStorage.getItem('lang') : null;
     if (stored === 'ar' || stored === 'en') return stored;
-    // Default to Arabic for visitors whose browser is set to Arabic; English otherwise.
-    if (typeof navigator !== 'undefined' && navigator.language?.toLowerCase().startsWith('ar')) return 'ar';
-    return 'en';
+    // Follow the device/browser language on first visit. The explicit user choice is
+    // persisted in localStorage and takes priority on subsequent visits.
+    const browserLang = typeof navigator !== 'undefined' ? navigator.language.toLowerCase() : '';
+    return browserLang.startsWith('ar') ? 'ar' : 'en';
   });
 
   useEffect(() => {
@@ -468,6 +567,8 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
     try { window.localStorage.setItem('lang', lang); } catch { /* ignore storage errors */ }
   }, [lang]);
+
+  useEffect(() => installDomTranslator(lang), [lang]);
 
   const value = useMemo<LanguageContextValue>(() => ({
     lang,

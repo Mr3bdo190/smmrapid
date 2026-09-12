@@ -39,7 +39,7 @@ export default function AdminLayout() {
     queryFn: async () => { const res = await apiFetch('/api/client/config', user); return res.ok ? res.json() : {}; },
   });
 
-  if (loading) return <div className="rapid-auth-screen"><div className="rapid-auth-loader"><span className="brand-mark">R</span><div className="rapid-spinner"/><strong>{t('common.loading')}</strong><small>Checking secure permissions…</small></div></div>;
+  if (loading) return <div className="rapid-auth-screen"><div className="rapid-auth-loader"><span className="brand-mark">R</span><div className="rapid-spinner"/><strong>{t('common.loading')}</strong><small>{t('common.loading')}</small></div></div>;
   if (!user) return <Navigate to="/" replace />;
   if (!dbUser || dbUser.role !== 'admin') return <Navigate to="/dashboard" replace />;
 
@@ -77,7 +77,8 @@ export default function AdminLayout() {
             <button onClick={() => setIsMobileMenuOpen(true)} className="md:hidden text-gray-500 hover:text-gray-900"><Menu className="w-6 h-6" /></button>
             <h2 className="text-xl font-semibold text-gray-800 truncate">{navItems.find(i => i.href === location.pathname) ? t(navItems.find(i => i.href === location.pathname)!.key) : t('nav.admin.title')}</h2>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <button onClick={logOut} className="hidden md:inline-flex btn-ghost items-center gap-1.5"><LogOut className="h-4 w-4"/> {t('common.signOut')}</button>
             <span className="hidden md:inline text-sm text-gray-500">{dbUser.email}</span>
             <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold">{dbUser.email[0].toUpperCase()}</div>
           </div>

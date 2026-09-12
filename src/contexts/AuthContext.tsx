@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User, onAuthStateChanged, setPersistence, browserLocalPersistence, signInWithPopup, GoogleAuthProvider, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, sendEmailVerification, sendPasswordResetEmail } from 'firebase/auth';
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { getAuth, type Auth } from 'firebase/auth';
 import { apiJson, isAuthDbUnavailableError, AUTH_DB_UNAVAILABLE } from '../lib/api';
 
 const config = {
@@ -11,8 +11,14 @@ const config = {
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
 };
 
-const app = initializeApp(config);
-const auth = getAuth(app);
+// Never let a missing/misconfigured public Firebase env crash the entire SPA.
+// The public site can still render; authenticated features show a recoverable state.
+const firebaseReady = Object.values(config).every(v => typeof v === 'string' && v.trim().length > 0);
+let auth: Auth | null = null;
+if (firebaseReady) {
+  try { auth = getAuth(initializeApp(config)); }
+  catch (error) { console.error('[auth] Firebase initialization failed:', error); }
+}
 const AuthContext = createContext<any>({});
 
 async function syncAccount(u: User, referralCode?: string, name?: string) {
@@ -30,6 +36,11 @@ export const AuthProvider = ({ children }: any) => {
   const [authError, setAuthError] = useState<any>(null);
 
   useEffect(() => {
+    if (!auth) {
+      setLoading(false);
+      setAuthError(Object.assign(new Error('Authentication is temporarily unavailable.'), { code: 'AUTH_CONFIG_MISSING' }));
+      return;
+    }
     return onAuthStateChanged(auth, async (u) => {
       setUser(u);
       setAuthError(null);
@@ -76,20 +87,23 @@ export const AuthProvider = ({ children }: any) => {
   }, []);
 
   const signIn = async () => {
+    if (!auth) throw new Error('Authentication is temporarily unavailable.');
     await setPersistence(auth, browserLocalPersistence);
     await signInWithPopup(auth, new GoogleAuthProvider());
   };
   const registerWithEmail = async (email: string, pass: string, name?: string) => {
+    if (!auth) throw new Error('Authentication is temporarily unavailable.');
     await setPersistence(auth, browserLocalPersistence);
     const cred = await createUserWithEmailAndPassword(auth, email, pass);
     if (name && cred.user) { await updateProfile(cred.user, { displayName: name }); }
     if (cred.user && !cred.user.emailVerified) await sendEmailVerification(cred.user);
   };
   const loginWithEmail = async (email: string, pass: string) => {
+    if (!auth) throw new Error('Authentication is temporarily unavailable.');
     await setPersistence(auth, browserLocalPersistence);
     await signInWithEmailAndPassword(auth, email, pass);
   };
-  const logOut = () => signOut(auth);
+  const logOut = () => auth ? signOut(auth) : Promise.resolve();
   const sendVerification = async () => { if (user && !user.emailVerified) await sendEmailVerification(user); };
   const resetPassword = async (email: string) => { await sendPasswordResetEmail(auth, email.trim()); };
 

@@ -345,8 +345,34 @@ app.post('/api/client/api-key/generate', requireAuth, async (req: any, res) => {
   res.json({ success: true, apiKey: key });
 });
 app.get('/api/client/dashboard', requireAuth, async (req: any, res) => {
-  const rows = await db.select().from(orders).where(eq(orders.userId, req.dbUser.id));
-  res.json({ totalOrders: rows.length, totalSpent: money(rows.reduce((a, o) => a + num(o.charge), 0)).toFixed(2), balance: req.dbUser.balance });
+  const userId = req.dbUser.id;
+  const [orderStats, spendStats, fundedStats, recentOrders, openTickets, unreadNotifications] = await Promise.all([
+    db.select({
+      total: sql<number>`count(*)`,
+      pending: sql<number>`count(*) filter (where ${orders.status} = 'Pending')`,
+      processing: sql<number>`count(*) filter (where ${orders.status} in ('Processing','In Progress'))`,
+      completed: sql<number>`count(*) filter (where ${orders.status} = 'Completed')`,
+      partial: sql<number>`count(*) filter (where ${orders.status} = 'Partial')`,
+      canceled: sql<number>`count(*) filter (where ${orders.status} = 'Canceled')`,
+      refunded: sql<number>`count(*) filter (where ${orders.status} = 'Refunded')`,
+    }).from(orders).where(eq(orders.userId, userId)),
+    db.select({ total: sql<string>`coalesce(sum(${orders.charge}), 0)` }).from(orders).where(and(eq(orders.userId, userId), sql`${orders.status} not in ('Canceled','Refunded')`)),
+    db.select({ total: sql<string>`coalesce(sum(${payments.amount}), 0)` }).from(payments).where(and(eq(payments.userId, userId), eq(payments.status, 'Completed'))),
+    db.query.orders.findMany({ where: eq(orders.userId, userId), with: { service: true }, orderBy: [desc(orders.createdAt)], limit: 8 }),
+    db.select({ total: sql<number>`count(*)` }).from(tickets).where(and(eq(tickets.userId, userId), sql`${tickets.status} in ('Open','Pending')`)),
+    db.select({ total: sql<number>`count(*)` }).from(notifications).where(and(eq(notifications.userId, userId), isNull(notifications.readAt))),
+  ]);
+  const o = orderStats[0];
+  res.json({
+    balance: req.dbUser.balance,
+    totalOrders: Number(o?.total || 0),
+    totalSpent: money(num(spendStats[0]?.total)).toFixed(2),
+    totalFunded: money(num(fundedStats[0]?.total)).toFixed(2),
+    openTickets: Number(openTickets[0]?.total || 0),
+    unreadNotifications: Number(unreadNotifications[0]?.total || 0),
+    ordersByStatus: { pending: Number(o?.pending||0), processing: Number(o?.processing||0), completed: Number(o?.completed||0), partial: Number(o?.partial||0), canceled: Number(o?.canceled||0), refunded: Number(o?.refunded||0) },
+    recentOrders: recentOrders.map((x:any) => ({ id:x.id, serviceName:x.service?.name || 'Service', quantity:x.quantity, charge:x.charge, status:x.status, startCount:x.startCount, remains:x.remains, createdAt:x.createdAt }))
+  });
 });
 
 app.get('/api/client/services', requireAuth, async (_req, res) => {
@@ -1027,7 +1053,23 @@ id:users.id,uid:users.uid,name:users.name,email:users.email,role:users.role,stat
 gamePoints:users.gamePoints,currentStreak:users.currentStreak,keys:users.keys,referralCode:users.referralCode,referredBy:users.referredBy,createdAt:users.createdAt
 });await audit(req.dbUser.id,'UPDATE_STATUS','USER',u.id,`Status changed to ${status}`,u.status,status);res.json(updated);});
 app.put('/api/admin/users/:id/balance',requireAuth,requireAdmin,async(req:any,res)=>{try{const amount=num(req.body?.amount);if(!Number.isFinite(amount)||amount===0||Math.abs(amount)>1000000)throw new Error('Invalid balance adjustment');await db.transaction(async tx=>{if(amount>0)await creditWallet(tx,req.params.id,amount,'Admin balance adjustment',req.params.id);else await debitWallet(tx,req.params.id,Math.abs(amount),'Admin balance adjustment',req.params.id);});await audit(req.dbUser.id,'ADJUST_BALANCE','USER',req.params.id,`Adjustment ${amount}`);res.json({success:true});}catch(e:any){apiError(res,400,e.message);}});
-app.get('/api/admin/stats',requireAuth,requireAdmin,async(_req,res)=>{const [[u],[o],[p]] = await Promise.all([db.select({count:sql<number>`count(*)`}).from(users),db.select({count:sql<number>`count(*)`}).from(orders),db.select({count:sql<number>`count(*)`}).from(payments)]);res.json({totalUsers:Number(u.count),totalOrders:Number(o.count),totalPayments:Number(p.count)});});
+app.get('/api/admin/stats',requireAuth,requireAdmin,async(_req,res)=>{
+  const [u,o,p,activeUsers,pendingOrders,pendingPayments,revenue,providersCount,servicesCount,openTickets,todayOrders,todayRevenue] = await Promise.all([
+    db.select({count:sql<number>`count(*)`}).from(users),
+    db.select({count:sql<number>`count(*)`}).from(orders),
+    db.select({count:sql<number>`count(*)`}).from(payments),
+    db.select({count:sql<number>`count(*)`}).from(users).where(eq(users.status,'active')),
+    db.select({count:sql<number>`count(*)`}).from(orders).where(sql`${orders.status} in ('Pending','Processing','In Progress','Partial')`),
+    db.select({count:sql<number>`count(*)`}).from(payments).where(eq(payments.status,'Pending')),
+    db.select({total:sql<string>`coalesce(sum(${payments.amount}),0)`}).from(payments).where(eq(payments.status,'Approved')),
+    db.select({count:sql<number>`count(*)`}).from(providers).where(and(eq(providers.isDeleted,false),eq(providers.status,'active'))),
+    db.select({count:sql<number>`count(*)`}).from(services).where(eq(services.status,'active')),
+    db.select({count:sql<number>`count(*)`}).from(tickets).where(sql`${tickets.status} in ('Open','Pending')`),
+    db.select({count:sql<number>`count(*)`}).from(orders).where(sql`${orders.createdAt} >= current_date`),
+    db.select({total:sql<string>`coalesce(sum(${payments.amount}),0)`}).from(payments).where(and(eq(payments.status,'Approved'),sql`${payments.createdAt} >= current_date`)),
+  ]);
+  res.json({ totalUsers:Number(u[0].count), totalOrders:Number(o[0].count), totalPayments:Number(p[0].count), activeUsers:Number(activeUsers[0].count), pendingOrders:Number(pendingOrders[0].count), pendingPayments:Number(pendingPayments[0].count), totalRevenue:money(num(revenue[0].total)).toFixed(2), activeProviders:Number(providersCount[0].count), activeServices:Number(servicesCount[0].count), openTickets:Number(openTickets[0].count), todayOrders:Number(todayOrders[0].count), todayRevenue:money(num(todayRevenue[0].total)).toFixed(2) });
+});
 
 app.get('/api/admin/categories',requireAuth,requireAdmin,async(_req,res)=>res.json(await db.select().from(categories).orderBy(categories.sortOrder)));
 app.post('/api/admin/categories',requireAuth,requireAdmin,async(req:any,res)=>{const name=String(req.body?.name||'').trim();if(name.length<2||name.length>100)return apiError(res,400,'Invalid category name');const [c]=await db.insert(categories).values({name,sortOrder:Number(req.body?.sortOrder||0),status:req.body?.status==='inactive'?'inactive':'active'}).returning();await audit(req.dbUser.id,'CREATE_CATEGORY','CATEGORY',c.id);res.status(201).json(c);});

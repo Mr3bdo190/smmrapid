@@ -1,47 +1,23 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
-import { Users, ShoppingCart, Wallet, RefreshCw, AlertCircle } from 'lucide-react';
+import { Users, ShoppingCart, Wallet, RefreshCw, AlertCircle, Server, ListOrdered, Headphones, CreditCard, Activity, ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
-export default function AdminDashboard() {
-  const { user } = useAuth();
-
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['admin-dashboard'],
-    queryFn: async () => {
-      const token = await user?.getIdToken();
-      const res = await apiFetch('/api/admin/stats', user, { headers: { Authorization: `Bearer ${token}` } });
-      if (!res.ok) throw new Error('API Error');
-      return res.json();
-    },
-    enabled: !!user,
-  });
-
-  if (isLoading) return <div className="p-6 text-gray-500 flex items-center gap-2"><RefreshCw className="w-4 h-4 animate-spin" /> Loading dashboard...</div>;
-  if (isError) return <div className="p-6 text-red-500 flex items-center gap-2"><AlertCircle className="w-5 h-5" /> Error loading dashboard.</div>;
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Dashboard Overview</h2>
-        <p className="mt-1 text-sm text-gray-500">Monitor your platform's core metrics and activity.</p>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-4">
-          <div className="p-4 rounded-xl bg-blue-100 text-blue-600"><Users className="w-6 h-6" /></div>
-          <div>
-            <p className="text-sm font-medium text-gray-500">Total Users</p>
-            <h3 className="text-2xl font-bold text-gray-900 mt-1">{data?.totalUsers || 0}</h3>
-          </div>
-        </div>
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-4">
-          <div className="p-4 rounded-xl bg-indigo-100 text-indigo-600"><ShoppingCart className="w-6 h-6" /></div>
-          <div>
-            <p className="text-sm font-medium text-gray-500">Total Orders</p>
-            <h3 className="text-2xl font-bold text-gray-900 mt-1">{data?.totalOrders || 0}</h3>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+const money=(v:any)=>`$${Number(v||0).toFixed(2)}`;
+export default function AdminDashboard(){
+ const {user}=useAuth(); const {data,isLoading,isError,refetch,isFetching}=useQuery({queryKey:['admin-dashboard'],queryFn:async()=>{const token=await user?.getIdToken();const r=await apiFetch('/api/admin/stats',user,{headers:{Authorization:`Bearer ${token}`}});if(!r.ok)throw new Error('stats');return r.json();},enabled:!!user,refetchInterval:30000});
+ if(isLoading)return <div className="p-6 text-gray-500 flex items-center gap-2"><RefreshCw className="w-4 h-4 animate-spin"/>Loading dashboard...</div>;
+ if(isError)return <div className="p-6 rounded-2xl bg-rose-50 text-rose-700 flex items-center justify-between"><span className="flex gap-2"><AlertCircle/>Unable to load dashboard data.</span><button onClick={()=>refetch()} className="btn-primary">Retry</button></div>;
+ return <div className="space-y-6">
+  <div className="flex items-center justify-between"><div><h2 className="text-2xl font-bold text-gray-900 tracking-tight">Dashboard Overview</h2><p className="mt-1 text-sm text-gray-500">Monitor users, orders, wallet activity and operations.</p></div><button onClick={()=>refetch()} className="btn-ghost flex gap-2 items-center"><RefreshCw className={`w-4 h-4 ${isFetching?'animate-spin':''}`}/>Refresh</button></div>
+  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4"><Card icon={Users} title="Total users" value={data.totalUsers}/><Card icon={Activity} title="Active users" value={data.activeUsers}/><Card icon={ShoppingCart} title="Total orders" value={data.totalOrders}/><Card icon={Wallet} title="Total revenue" value={money(data.totalRevenue)}/></div>
+  <div className="grid grid-cols-2 md:grid-cols-4 gap-3"><Small title="Pending orders" value={data.pendingOrders} href="/admin/orders"/><Small title="Pending payments" value={data.pendingPayments} href="/admin/payments"/><Small title="Open tickets" value={data.openTickets} href="/admin/tickets"/><Small title="Active services" value={data.activeServices} href="/admin/services"/></div>
+  <div className="grid grid-cols-1 lg:grid-cols-2 gap-5"><div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5"><h3 className="font-bold text-gray-900 mb-4">Today</h3><div className="grid grid-cols-2 gap-4"><Metric label="Orders today" value={data.todayOrders}/><Metric label="Revenue today" value={money(data.todayRevenue)}/></div></div><div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5"><h3 className="font-bold text-gray-900 mb-4">Platform status</h3><div className="space-y-3"><Line icon={Server} label="Active providers" value={data.activeProviders}/><Line icon={ListOrdered} label="Active services" value={data.activeServices}/><Line icon={CreditCard} label="Successful payments" value={data.totalPayments}/><Line icon={Headphones} label="Open support tickets" value={data.openTickets}/></div></div></div>
+  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5"><h3 className="font-bold mb-4">Quick management</h3><div className="grid grid-cols-2 md:grid-cols-4 gap-3"><Link className="btn-ghost justify-between" to="/admin/orders">Orders <ArrowRight className="w-4 h-4"/></Link><Link className="btn-ghost justify-between" to="/admin/users">Users <ArrowRight className="w-4 h-4"/></Link><Link className="btn-ghost justify-between" to="/admin/providers">Providers <ArrowRight className="w-4 h-4"/></Link><Link className="btn-ghost justify-between" to="/admin/reports">Reports <ArrowRight className="w-4 h-4"/></Link></div></div>
+ </div>
 }
+function Card({icon:Icon,title,value}:any){return <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4"><div className="p-3 rounded-xl bg-indigo-50 text-indigo-600"><Icon className="w-6 h-6"/></div><div><p className="text-sm text-gray-500">{title}</p><h3 className="text-2xl font-black text-gray-900 mt-1">{value}</h3></div></div>}
+function Small({title,value,href}:any){return <Link to={href} className="bg-white rounded-xl border border-gray-100 p-4 hover:border-indigo-200"><p className="text-xs text-gray-500">{title}</p><b className="text-2xl mt-1 block">{value||0}</b></Link>}
+function Metric({label,value}:any){return <div className="rounded-xl bg-slate-50 p-4"><p className="text-xs text-gray-500">{label}</p><b className="text-2xl">{value}</b></div>}
+function Line({icon:Icon,label,value}:any){return <div className="flex items-center justify-between rounded-xl bg-slate-50 p-3"><span className="flex items-center gap-2 text-sm"><Icon className="w-4 h-4 text-indigo-600"/>{label}</span><b>{value||0}</b></div>}

@@ -40,7 +40,7 @@ export default function ClientServices() {
                 <td className="px-6 py-4 text-sm text-gray-500 font-mono">{s.id.substring(0,8)}</td>
                 <td className="px-6 py-4 text-sm text-gray-600">{s.category?.name || 'N/A'}</td>
                 <td className="px-6 py-4 text-sm font-medium text-gray-900">{s.name}</td>
-                <td className="px-6 py-4 text-sm text-right text-emerald-600 font-semibold">${Number(s.pricePer1k).toFixed(4)}</td>
+                <td className="px-6 py-4 text-sm text-right text-emerald-600 font-semibold">${Number(s.pricePer1k).toFixed(4)} <span className="text-[11px] text-gray-400 font-normal">{Number(s.minQuantity)===1&&Number(s.maxQuantity)===1?' / item':' / 1K'}</span></td>
                 <td className="px-6 py-4 text-sm text-right text-gray-500">{s.minQuantity} / {s.maxQuantity}</td>
               </tr>
             ))}

@@ -61,7 +61,7 @@ test('frontend routes are represented by backend handlers', () => {
   }
 });
 
-test('removed Kashier gateway is not wired into the client', () => {
+test('removed legacy payment gateway is not wired into the client', () => {
   const client = fs.readFileSync('src/pages/client/ClientAddFunds.tsx', 'utf8');
   assert.equal(client.includes('Kashier'), false);
 });

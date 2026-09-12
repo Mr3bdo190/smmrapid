@@ -44,17 +44,8 @@ export default async function handler(req: AuthenticatedRequest, res: Response) 
         // Always expose synchronized provider metadata to the New Order page.
         // Older service rows may predate providerMeta, so build a safe fallback
         // from the persisted service columns instead of showing empty details.
-        providerMeta: x.providerMeta || {
-          sourceServiceId: x.providerServiceId || null,
-          providerRate: x.providerPrice != null ? Number(x.providerPrice) : null,
-          providerMin: x.minQuantity,
-          providerMax: x.maxQuantity,
-          description: x.description || null,
-          refillable: Boolean(x.refillable),
-          cancelable: Boolean(x.cancelable),
-          dripfeed: false,
-          type: null
-        }
+        singleUnit: Number(x.minQuantity) === 1 && Number(x.maxQuantity) === 1,
+        providerMeta: { ...(x.providerMeta || {}), sourceServiceId: x.providerMeta?.sourceServiceId || x.providerServiceId || null, providerRate: x.providerMeta?.providerRate ?? (x.providerPrice != null ? Number(x.providerPrice) : null), providerMin: x.providerMeta?.providerMin ?? x.minQuantity, providerMax: x.providerMeta?.providerMax ?? x.maxQuantity, description: String(x.providerMeta?.description || x.description || '').trim() || null, refillable: x.providerMeta?.refillable ?? Boolean(x.refillable), cancelable: x.providerMeta?.cancelable ?? Boolean(x.cancelable), dripfeed: Boolean(x.providerMeta?.dripfeed), type: x.providerMeta?.type || null }
       }));
     res.json(filtered);
   } catch (e: any) {

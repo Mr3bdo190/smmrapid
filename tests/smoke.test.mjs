@@ -166,3 +166,43 @@ test('complete affiliate system is wired', () => {
   assert.match(app, /ref_click:/);
   assert.ok(fs.existsSync(path.join(root, 'drizzle/0005_affiliate_system.sql')));
 });
+
+
+test('phase 2 notifications and secure API key lifecycle are wired', () => {
+  const server = fs.readFileSync('server.ts','utf8');
+  const schema = fs.readFileSync('src/db/schema.ts','utf8');
+  assert.match(schema, /export const notifications = pgTable\('notifications'/);
+  assert.match(server, /\/api\/client\/notifications/);
+  assert.match(server, /apiKey: null, apiKeyHash: hashApiKey\(key\)/);
+  assert.match(server, /const publicUser =/);
+  assert.doesNotMatch(server, /set\(\{ apiKey: key \}\)/);
+});
+
+test('phase 2 database migration and clean schema include notifications', () => {
+  const migration = fs.readFileSync('drizzle/0007_phase2_notifications.sql','utf8');
+  const schema = fs.readFileSync('supabase_schema.sql','utf8');
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS notifications/);
+  assert.match(migration, /notifications_user_unread_idx/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS notifications/);
+});
+
+test('phase 2 auth recovery and email verification UX are wired', () => {
+  const auth = fs.readFileSync('src/contexts/AuthContext.tsx','utf8');
+  const landing = fs.readFileSync('src/pages/LandingPage.tsx','utf8');
+  assert.match(auth, /sendEmailVerification/);
+  assert.match(auth, /sendPasswordResetEmail/);
+  assert.match(landing, /Forgot password|نسيت كلمة المرور/);
+});
+
+test('phase 2 currency presentation is USD-consistent on public services', () => {
+  const html = fs.readFileSync('public/services/index.html','utf8');
+  assert.doesNotMatch(html, /EGP \/ 1K/);
+  assert.match(html, /USD \/ 1K/);
+});
+
+test('phase 1 raffle migration remains present and phase 2 docs are present', () => {
+  const migration = fs.readFileSync('drizzle/0006_phase1_critical_fixes.sql','utf8');
+  assert.match(migration, /DROP CONSTRAINT IF EXISTS raffle_tickets_raffle_id_user_id_key/);
+  assert.ok(fs.existsSync('PHASE1_CRITICAL_FIXES.md'));
+  assert.ok(fs.existsSync('PHASE2_CRITICAL_FIXES.md'));
+});

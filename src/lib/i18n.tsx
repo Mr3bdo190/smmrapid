@@ -51,6 +51,10 @@ export const translations: Dict = {
   'common.saved': { en: 'Saved', ar: 'تم الحفظ' },
   'common.saveFailed': { en: 'Failed to save', ar: 'فشل الحفظ' },
   'common.currency': { en: 'USD', ar: 'دولار' },
+  'notifications.title': { en: 'Notifications', ar: 'الإشعارات' },
+  'notifications.markAll': { en: 'Mark all as read', ar: 'تحديد الكل كمقروء' },
+  'notifications.empty': { en: 'No notifications yet.', ar: 'لا توجد إشعارات حالياً.' },
+
 
   // Nav (also used as section headers)
   'nav.dashboard': { en: 'Dashboard', ar: 'لوحة التحكم' },

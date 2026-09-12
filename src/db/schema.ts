@@ -149,6 +149,21 @@ export const ticketMessages = pgTable('ticket_messages', {
   senderIdx: index('ticket_messages_sender_idx').on(t.senderId),
 }));
 
+export const notifications = pgTable('notifications', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  type: text('type').default('system').notNull(),
+  title: text('title').notNull(),
+  message: text('message').notNull(),
+  link: text('link'),
+  readAt: timestamp('read_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (t) => ({
+  userIdx: index('notifications_user_idx').on(t.userId),
+  unreadIdx: index('notifications_user_unread_idx').on(t.userId, t.readAt),
+  createdAtIdx: index('notifications_created_at_idx').on(t.createdAt),
+}));
+
 export const settings = pgTable('settings', {
   key: text('key').primaryKey(),
   value: text('value').notNull(),

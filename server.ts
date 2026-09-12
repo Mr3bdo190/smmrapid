@@ -13,7 +13,7 @@ import {
   users, orders, payments, tickets, ticketMessages, services, categories, settings,
   providers, shortlinks, shortlinkClaims, shortlinkTokens, raffles, raffleTickets,
   mysteryBoxTiers, walletLedger, referralClicks, affiliateCommissions, auditLogs,
-  systemReports, contactMessages, refillRequests
+  systemReports, contactMessages, refillRequests, notifications
 } from './src/db/schema';
 import { adminAuth } from './src/lib/firebase-admin';
 import { ProviderClient, placeOrderToProvider, startProviderWorker, checkOrderStatus, refundOrderOnce } from './src/lib/provider-engine';
@@ -91,6 +91,24 @@ const buildProviderDescription = (raw: any, name: string, rate: number, min: num
 };
 
 const hashApiKey = (key: string) => crypto.createHash('sha256').update(key).digest('hex');
+const publicUser = (u: any) => {
+  if (!u) return u;
+  const { apiKey: _apiKey, ...safe } = u;
+  return safe;
+};
+
+async function createNotificationTx(tx: any, userId: string, type: string, title: string, message: string, link?: string) {
+  await tx.insert(notifications).values({ userId, type, title, message, link: link || null });
+}
+
+async function createNotification(userId: string, type: string, title: string, message: string, link?: string) {
+  try {
+    await db.insert(notifications).values({ userId, type, title, message, link: link || null });
+  } catch (e) {
+    console.error('[notifications] create failed:', e instanceof Error ? e.message : e);
+  }
+}
+
 const isPrivateIp = (ip: string) => {
   if (net.isIPv4(ip)) {
     const [a,b] = ip.split('.').map(Number);
@@ -277,7 +295,7 @@ app.post('/api/auth/sync', authLimiter, requireAuth, async (req: any, res) => {
     }
   }
   res.setHeader('Cache-Control','no-store');
-  res.json(user);
+  res.json(publicUser(user));
 });
 
 // Client profile/dashboard
@@ -289,9 +307,14 @@ app.get('/api/client/me', requireAuth, async (req: any, res) => {
       try { const [updated] = await db.update(users).set({ referralCode: code }).where(and(eq(users.id, u.id), isNull(users.referralCode))).returning(); if (updated) u = updated; else u = (await db.query.users.findFirst({ where: eq(users.id, u.id) })) || u; } catch { /* retry a unique code */ }
     }
   }
-  res.json(u);
+  res.json(publicUser(u));
 });
-app.post('/api/client/api-key/generate', requireAuth, async (req: any, res) => { const key = `smm_${crypto.randomBytes(24).toString('hex')}`; const [u] = await db.update(users).set({ apiKey: key }).where(eq(users.id, req.dbUser.id)).returning({ apiKey: users.apiKey }); res.json({ success: true, apiKey: u.apiKey }); });
+app.post('/api/client/api-key/generate', requireAuth, async (req: any, res) => {
+  const key = `smm_${crypto.randomBytes(24).toString('hex')}`;
+  const [u] = await db.update(users).set({ apiKey: null, apiKeyHash: hashApiKey(key) }).where(eq(users.id, req.dbUser.id)).returning({ id: users.id });
+  if (!u) return apiError(res, 404, 'User not found', 'NOT_FOUND');
+  res.json({ success: true, apiKey: key });
+});
 app.get('/api/client/dashboard', requireAuth, async (req: any, res) => {
   const rows = await db.select().from(orders).where(eq(orders.userId, req.dbUser.id));
   res.json({ totalOrders: rows.length, totalSpent: money(rows.reduce((a, o) => a + num(o.charge), 0)).toFixed(2), balance: req.dbUser.balance });
@@ -492,8 +515,8 @@ const paymentApprove = async (paymentId: string, adminId: string) => {
     return true;
   });
 };
-app.put('/api/admin/payments/:id/approve', requireAuth, requireAdmin, async (req: any, res) => { try { const changed = await paymentApprove(req.params.id, req.dbUser.id); if (!changed) return apiError(res, 409, 'Payment already resolved', 'ALREADY_RESOLVED'); await audit(req.dbUser.id, 'APPROVE_PAYMENT', 'PAYMENT', req.params.id); res.json({ success: true }); } catch (e: any) { apiError(res, e.status || 400, e.message); } });
-app.put('/api/admin/payments/:id/reject', requireAuth, requireAdmin, async (req: any, res) => { try { await db.transaction(async tx => { const [p] = await tx.select().from(payments).where(eq(payments.id, req.params.id)).for('update'); if (!p) throw new Error('Payment not found'); if (GATEWAY_VERIFIED_METHODS.has(p.method)) throw Object.assign(new Error(`${p.method} payments are resolved automatically by server-side gateway verification and cannot be rejected manually. If it's genuinely stuck, wait for the invoice to expire.`), { status: 400 }); if (p.status !== 'Pending') throw new Error('Payment already resolved'); await tx.update(payments).set({ status: 'Rejected', resolvedAt: new Date() }).where(eq(payments.id, p.id)); }); await audit(req.dbUser.id, 'REJECT_PAYMENT', 'PAYMENT', req.params.id); res.json({ success: true }); } catch (e: any) { apiError(res, e.status || 400, e.message); } });
+app.put('/api/admin/payments/:id/approve', requireAuth, requireAdmin, async (req: any, res) => { try { const changed = await paymentApprove(req.params.id, req.dbUser.id); if (!changed) return apiError(res, 409, 'Payment already resolved', 'ALREADY_RESOLVED'); const payment=await db.query.payments.findFirst({where:eq(payments.id,req.params.id)}); if(payment) await createNotification(payment.userId,'payment','Payment approved',`$${num(payment.amount).toFixed(2)} was added to your wallet.`,`/dashboard/transactions`); await audit(req.dbUser.id, 'APPROVE_PAYMENT', 'PAYMENT', req.params.id); res.json({ success: true }); } catch (e: any) { apiError(res, e.status || 400, e.message); } });
+app.put('/api/admin/payments/:id/reject', requireAuth, requireAdmin, async (req: any, res) => { try { await db.transaction(async tx => { const [p] = await tx.select().from(payments).where(eq(payments.id, req.params.id)).for('update'); if (!p) throw new Error('Payment not found'); if (GATEWAY_VERIFIED_METHODS.has(p.method)) throw Object.assign(new Error(`${p.method} payments are resolved automatically by server-side gateway verification and cannot be rejected manually. If it's genuinely stuck, wait for the invoice to expire.`), { status: 400 }); if (p.status !== 'Pending') throw new Error('Payment already resolved'); await tx.update(payments).set({ status: 'Rejected', resolvedAt: new Date() }).where(eq(payments.id, p.id)); }); const payment=await db.query.payments.findFirst({where:eq(payments.id,req.params.id)}); if(payment) await createNotification(payment.userId,'payment','Payment rejected',`Your payment of $${num(payment.amount).toFixed(2)} was rejected.`,`/dashboard/add-funds`); await audit(req.dbUser.id, 'REJECT_PAYMENT', 'PAYMENT', req.params.id); res.json({ success: true }); } catch (e: any) { apiError(res, e.status || 400, e.message); } });
 
 // Heleket crypto payment gateway.
 // API authentication: MD5(base64(JSON body) + payment API key).
@@ -641,6 +664,7 @@ app.post('/api/heleket/webhook', async (req, res) => {
         // This webhook is the ONLY thing that credits a Heleket payment — admins cannot manually
         // approve Heleket payments (see the guard in /api/admin/payments/:id/approve).
         await creditWallet(tx, locked.userId, num(locked.amount), 'Heleket Deposit', locked.id);
+        await createNotificationTx(tx, locked.userId, 'payment', 'Crypto payment confirmed', `$${num(locked.amount).toFixed(2)} was added to your wallet.`, '/dashboard/transactions');
         await applyAffiliateCommission(tx, locked);
       });
     } else if (rejectStatuses.has(status)) {
@@ -762,6 +786,7 @@ const finalizeSha7nawyPayment = async (paymentId:string, gatewayInfo:any, source
     if (gatewayStatus !== 'completed') return false;
     await tx.update(payments).set({ status:'Approved', transactionId:String(gatewayInfo?.transaction_id || gatewayInfo?.id || p.transactionId || ''), transactionDetails:{...td, gatewayStatus, verifiedBy:source, gatewayInfo}, resolvedAt:new Date() }).where(eq(payments.id,p.id));
     await creditWallet(tx,p.userId,num(p.amount),`Funds added via ${p.method}`,p.id);
+    await createNotificationTx(tx, p.userId, 'payment', 'Payment confirmed', `$${num(p.amount).toFixed(2)} was added to your wallet.`, '/dashboard/transactions');
     await applyAffiliateCommission(tx,p);
     return true;
   });
@@ -838,9 +863,27 @@ app.get('/api/admin/affiliates',requireAuth,requireAdmin,async(_req:any,res:any)
 
 // Client support ticket APIs.
 app.get('/api/client/tickets',requireAuth,async(req:any,res:any)=>{try{const rows=await db.select().from(tickets).where(eq(tickets.userId,req.dbUser.id)).orderBy(desc(tickets.createdAt));res.json(rows);}catch(e:any){apiError(res,500,e.message||'Failed to load tickets','TICKETS_LOAD_FAILED');}});
-app.post('/api/client/tickets',requireAuth,async(req:any,res:any)=>{try{const subject=String(req.body?.subject||'').trim();const message=String(req.body?.message||'').trim();if(subject.length<3||subject.length>200||message.length<1||message.length>5000)return apiError(res,400,'Invalid ticket subject or message','INVALID_TICKET');let result:any;await db.transaction(async tx=>{const [t]=await tx.insert(tickets).values({userId:req.dbUser.id,subject,status:'Open'}).returning();const [m]=await tx.insert(ticketMessages).values({id:crypto.randomUUID(),ticketId:t.id,senderId:req.dbUser.id,message,isAdmin:false}).returning();result={ticket:t,message:m};});res.status(201).json(result);}catch(e:any){apiError(res,400,e.message||'Failed to create ticket','TICKET_CREATE_FAILED');}});
+app.post('/api/client/tickets',requireAuth,async(req:any,res:any)=>{try{const subject=String(req.body?.subject||'').trim();const message=String(req.body?.message||'').trim();if(subject.length<3||subject.length>200||message.length<1||message.length>5000)return apiError(res,400,'Invalid ticket subject or message','INVALID_TICKET');let result:any;await db.transaction(async tx=>{const [t]=await tx.insert(tickets).values({userId:req.dbUser.id,subject,status:'Open'}).returning();const [m]=await tx.insert(ticketMessages).values({id:crypto.randomUUID(),ticketId:t.id,senderId:req.dbUser.id,message,isAdmin:false}).returning();await createNotificationTx(tx,req.dbUser.id,'ticket','Support ticket created',`Ticket #${t.id.slice(0,8)} was created successfully.`,`/dashboard/tickets/${t.id}`);result={ticket:t,message:m};});res.status(201).json(result);}catch(e:any){apiError(res,400,e.message||'Failed to create ticket','TICKET_CREATE_FAILED');}});
 app.get('/api/client/tickets/:id',requireAuth,async(req:any,res:any)=>{try{const [ticket]=await db.select().from(tickets).where(and(eq(tickets.id,req.params.id),eq(tickets.userId,req.dbUser.id)));if(!ticket)return apiError(res,404,'Ticket not found','NOT_FOUND');const messages=await db.select().from(ticketMessages).where(eq(ticketMessages.ticketId,ticket.id)).orderBy(asc(ticketMessages.createdAt));res.json({ticket,messages});}catch(e:any){apiError(res,400,e.message||'Failed to load ticket','TICKET_LOAD_FAILED');}});
 app.post('/api/client/tickets/:id/messages',requireAuth,async(req:any,res:any)=>{try{const message=String(req.body?.message||'').trim();if(!message||message.length>5000)return apiError(res,400,'Invalid message','INVALID_MESSAGE');const [ticket]=await db.select().from(tickets).where(and(eq(tickets.id,req.params.id),eq(tickets.userId,req.dbUser.id)));if(!ticket)return apiError(res,404,'Ticket not found','NOT_FOUND');if(ticket.status==='Closed')return apiError(res,409,'Ticket is closed','TICKET_CLOSED');const [m]=await db.insert(ticketMessages).values({id:crypto.randomUUID(),ticketId:ticket.id,senderId:req.dbUser.id,message,isAdmin:false}).returning();if(ticket.status==='Answered')await db.update(tickets).set({status:'Open'}).where(eq(tickets.id,ticket.id));res.status(201).json(m);}catch(e:any){apiError(res,400,e.message||'Failed to send message','TICKET_MESSAGE_FAILED');}});
+
+// Client notifications
+app.get('/api/client/notifications', requireAuth, async (req: any, res: any) => {
+  try {
+    const rows = await db.select().from(notifications).where(eq(notifications.userId, req.dbUser.id)).orderBy(desc(notifications.createdAt)).limit(50);
+    const unread = rows.filter((n:any) => !n.readAt).length;
+    res.json({ notifications: rows, unread });
+  } catch (e:any) { apiError(res, 500, e.message || 'Failed to load notifications', 'NOTIFICATIONS_LOAD_FAILED'); }
+});
+app.put('/api/client/notifications/:id/read', requireAuth, async (req:any,res:any) => {
+  const [n] = await db.update(notifications).set({ readAt: new Date() }).where(and(eq(notifications.id, req.params.id), eq(notifications.userId, req.dbUser.id))).returning();
+  if (!n) return apiError(res, 404, 'Notification not found', 'NOT_FOUND');
+  res.json(n);
+});
+app.put('/api/client/notifications/read-all', requireAuth, async (req:any,res:any) => {
+  await db.update(notifications).set({ readAt: new Date() }).where(and(eq(notifications.userId, req.dbUser.id), isNull(notifications.readAt)));
+  res.json({ success: true });
+});
 
 // Admin settings/users/categories/services/providers/orders/payments/tickets/reports/audit/raffles/mystery
 const secretKeys = new Set(['shahnawy_public_key','shahnawy_secret_key','provider_api_key']);
@@ -1001,7 +1044,7 @@ app.get('/api/admin/payments',requireAuth,requireAdmin,async(req:any,res)=>{
 });
 app.get('/api/admin/tickets',requireAuth,requireAdmin,async(_req,res)=>res.json(await db.query.tickets.findMany({orderBy:[desc(tickets.createdAt)],with:{user:true},limit:500})));
 app.get('/api/admin/tickets/:id',requireAuth,requireAdmin,async(req,res)=>{const t=await db.query.tickets.findFirst({where:eq(tickets.id,req.params.id),with:{user:true}});if(!t)return apiError(res,404,'Ticket not found');res.json({ticket:t,messages:await db.query.ticketMessages.findMany({where:eq(ticketMessages.ticketId,t.id),orderBy:[desc(ticketMessages.createdAt)]})});});
-app.post('/api/admin/tickets/:id/messages',requireAuth,requireAdmin,async(req:any,res)=>{const m=String(req.body?.message||'').trim();const t=await db.query.tickets.findFirst({where:eq(tickets.id,req.params.id)});if(!t)return apiError(res,404,'Ticket not found');if(!m||m.length>5000)return apiError(res,400,'Invalid message');const [msg]=await db.insert(ticketMessages).values({ticketId:t.id,senderId:req.dbUser.id,message:m,isAdmin:true}).returning();await db.update(tickets).set({status:'Answered'}).where(eq(tickets.id,t.id));res.status(201).json(msg);});
+app.post('/api/admin/tickets/:id/messages',requireAuth,requireAdmin,async(req:any,res)=>{const m=String(req.body?.message||'').trim();const t=await db.query.tickets.findFirst({where:eq(tickets.id,req.params.id)});if(!t)return apiError(res,404,'Ticket not found');if(!m||m.length>5000)return apiError(res,400,'Invalid message');const [msg]=await db.insert(ticketMessages).values({ticketId:t.id,senderId:req.dbUser.id,message:m,isAdmin:true}).returning();await db.update(tickets).set({status:'Answered'}).where(eq(tickets.id,t.id));await createNotification(t.userId,'ticket','Support replied',`Your support ticket "${t.subject}" has a new reply.`,`/dashboard/tickets/${t.id}`);res.status(201).json(msg);});
 app.put('/api/admin/tickets/:id/status',requireAuth,requireAdmin,async(req,res)=>{if(!['Open','Answered','Closed'].includes(req.body?.status))return apiError(res,400,'Invalid status');const [t]=await db.update(tickets).set({status:req.body.status}).where(eq(tickets.id,req.params.id)).returning();if(!t)return apiError(res,404,'Ticket not found');res.json(t);});
 app.get('/api/admin/audit',requireAuth,requireAdmin,async(req:any,res)=>{
   const page=Math.max(1,parseInt(req.query.page)||1);

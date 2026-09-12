@@ -30,6 +30,7 @@ export default function ClientLayout() {
   const location = useLocation();
   const { t, dir } = useTranslation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   const { data: config } = useQuery({
     queryKey: ['client-config'],
@@ -37,6 +38,13 @@ export default function ClientLayout() {
       const res = await apiFetch('/api/client/config', user);
       return res.ok ? res.json() : {};
     }
+  });
+
+  const { data: notificationData, refetch: refetchNotifications } = useQuery({
+    queryKey: ['client-notifications'],
+    queryFn: async () => { const token = await user?.getIdToken(); const res = await apiFetch('/api/client/notifications', user, { headers: { Authorization: `Bearer ${token}` } }); return res.ok ? res.json() : { notifications: [], unread: 0 }; },
+    enabled: !!user,
+    refetchInterval: 30000,
   });
 
   const { data: freshUser } = useQuery({
@@ -111,7 +119,13 @@ export default function ClientLayout() {
           <div className="flex items-center gap-3">
             <button onClick={logOut} className="hidden md:inline-flex btn-ghost items-center gap-1.5"><LogOut className="h-4 w-4"/> {t('common.signOut')}</button>
             <Link to="/dashboard/add-funds" className="hidden sm:flex btn-primary py-2"><Plus className="h-4 w-4"/> {t('nav.addFunds')}</Link>
-            <button className="rounded-xl border border-slate-200 p-2 text-slate-500"><Bell className="h-4 w-4"/></button>
+            <div className="relative">
+              <button aria-label={t('notifications.title')} onClick={()=>setNotificationsOpen(v=>!v)} className="rounded-xl border border-slate-200 p-2 text-slate-500 hover:text-slate-900"><Bell className="h-4 w-4"/>{notificationData?.unread>0&&<span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-rose-500 text-white text-[10px] flex items-center justify-center">{notificationData.unread>9?'9+':notificationData.unread}</span>}</button>
+              {notificationsOpen&&<div className="absolute top-11 right-0 z-50 w-[min(360px,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white shadow-xl p-3">
+                <div className="flex items-center justify-between px-2 pb-2 border-b border-slate-100"><b className="text-sm text-slate-900">{t('notifications.title')}</b><button className="text-xs text-violet-600" onClick={async()=>{const token=await user?.getIdToken();await apiFetch('/api/client/notifications/read-all',user,{method:'PUT',headers:{Authorization:`Bearer ${token}`}});await refetchNotifications();}}>{t('notifications.markAll')}</button></div>
+                <div className="max-h-80 overflow-y-auto">{(notificationData?.notifications||[]).length===0?<p className="p-4 text-xs text-slate-500">{t('notifications.empty')}</p>:(notificationData.notifications||[]).map((n:any)=><button key={n.id} onClick={async()=>{const token=await user?.getIdToken();if(!n.readAt)await apiFetch(`/api/client/notifications/${n.id}/read`,user,{method:'PUT',headers:{Authorization:`Bearer ${token}`}});await refetchNotifications();if(n.link)window.location.href=n.link;}} className={`w-full text-left p-3 rounded-xl mt-1 ${n.readAt?'':'bg-violet-50'} hover:bg-slate-50`}><div className="text-xs font-bold text-slate-900">{n.title}</div><div className="text-xs text-slate-500 mt-1">{n.message}</div><div className="text-[10px] text-slate-400 mt-1">{n.createdAt?new Date(n.createdAt).toLocaleString():''}</div></button>)}</div>
+              </div>}
+            </div>
             <div className={dir === 'rtl' ? "flex flex-col text-left" : "flex flex-col text-right"}>
               <span className="text-sm font-black text-slate-900">{config?.currencySymbol || '$'}{Number((freshUser || dbUser).balance).toFixed(4)}</span>
               <span className="text-xs text-slate-500 hidden sm:block">{t('common.currentBalance')}</span>

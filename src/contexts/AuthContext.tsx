@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { User, onAuthStateChanged, setPersistence, browserLocalPersistence, signInWithPopup, GoogleAuthProvider, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { User, onAuthStateChanged, setPersistence, browserLocalPersistence, signInWithPopup, GoogleAuthProvider, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, sendEmailVerification, sendPasswordResetEmail } from 'firebase/auth';
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { apiJson, isAuthDbUnavailableError, AUTH_DB_UNAVAILABLE } from '../lib/api';
@@ -82,15 +82,16 @@ export const AuthProvider = ({ children }: any) => {
   const registerWithEmail = async (email: string, pass: string, name?: string) => {
     await setPersistence(auth, browserLocalPersistence);
     const cred = await createUserWithEmailAndPassword(auth, email, pass);
-    if (name && cred.user) {
-      await updateProfile(cred.user, { displayName: name });
-    }
+    if (name && cred.user) { await updateProfile(cred.user, { displayName: name }); }
+    if (cred.user && !cred.user.emailVerified) await sendEmailVerification(cred.user);
   };
   const loginWithEmail = async (email: string, pass: string) => {
     await setPersistence(auth, browserLocalPersistence);
     await signInWithEmailAndPassword(auth, email, pass);
   };
   const logOut = () => signOut(auth);
+  const sendVerification = async () => { if (user && !user.emailVerified) await sendEmailVerification(user); };
+  const resetPassword = async (email: string) => { await sendPasswordResetEmail(auth, email.trim()); };
 
   const updateUserName = async (newName: string) => {
     if (!user) return;
@@ -112,7 +113,7 @@ export const AuthProvider = ({ children }: any) => {
     }
   };
 
-  return <AuthContext.Provider value={{ user, dbUser, loading, authError, signIn, registerWithEmail, loginWithEmail, logOut, updateUserName }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ user, dbUser, loading, authError, signIn, registerWithEmail, loginWithEmail, logOut, sendVerification, resetPassword, updateUserName }}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => useContext(AuthContext);

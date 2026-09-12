@@ -33,7 +33,7 @@ export default function BlogPage(){
         {POSTS.map(([slug,title,desc],i)=><article className="blog-card" key={slug}>
           <div className="blog-card-icon"><BookOpen size={19}/></div>
           <div className="blog-card-top"><span>{ar ? 'مقال' : 'GUIDE'}</span><span><Clock3 size={13}/> {ar ? 'قراءة 4 دقائق' : '4 min read'}</span></div>
-          <h2>{title}</h2><p>{desc}</p>
+          <h2>{ar ? ({'what-is-smm-panel':'ما هو SMM Panel؟ دليل المبتدئين','best-smm-panel-guide':'كيف تختار أفضل SMM Panel','smm-reseller-guide':'دليل موزعي SMM: ابدأ مشروعك','instagram-growth-strategy':'استراتيجية نمو إنستجرام','tiktok-marketing-smm':'تسويق تيك توك بخدمات SMM','youtube-smm-marketing':'تسويق يوتيوب وخدمات SMM','telegram-smm-marketing':'تسويق تيليجرام عبر SMM','smm-api-guide':'دليل SMM API للموزعين','smm-pricing-profit':'تسعير SMM وحساب الأرباح','smm-panel-security':'قائمة أمان SMM Panel','smm-order-management':'إدارة طلبات SMM','common-smm-panel-mistakes':'أخطاء SMM Panel الشائعة'} as Record<string,string>)[slug] : title}</h2><p>{ar ? 'دليل عملي مختصر يساعدك تفهم الخدمة وتستخدمها بشكل أفضل.' : desc}</p>
           <a className="blog-read" href={`/blog/${slug}.html`}>{ar ? 'اقرأ المقال' : 'Read article'} <ArrowRight size={15}/></a>
         </article>)}
       </div>

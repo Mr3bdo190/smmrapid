@@ -72,7 +72,7 @@ export default function ClientOrders() {
                   <td className="px-4 py-3 text-sm"><span className="px-2 py-1 rounded-full bg-gray-100">{o.status}</span>{o.cancelRequested && <span className="ml-1 text-xs text-amber-600">(cancel pending)</span>}</td>
                   <td className="px-4 py-3 text-xs text-gray-500">{o.createdAt ? new Date(o.createdAt).toLocaleString() : '-'}</td>
                   <td className="px-4 py-3 text-xs whitespace-nowrap">
-                    {o.providerOrderId && ['Pending', 'Processing', 'In Progress'].includes(o.status) && <button disabled={refreshOrder.isPending} onClick={() => refreshOrder.mutate(o.id)} className="text-gray-600 hover:text-gray-900 mr-3" title="Refresh provider status"><RefreshCw className="w-4 h-4 inline mr-1" />Update</button>}
+                    {o.providerOrderId && ['Pending', 'Processing', 'In Progress'].includes(o.status) && <button disabled={refreshOrder.isPending} onClick={() => refreshOrder.mutate(o.id)} className="text-gray-600 hover:text-gray-900 mr-3" title="Refresh order status"><RefreshCw className="w-4 h-4 inline mr-1" />Update status</button>}
                     {canRefill && <button disabled={refill.isPending} onClick={() => refill.mutate(o.id)} className="text-indigo-600 hover:text-indigo-900 mr-3" title="Request refill"><RotateCcw className="w-4 h-4 inline mr-1" />Refill</button>}
                     {canCancel && <button disabled={cancel.isPending} onClick={() => confirm('Cancel this order and refund it to your wallet?') && cancel.mutate(o.id)} className="text-red-600 hover:text-red-900" title="Cancel order"><XCircle className="w-4 h-4 inline mr-1" />Cancel</button>}
                     {!canRefill && !canCancel && <span className="text-gray-300">-</span>}

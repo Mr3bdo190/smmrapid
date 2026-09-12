@@ -196,8 +196,9 @@ test('phase 2 auth recovery and email verification UX are wired', () => {
 
 test('phase 2 currency presentation is USD-consistent on public services', () => {
   const html = fs.readFileSync('public/services/index.html','utf8');
-  assert.doesNotMatch(html, /EGP \/ 1K/);
-  assert.match(html, /USD \/ 1K/);
+  const js = fs.readFileSync('public/services/services.js','utf8');
+  assert.doesNotMatch(html + js, /EGP \/ 1K/);
+  assert.match(html + js, /USD \/ 1K/);
 });
 
 test('phase 1 raffle migration remains present and phase 2 docs are present', () => {
@@ -236,3 +237,20 @@ test('phase 5 final UX hardening is wired', () => {
   assert.doesNotMatch(main, /<pre[^>]*>\{this\.state\.error\.message\}<\/pre>/);
   assert.match(providers, /enabled:!!user&&showBalance/);
 });
+
+test('phase 9 customer-facing and credential hardening is wired', () => {
+  const services = fs.readFileSync(path.join(root,'src/pages/api/client/services.ts'),'utf8');
+  const main = fs.readFileSync(path.join(root,'server.ts'),'utf8');
+  const engine = fs.readFileSync(path.join(root,'src/lib/provider-engine.ts'),'utf8');
+  const schema = fs.readFileSync(path.join(root,'src/db/schema.ts'),'utf8');
+  assert.ok(services.includes('description:String(x.description||\'\').trim() || null'));
+  assert.equal(services.includes('providerMeta'), false);
+  assert.ok(main.includes('PROVIDER_ENCRYPTION_KEY'));
+  assert.ok(main.includes('encryptSecret(String(req.body.apiKey))'));
+  assert.ok(engine.includes('decryptSecret(provider.apiKey)'));
+  assert.ok(engine.includes('dispatching'));
+  assert.ok(schema.includes("dispatching: boolean('dispatching')"));
+  assert.ok(fs.existsSync(path.join(root,'drizzle/0011_phase9_security_hardening.sql')));
+  assert.equal(fs.readFileSync(path.join(root,'package.json'),'utf8').includes('@google/genai'), false);
+});
+

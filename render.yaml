@@ -26,6 +26,8 @@ services:
         sync: false
       - key: FIREBASE_PRIVATE_KEY
         sync: false
+      - key: PROVIDER_ENCRYPTION_KEY
+        sync: false
       - key: CURRENCY
         value: USD
       - key: HELEKET_CURRENCY

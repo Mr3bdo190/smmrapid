@@ -1,9 +1,10 @@
 import crypto from 'node:crypto';
-import { eq, inArray } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 import dns from 'node:dns';
 import net from 'node:net';
 import { db } from '../db/index';
 import { orders, providers, services, users, walletLedger } from '../db/schema';
+import { decryptSecret } from './secret-crypto';
 
 export interface ProviderResponse {
   error?: string; order?: string | number; status?: string; remains?: string | number;
@@ -148,20 +149,24 @@ function calculateUnfulfilledRefund(order:any, remains:number){
 }
 
 export async function placeOrderToProvider(orderId:string):Promise<{ok:boolean;error?:string;refunded?:boolean}> {
-  const [order]=await db.select().from(orders).where(eq(orders.id,orderId));
-  if(!order) return {ok:false,error:'Order not found'};
-  if(order.status!=='Pending'||order.providerOrderId) return {ok:true};
+  const claimed = await db.transaction(async tx=>{
+    const [o]=await tx.update(orders).set({dispatching:true,updatedAt:new Date()}).where(sql`${orders.id} = ${orderId} AND ${orders.status} = 'Pending' AND ${orders.providerOrderId} IS NULL AND ${orders.dispatching} = false`).returning();
+    return o || null;
+  });
+  if(!claimed) return {ok:true};
+  const order=claimed;
+  const fail=async(error:string)=>{ const refunded=await refundOrderOnce(orderId,Number(order.charge),error); await db.update(orders).set({dispatching:false,updatedAt:new Date()}).where(eq(orders.id,orderId)); return {ok:false,error,refunded}; };
   const [service]=await db.select().from(services).where(eq(services.id,order.serviceId));
   if(!service) return {ok:false,error:'Service not found'};
-  if(service.executionMode==='manual') return {ok:true};
-  if(!service.providerId||!service.providerServiceId){ const refunded=await refundOrderOnce(orderId,Number(order.charge),'No provider configured'); return {ok:false,error:'No provider configured',refunded}; }
+  if(service.executionMode==='manual'){ await db.update(orders).set({dispatching:false,updatedAt:new Date()}).where(eq(orders.id,orderId)); return {ok:true}; }
+  if(!service.providerId||!service.providerServiceId) return fail('No provider configured');
   const [provider]=await db.select().from(providers).where(eq(providers.id,service.providerId));
-  if(!provider||provider.status!=='active'||provider.isDeleted){ const refunded=await refundOrderOnce(orderId,Number(order.charge),'Provider inactive'); return {ok:false,error:'Provider inactive',refunded}; }
-  const client=new ProviderClient(provider.apiUrl,provider.apiKey); const r=await client.addOrder(service.providerServiceId,order.link,order.quantity);
-  if(r.error){ const refunded=await refundOrderOnce(orderId,Number(order.charge),String(r.error)); return {ok:false,error:String(r.error),refunded}; }
-  if(!r.order){ const refunded=await refundOrderOnce(orderId,Number(order.charge),'Invalid provider response'); return {ok:false,error:'Invalid provider response',refunded}; }
+  if(!provider||provider.status!=='active'||provider.isDeleted) return fail('Provider inactive');
+  const client=new ProviderClient(provider.apiUrl,decryptSecret(provider.apiKey)); const r=await client.addOrder(service.providerServiceId,order.link,order.quantity);
+  if(r.error) return fail(String(r.error));
+  if(!r.order) return fail('Invalid provider response');
   const initialStart = Number.isFinite(Number(r.start_count)) ? Math.max(0, Number(r.start_count)) : 0;
-  await db.update(orders).set({providerOrderId:String(r.order),status:'Processing',providerError:null,startCount:initialStart,remains:order.quantity,updatedAt:new Date()}).where(eq(orders.id,orderId));
+  await db.update(orders).set({providerOrderId:String(r.order),status:'Processing',providerError:null,startCount:initialStart,remains:order.quantity,dispatching:false,updatedAt:new Date()}).where(eq(orders.id,orderId));
   // Fetch the provider's real start_count/remains immediately after dispatch.
   await checkOrderStatus(orderId).catch(() => undefined);
   return {ok:true};
@@ -177,7 +182,7 @@ export async function checkOrderStatus(orderId:string){
   const [p]=await db.select().from(providers).where(eq(providers.id,s.providerId));
   if(!p)return;
 
-  const r=await new ProviderClient(p.apiUrl,p.apiKey).status(o.providerOrderId);
+  const r=await new ProviderClient(p.apiUrl,decryptSecret(p.apiKey)).status(o.providerOrderId);
   if(r.error)return;
   const status= r.status ? mapStatus(String(r.status)) : null;
   const rawRemains=Number(r.remains);

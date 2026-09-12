@@ -94,7 +94,7 @@ export default function ClientApi() {
   "key": "YOUR_API_KEY",
   "action": "add",
   "service": "SERVICE_UUID",
-  "link": "https://example.com",
+  "link": "https://instagram.com/yourusername",
   "quantity": 1000
 }`}
           </pre>

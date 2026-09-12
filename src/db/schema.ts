@@ -50,7 +50,7 @@ export const providers = pgTable('providers', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
   apiUrl: text('api_url').notNull(),
-  apiKey: text('api_key').notNull(),
+  apiKey: text('api_key').notNull(), // encrypted at rest; legacy plaintext is migrated at startup
   profitMargin: integer('profit_margin').default(50).notNull(),
   status: providerStatusEnum('status').default('active').notNull(),
   isDeleted: boolean('is_deleted').default(false).notNull(),
@@ -102,6 +102,7 @@ export const orders = pgTable('orders', {
   remains: integer('remains').default(0).notNull(),
   refundedAmount: decimal('refunded_amount', { precision: 12, scale: 4 }).default('0.0000').notNull(),
   cancelRequested: boolean('cancel_requested').default(false).notNull(),
+  dispatching: boolean('dispatching').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (t) => ({

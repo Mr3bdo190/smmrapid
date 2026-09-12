@@ -5,10 +5,10 @@ import { getAuth } from 'firebase/auth';
 import { apiJson, isAuthDbUnavailableError, AUTH_DB_UNAVAILABLE } from '../lib/api';
 
 const config = {
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "scope-app-492120",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:523911913692:web:8e69126d645d84c7241419",
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyCQmRhaNxk0oPH6sl-nP4s718gW1yR60E4",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "scope-app-492120.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
 };
 
 const app = initializeApp(config);

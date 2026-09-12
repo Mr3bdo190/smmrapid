@@ -40,12 +40,11 @@ export default async function handler(req: AuthenticatedRequest, res: Response) 
     const filtered = rows
       .filter(x => x.category?.status === 'active' && (!x.providerId || x.provider?.status === 'active'))
       .map((x: any) => ({
-        ...x,
-        // Always expose synchronized provider metadata to the New Order page.
-        // Older service rows may predate providerMeta, so build a safe fallback
-        // from the persisted service columns instead of showing empty details.
-        singleUnit: Number(x.minQuantity) === 1 && Number(x.maxQuantity) === 1,
-        providerMeta: { ...(x.providerMeta || {}), sourceServiceId: x.providerMeta?.sourceServiceId || x.providerServiceId || null, providerRate: x.providerMeta?.providerRate ?? (x.providerPrice != null ? Number(x.providerPrice) : null), providerMin: x.providerMeta?.providerMin ?? x.minQuantity, providerMax: x.providerMeta?.providerMax ?? x.maxQuantity, description: String(x.providerMeta?.description || x.description || '').trim() || null, refillable: x.providerMeta?.refillable ?? Boolean(x.refillable), cancelable: x.providerMeta?.cancelable ?? Boolean(x.cancelable), dripfeed: Boolean(x.providerMeta?.dripfeed), type: x.providerMeta?.type || null }
+        id:x.id, category:x.category ? {id:x.category.id,name:x.category.name,sortOrder:x.category.sortOrder} : null,
+        name:x.name, pricePer1k:x.pricePer1k, minQuantity:x.minQuantity, maxQuantity:x.maxQuantity,
+        description:String(x.description||'').trim() || null, cashbackPercentage:x.cashbackPercentage,
+        refillable:Boolean(x.refillable), cancelable:Boolean(x.cancelable),
+        singleUnit:Number(x.minQuantity)===1 && Number(x.maxQuantity)===1
       }));
     res.json(filtered);
   } catch (e: any) {

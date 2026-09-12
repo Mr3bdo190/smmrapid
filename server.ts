@@ -17,6 +17,7 @@ import {
 } from './src/db/schema';
 import { adminAuth } from './src/lib/firebase-admin';
 import { ProviderClient, placeOrderToProvider, startProviderWorker, checkOrderStatus, refundOrderOnce } from './src/lib/provider-engine';
+import { encryptSecret, decryptSecret, isEncryptedSecret } from './src/lib/secret-crypto';
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
@@ -34,7 +35,7 @@ app.use((req, res, next) => {
   res.setHeader(
     'Content-Security-Policy',
     "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; " +
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self' https:; " +
+    "script-src 'self'; connect-src 'self' https:; " +
     "frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
   );
   if (isProd) res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
@@ -350,7 +351,14 @@ app.get('/api/client/dashboard', requireAuth, async (req: any, res) => {
 
 app.get('/api/client/services', requireAuth, async (_req, res) => {
   const rows = await db.query.services.findMany({ where: eq(services.status, 'active'), with: { category: true, provider: true }, orderBy: [asc(services.sortOrder)] });
-  res.json(rows.filter(x => x.category?.status === 'active' && (!x.providerId || x.provider?.status === 'active')));
+  const safe = rows.filter(x => x.category?.status === 'active' && (!x.providerId || x.provider?.status === 'active')).map((x:any) => ({
+    id:x.id, category:x.category ? { id:x.category.id, name:x.category.name, sortOrder:x.category.sortOrder } : null,
+    name:x.name, pricePer1k:x.pricePer1k, minQuantity:x.minQuantity, maxQuantity:x.maxQuantity,
+    description:String(x.description||'').trim() || null, cashbackPercentage:x.cashbackPercentage,
+    refillable:Boolean(x.refillable), cancelable:Boolean(x.cancelable),
+    singleUnit:Number(x.minQuantity)===1 && Number(x.maxQuantity)===1
+  }));
+  res.json(safe);
 });
 
 app.get('/api/client/orders', requireAuth, async (req: any, res) => {
@@ -382,7 +390,7 @@ async function requestRefillForOrder(orderId: string, userId: string) {
   if (!service?.providerId) { const e: any = new Error('No provider configured for this service'); e.status = 400; e.code = 'NOT_ELIGIBLE'; throw e; }
   const [provider] = await db.select().from(providers).where(and(eq(providers.id, service.providerId), eq(providers.isDeleted, false)));
   if (!provider || provider.status !== 'active') { const e: any = new Error('Provider unavailable'); e.status = 503; e.code = 'PROVIDER_UNAVAILABLE'; throw e; }
-  const result = await new ProviderClient(provider.apiUrl, provider.apiKey).refill(o.providerOrderId);
+  const result = await new ProviderClient(provider.apiUrl, decryptSecret(provider.apiKey)).refill(o.providerOrderId);
   if (result?.error || !result?.refill) { const e: any = new Error(result?.error || 'Provider refused the refill request'); e.status = 502; e.code = 'PROVIDER_ERROR'; throw e; }
   const [r] = await db.insert(refillRequests).values({ orderId: o.id, userId, providerRefillId: String(result.refill), status: 'Pending' }).returning();
   return r;
@@ -417,7 +425,7 @@ async function requestCancelForOrder(orderId: string, userId: string) {
     return { refunded: true, status: fresh.status, remains: fresh.remains, startCount: fresh.startCount, refundedAmount: fresh.refundedAmount };
   }
   await db.update(orders).set({ cancelRequested: true }).where(eq(orders.id, o.id));
-  const result = await new ProviderClient(provider.apiUrl, provider.apiKey).cancel(o.providerOrderId);
+  const result = await new ProviderClient(provider.apiUrl, decryptSecret(provider.apiKey)).cancel(o.providerOrderId);
   if (result?.error) {
     await db.update(orders).set({ cancelRequested: false }).where(eq(orders.id, o.id));
     const e: any = new Error(result.error); e.status = 502; e.code = 'PROVIDER_ERROR'; throw e;
@@ -1030,13 +1038,13 @@ app.get('/api/admin/services',requireAuth,requireAdmin,async(_req,res)=>res.json
 app.post('/api/admin/services',requireAuth,requireAdmin,async(req:any,res)=>{const d=req.body||{};const min=Number(d.minQuantity),max=Number(d.maxQuantity),price=num(d.pricePer1k);if(!uuidLike(d.categoryId)||!d.name||!positiveMoney(price)||!Number.isInteger(min)||!Number.isInteger(max)||min<1||max<min)return apiError(res,400,'Invalid service data');const cat=await db.query.categories.findFirst({where:eq(categories.id,d.categoryId)});if(!cat)return apiError(res,404,'Category not found');if(d.providerId&&uuidLike(d.providerId)){const pr=await db.query.providers.findFirst({where:and(eq(providers.id,d.providerId),eq(providers.isDeleted,false))});if(!pr)return apiError(res,404,'Provider not found');}const [s]=await db.insert(services).values({categoryId:d.categoryId,name:String(d.name).trim(),pricePer1k:money(price).toFixed(4),minQuantity:min,maxQuantity:max,providerId:uuidLike(d.providerId)?d.providerId:null,executionMode:d.executionMode==='manual'?'manual':'provider',providerServiceId:d.providerServiceId||null,providerPrice:positiveMoney(d.providerPrice)?money(num(d.providerPrice)).toFixed(4):'0.0000',description:d.description||null,sortOrder:Number(d.sortOrder||0),cashbackPercentage:Math.max(0,Math.min(100,Number(d.cashbackPercentage||0))),refillable:!!d.refillable,cancelable:!!d.cancelable,status:d.status==='inactive'?'inactive':'active'}).returning();res.status(201).json(s);});
 app.put('/api/admin/services/:id',requireAuth,requireAdmin,async(req:any,res:any)=>{const d=req.body||{};const current=await db.query.services.findFirst({where:eq(services.id,req.params.id)});if(!current)return apiError(res,404,'Service not found');const oldMeta=(current.providerMeta||{}) as any;const nextProviderId=d.providerId||null;const nextProviderServiceId=d.providerServiceId||null;const customName=Boolean(nextProviderId&&nextProviderServiceId);const descriptionValue=String(d.description??'').trim();const customDescription=descriptionValue.length>0;const nextMeta={...oldMeta,customName,customDescription,description:customDescription?descriptionValue:null};const [s]=await db.update(services).set({name:String(d.name||current.name).trim(),categoryId:d.categoryId,pricePer1k:String(d.pricePer1k),minQuantity:Number(d.minQuantity),maxQuantity:Number(d.maxQuantity),providerId:nextProviderId,executionMode:d.executionMode==='manual'?'manual':'provider',providerServiceId:nextProviderServiceId,providerPrice:d.providerPrice?String(d.providerPrice):'0.0000',description:d.description||null,sortOrder:Number(d.sortOrder||0),cashbackPercentage:Number(d.cashbackPercentage||0),refillable:!!d.refillable,cancelable:!!d.cancelable,status:d.status==='inactive'?'inactive':'active',providerMeta:nextMeta}).where(eq(services.id,req.params.id)).returning();res.json(s);});
 app.delete('/api/admin/services/:id',requireAuth,requireAdmin,async(req:any,res:any)=>{const [current]=await db.select().from(services).where(eq(services.id,req.params.id));if(!current)return apiError(res,404,'Service not found');if(current.status==='inactive')return res.json({success:true,status:'inactive',alreadyInactive:true});const [updated]=await db.update(services).set({status:'inactive'}).where(eq(services.id,current.id)).returning();await audit(req.dbUser.id,'DEACTIVATE_SERVICE','SERVICE',current.id,undefined,current.status,'inactive');res.json({success:true,status:updated.status});});app.get('/api/admin/providers',requireAuth,requireAdmin,async(_req,res)=>{const ps=await db.select({id:providers.id,name:providers.name,apiUrl:providers.apiUrl,profitMargin:providers.profitMargin,status:providers.status,isDeleted:providers.isDeleted}).from(providers).where(eq(providers.isDeleted,false));res.json(ps);});
-app.put('/api/admin/services/bulk',requireAuth,requireAdmin,async(req:any,res:any)=>{try{const ids=Array.isArray(req.body?.serviceIds)?req.body.serviceIds.filter(uuidLike):[];const status=req.body?.status==='inactive'?'inactive':req.body?.status==='active'?'active':null;if(!ids.length||!status)return apiError(res,400,'serviceIds and valid status are required','INVALID_BULK_UPDATE');const rows=await db.select({id:services.id}).from(services).where(inArray(services.id,ids));if(!rows.length)return apiError(res,404,'No matching services found','NOT_FOUND');await db.update(services).set({status}).where(inArray(services.id,rows.map(r=>r.id)));await audit(req.dbUser.id,'BULK_UPDATE_SERVICES','SERVICE',rows.map(r=>r.id).join(','),`${rows.length} services -> ${status}`);res.json({success:true,changed:rows.length,status});}catch(e:any){apiError(res,400,e.message||'Bulk update failed','BULK_UPDATE_FAILED');}});app.post('/api/admin/providers',requireAuth,requireAdmin,async(req:any,res)=>{if(!req.body?.name||!validUrl(req.body.apiUrl)||!req.body.apiKey)return apiError(res,400,'Invalid provider');await assertSafeProviderUrl(String(req.body.apiUrl));const settingRows=await db.select().from(settings);const defaultMargin=Number(settingRows.find((x:any)=>x.key==='default_profit_margin')?.value ?? 50);const margin=Number(req.body.profitMargin ?? defaultMargin);if(!Number.isInteger(margin)||margin<0||margin>10000)return apiError(res,400,'Invalid profit margin');const [p]=await db.insert(providers).values({name:String(req.body.name).trim(),apiUrl:String(req.body.apiUrl).trim(),apiKey:String(req.body.apiKey),profitMargin:margin,status:req.body.status==='inactive'?'inactive':'active'}).returning();await audit(req.dbUser.id,'CREATE_PROVIDER','PROVIDER',p.id);res.status(201).json({id:p.id,name:p.name,apiUrl:p.apiUrl,status:p.status});});
-app.put('/api/admin/providers/:id',requireAuth,requireAdmin,async(req:any,res)=>{try{const [old]=await db.select().from(providers).where(and(eq(providers.id,req.params.id),eq(providers.isDeleted,false)));if(!old)return apiError(res,404,'Provider not found');const name=String(req.body?.name ?? old.name).trim();const apiUrl=String(req.body?.apiUrl ?? old.apiUrl).trim();const apiKey=String(req.body?.apiKey ?? '').trim();const margin=Number(req.body?.profitMargin ?? old.profitMargin);const status=req.body?.status==='inactive'?'inactive':'active';if(name.length<2||name.length>100||!validUrl(apiUrl)||!Number.isInteger(margin)||margin<0||margin>10000)return apiError(res,400,'Invalid provider data');await assertSafeProviderUrl(apiUrl);const patch:any={name,apiUrl,profitMargin:margin,status};if(apiKey)patch.apiKey=apiKey;const [updated]=await db.update(providers).set(patch).where(eq(providers.id,old.id)).returning({id:providers.id,name:providers.name,apiUrl:providers.apiUrl,profitMargin:providers.profitMargin,status:providers.status,isDeleted:providers.isDeleted});await audit(req.dbUser.id,'UPDATE_PROVIDER','PROVIDER',old.id,undefined,old.name,updated.name);res.json(updated);}catch(e:any){apiError(res,400,e.message||'Invalid provider');}});
-app.post('/api/admin/providers/:id/test',requireAuth,requireAdmin,async(req:any,res)=>{try{const [p]=await db.select().from(providers).where(and(eq(providers.id,req.params.id),eq(providers.isDeleted,false)));if(!p)return apiError(res,404,'Provider not found');await assertSafeProviderUrl(p.apiUrl);const result=await new ProviderClient(p.apiUrl,p.apiKey).balance();if(result.error)return apiError(res,502,result.error,'PROVIDER_CONNECTION_FAILED');res.json({success:true,message:'Connection successful',balance:result.balance??null,currency:result.currency??null});}catch(e:any){apiError(res,502,e.message||'Provider connection failed','PROVIDER_CONNECTION_FAILED');}});
+app.put('/api/admin/services/bulk',requireAuth,requireAdmin,async(req:any,res:any)=>{try{const ids=Array.isArray(req.body?.serviceIds)?req.body.serviceIds.filter(uuidLike):[];const status=req.body?.status==='inactive'?'inactive':req.body?.status==='active'?'active':null;if(!ids.length||!status)return apiError(res,400,'serviceIds and valid status are required','INVALID_BULK_UPDATE');const rows=await db.select({id:services.id}).from(services).where(inArray(services.id,ids));if(!rows.length)return apiError(res,404,'No matching services found','NOT_FOUND');await db.update(services).set({status}).where(inArray(services.id,rows.map(r=>r.id)));await audit(req.dbUser.id,'BULK_UPDATE_SERVICES','SERVICE',rows.map(r=>r.id).join(','),`${rows.length} services -> ${status}`);res.json({success:true,changed:rows.length,status});}catch(e:any){apiError(res,400,e.message||'Bulk update failed','BULK_UPDATE_FAILED');}});app.post('/api/admin/providers',requireAuth,requireAdmin,async(req:any,res)=>{if(!req.body?.name||!validUrl(req.body.apiUrl)||!req.body.apiKey)return apiError(res,400,'Invalid provider');await assertSafeProviderUrl(String(req.body.apiUrl));const settingRows=await db.select().from(settings);const defaultMargin=Number(settingRows.find((x:any)=>x.key==='default_profit_margin')?.value ?? 50);const margin=Number(req.body.profitMargin ?? defaultMargin);if(!Number.isInteger(margin)||margin<0||margin>10000)return apiError(res,400,'Invalid profit margin');const [p]=await db.insert(providers).values({name:String(req.body.name).trim(),apiUrl:String(req.body.apiUrl).trim(),apiKey:encryptSecret(String(req.body.apiKey)),profitMargin:margin,status:req.body.status==='inactive'?'inactive':'active'}).returning();await audit(req.dbUser.id,'CREATE_PROVIDER','PROVIDER',p.id);res.status(201).json({id:p.id,name:p.name,apiUrl:p.apiUrl,status:p.status});});
+app.put('/api/admin/providers/:id',requireAuth,requireAdmin,async(req:any,res)=>{try{const [old]=await db.select().from(providers).where(and(eq(providers.id,req.params.id),eq(providers.isDeleted,false)));if(!old)return apiError(res,404,'Provider not found');const name=String(req.body?.name ?? old.name).trim();const apiUrl=String(req.body?.apiUrl ?? old.apiUrl).trim();const apiKey=String(req.body?.apiKey ?? '').trim();const margin=Number(req.body?.profitMargin ?? old.profitMargin);const status=req.body?.status==='inactive'?'inactive':'active';if(name.length<2||name.length>100||!validUrl(apiUrl)||!Number.isInteger(margin)||margin<0||margin>10000)return apiError(res,400,'Invalid provider data');await assertSafeProviderUrl(apiUrl);const patch:any={name,apiUrl,profitMargin:margin,status};if(apiKey)patch.apiKey=encryptSecret(apiKey);const [updated]=await db.update(providers).set(patch).where(eq(providers.id,old.id)).returning({id:providers.id,name:providers.name,apiUrl:providers.apiUrl,profitMargin:providers.profitMargin,status:providers.status,isDeleted:providers.isDeleted});await audit(req.dbUser.id,'UPDATE_PROVIDER','PROVIDER',old.id,undefined,old.name,updated.name);res.json(updated);}catch(e:any){apiError(res,400,e.message||'Invalid provider');}});
+app.post('/api/admin/providers/:id/test',requireAuth,requireAdmin,async(req:any,res)=>{try{const [p]=await db.select().from(providers).where(and(eq(providers.id,req.params.id),eq(providers.isDeleted,false)));if(!p)return apiError(res,404,'Provider not found');await assertSafeProviderUrl(p.apiUrl);const result=await new ProviderClient(p.apiUrl,decryptSecret(p.apiKey)).balance();if(result.error)return apiError(res,502,result.error,'PROVIDER_CONNECTION_FAILED');res.json({success:true,message:'Connection successful',balance:result.balance??null,currency:result.currency??null});}catch(e:any){apiError(res,502,e.message||'Provider connection failed','PROVIDER_CONNECTION_FAILED');}});
 app.get('/api/admin/providers/:id/services',requireAuth,requireAdmin,async(req,res)=>{const [p]=await db.select({id:providers.id}).from(providers).where(and(eq(providers.id,req.params.id),eq(providers.isDeleted,false)));if(!p)return apiError(res,404,'Provider not found');const rows=await db.select().from(services).where(and(eq(services.providerId,req.params.id),eq(services.status,'active'))).orderBy(asc(services.sortOrder));res.json(rows);});
 app.put('/api/admin/providers/:id/services/bulk',requireAuth,requireAdmin,async(req:any,res)=>{try{const [p]=await db.select().from(providers).where(and(eq(providers.id,req.params.id),eq(providers.isDeleted,false)));if(!p)return apiError(res,404,'Provider not found');const ids=Array.isArray(req.body?.serviceIds)?req.body.serviceIds.filter(uuidLike):[];if(!ids.length)return apiError(res,400,'No services selected');const patch:any={};if(req.body?.status==='active'||req.body?.status==='inactive')patch.status=req.body.status;if(req.body?.providerPrice!==undefined&&req.body?.providerPrice!==''){const v=num(req.body.providerPrice);if(v<0||!Number.isFinite(v))return apiError(res,400,'Invalid provider price');patch.providerPrice=v.toFixed(4);}const priceChange=req.body?.priceChangePercent;if(priceChange!==undefined&&priceChange!==''){const pct=Number(priceChange);if(!Number.isFinite(pct)||pct<-100||pct>1000)return apiError(res,400,'Invalid price change');}let changed=0;await db.transaction(async tx=>{const rows=await tx.select().from(services).where(and(inArray(services.id,ids),eq(services.providerId,p.id)));for(const row of rows){const localPatch={...patch};if(priceChange!==undefined&&priceChange!==''){const pct=Number(priceChange);localPatch.pricePer1k=(Number(row.pricePer1k)*(1+pct/100)).toFixed(4);}if(Object.keys(localPatch).length){await tx.update(services).set(localPatch).where(eq(services.id,row.id));changed++;}}});await audit(req.dbUser.id,'BULK_UPDATE_PROVIDER_SERVICES','PROVIDER',p.id,undefined,undefined,`${changed} services`);res.json({success:true,changed});}catch(e:any){apiError(res,400,e.message||'Bulk update failed');}});
 app.delete('/api/admin/providers/:id',requireAuth,requireAdmin,async(req:any,res)=>{const [p]=await db.update(providers).set({isDeleted:true,status:'inactive'}).where(and(eq(providers.id,req.params.id),eq(providers.isDeleted,false))).returning();if(!p)return apiError(res,404,'Provider not found');await audit(req.dbUser.id,'DELETE_PROVIDER','PROVIDER',p.id);res.json({success:true});});
-app.get('/api/admin/providers/:id/balance',requireAuth,requireAdmin,async(req,res)=>{try{const [p]=await db.select().from(providers).where(and(eq(providers.id,req.params.id),eq(providers.isDeleted,false)));if(!p)return apiError(res,404,'Provider not found');await assertSafeProviderUrl(p.apiUrl);const c=new ProviderClient(p.apiUrl,p.apiKey);const b=await c.balance();if(b.error)return apiError(res,502,'Provider request failed');res.json(b);}catch{apiError(res,502,'Provider request failed');}});
+app.get('/api/admin/providers/:id/balance',requireAuth,requireAdmin,async(req,res)=>{try{const [p]=await db.select().from(providers).where(and(eq(providers.id,req.params.id),eq(providers.isDeleted,false)));if(!p)return apiError(res,404,'Provider not found');await assertSafeProviderUrl(p.apiUrl);const c=new ProviderClient(p.apiUrl,decryptSecret(p.apiKey));const b=await c.balance();if(b.error)return apiError(res,502,String(b.error),'PROVIDER_BALANCE_FAILED');res.json(b);}catch(e:any){apiError(res,502,e?.message||'Provider request failed','PROVIDER_BALANCE_FAILED');}});
 app.post('/api/admin/providers/:id/sync',requireAuth,requireAdmin,async(req:any,res:any)=>{
   try{
     const [p]=await db.select().from(providers).where(and(eq(providers.id,req.params.id),eq(providers.isDeleted,false)));
@@ -1048,7 +1056,7 @@ app.post('/api/admin/providers/:id/sync',requireAuth,requireAdmin,async(req:any,
       activeProviderSync.delete(p.id);
     }
     await assertSafeProviderUrl(p.apiUrl);
-    const data=await new ProviderClient(p.apiUrl,p.apiKey).services();
+    const data=await new ProviderClient(p.apiUrl,decryptSecret(p.apiKey)).services();
     if(data.error)return apiError(res,502,`Provider error: ${String(data.error)}`,'PROVIDER_SYNC_FAILED');
     const incoming=Array.isArray(data) ? data : (Array.isArray(data.services) ? data.services : Array.isArray(data.data) ? data.data : Array.isArray(data.result) ? data.result : []);
     const items=incoming.slice(0,5000);
@@ -1131,6 +1139,8 @@ app.get('/api/admin/orders',requireAuth,requireAdmin,async(req:any,res)=>{
   res.json({data,total:Number(count),page,pageSize});
 });
 app.post('/api/admin/orders/:id/refresh',requireAuth,requireAdmin,async(req:any,res)=>{try{const [o]=await db.select().from(orders).where(eq(orders.id,req.params.id));if(!o)return apiError(res,404,'Order not found');if(!o.providerOrderId)return apiError(res,409,'Order has no provider order ID');await checkOrderStatus(o.id);const [updated]=await db.select().from(orders).where(eq(orders.id,o.id));await audit(req.dbUser.id,'REFRESH_ORDER_STATUS','ORDER',o.id,undefined,o.status,updated?.status||o.status);res.json(updated||o);}catch(e:any){apiError(res,400,e.message||'Failed to refresh order');}});
+app.post('/api/admin/orders/:id/cancel',requireAuth,requireAdmin,async(req:any,res)=>{try{const [o]=await db.select().from(orders).where(eq(orders.id,req.params.id));if(!o)return apiError(res,404,'Order not found');const result=await requestCancelForOrder(o.id,o.userId);await audit(req.dbUser.id,'ADMIN_CANCEL_ORDER','ORDER',o.id,undefined,o.status,result?.status||o.status);res.json(result);}catch(e:any){apiError(res,400,e.message||'Cancellation request failed','ORDER_CANCEL_FAILED');}});
+app.post('/api/admin/orders/:id/refill',requireAuth,requireAdmin,async(req:any,res)=>{try{const [o]=await db.select().from(orders).where(eq(orders.id,req.params.id));if(!o)return apiError(res,404,'Order not found');const result=await requestRefillForOrder(o.id,o.userId);await audit(req.dbUser.id,'ADMIN_REFILL_ORDER','ORDER',o.id);res.json(result);}catch(e:any){apiError(res,400,e.message||'Refill request failed','ORDER_REFILL_FAILED');}});
 app.get('/api/admin/payments',requireAuth,requireAdmin,async(req:any,res)=>{
   const page=Math.max(1,parseInt(req.query.page)||1);
   const pageSize=Math.min(200,Math.max(1,parseInt(req.query.pageSize)||100));
@@ -1287,10 +1297,7 @@ app.post('/api/client/mystery-boxes/open',requireAuth,async(req:any,res)=>{try{l
 
 // Public SMM API — served at /api/v2 (the documented, current path) with /api/v1 kept
 // as a permanent alias so existing integrations never break.
-app.post(['/api/v1', '/api/v2'], apiLimiter, async (req,res)=>{try{const key=String(req.body?.key||'');if(!key)return apiError(res,401,'Invalid API key','INVALID_API_KEY');const u=await db.query.users.findFirst({where:and(eq(users.status,'active'),sql`(${users.apiKeyHash} = ${hashApiKey(key)} OR ${users.apiKey} = ${key})`)});if(!u)return apiError(res,401,'Invalid API key','INVALID_API_KEY');
-if (!u.apiKeyHash && u.apiKey === key) {
-  await db.update(users).set({ apiKey: null, apiKeyHash: hashApiKey(key) }).where(eq(users.id, u.id));
-}const action=String(req.body?.action||'');if(action==='balance')return res.json({balance:u.balance,currency:(process.env.CURRENCY||'USD')});if(action==='services'){const rows=await db.query.services.findMany({where:eq(services.status,'active'),with:{category:true}});return res.json(rows.filter(s=>s.category?.status==='active').map(s=>({service:s.id,name:s.name,rate:s.pricePer1k,min:s.minQuantity,max:s.maxQuantity,category:s.category?.name||'',refill:s.refillable,cancel:s.cancelable})));}
+app.post(['/api/v1', '/api/v2'], apiLimiter, async (req,res)=>{try{const key=String(req.body?.key||'');if(!key)return apiError(res,401,'Invalid API key','INVALID_API_KEY');const u=await db.query.users.findFirst({where:and(eq(users.status,'active'),sql`${users.apiKeyHash} = ${hashApiKey(key)}`)});if(!u)return apiError(res,401,'Invalid API key','INVALID_API_KEY');const action=String(req.body?.action||'');if(action==='balance')return res.json({balance:u.balance,currency:(process.env.CURRENCY||'USD')});if(action==='services'){const rows=await db.query.services.findMany({where:eq(services.status,'active'),with:{category:true}});return res.json(rows.filter(s=>s.category?.status==='active').map(s=>({service:s.id,name:s.name,rate:s.pricePer1k,min:s.minQuantity,max:s.maxQuantity,category:s.category?.name||'',refill:s.refillable,cancel:s.cancelable})));}
 if(action==='status'){
   const single=req.body?.order!==undefined;
   if(single){const o=await db.query.orders.findFirst({where:and(eq(orders.id,String(req.body.order||'')),eq(orders.userId,u.id))});if(!o)return apiError(res,404,'Order not found','NOT_FOUND');return res.json({order:o.id,status:o.status,charge:o.charge,start_count:o.startCount,remains:o.remains,currency:(process.env.CURRENCY||'USD')});}
@@ -1335,6 +1342,7 @@ function validateEnv() {
   const missing: string[] = [];
   if (!process.env.DATABASE_URL && !process.env.SQL_HOST) missing.push('DATABASE_URL (or SQL_HOST/SQL_USER/SQL_PASSWORD/SQL_DB_NAME)');
   if (isProd) {
+    if (!process.env.PROVIDER_ENCRYPTION_KEY) missing.push('PROVIDER_ENCRYPTION_KEY');
     if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !process.env.FIREBASE_PRIVATE_KEY) {
       missing.push('FIREBASE_PROJECT_ID / FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY');
     }
@@ -1342,6 +1350,21 @@ function validateEnv() {
   if (missing.length) {
     console.error(`[startup] Missing required environment variables: ${missing.join(', ')}`);
     process.exit(1);
+  }
+}
+
+async function ensurePhase9Schema(){
+  await db.execute(sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS dispatching boolean NOT NULL DEFAULT false`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS orders_dispatch_queue_idx ON orders(status, dispatching, created_at)`);
+}
+
+async function ensureProviderSecurity(){
+  if(!process.env.PROVIDER_ENCRYPTION_KEY){ if(isProd) throw new Error('PROVIDER_ENCRYPTION_KEY is required'); return; }
+  const rows=await db.select().from(providers);
+  for(const p of rows){
+    if(!isEncryptedSecret(p.apiKey)){
+      await db.update(providers).set({apiKey:encryptSecret(p.apiKey)}).where(eq(providers.id,p.id));
+    }
   }
 }
 
@@ -1382,6 +1405,8 @@ async function startServer(){
   validateEnv();
   try { await ensureAuthSchema(); } catch (e) { console.error('[startup] auth schema check failed', e); throw e; }
   try { await ensureWalletLedgerSchema(); } catch (e) { console.error('[startup] wallet_ledger schema check failed', e); throw e; }
+  try { await ensurePhase9Schema(); } catch (e) { console.error('[startup] phase9 schema check failed', e); throw e; }
+  try { await ensureProviderSecurity(); } catch (e) { console.error('[startup] provider credential security check failed', e); throw e; }
   // JSON 404 for unmatched API routes — must be registered before the SPA/static fallback
   // so a typo'd or unknown /api/* path returns JSON instead of index.html.
   app.use('/api', (_req, res) => apiError(res, 404, 'Not found', 'NOT_FOUND'));

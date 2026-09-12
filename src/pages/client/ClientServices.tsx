@@ -27,21 +27,19 @@ export default function ClientServices() {
         <table className="min-w-full divide-y divide-gray-100">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">ID</th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">{t('services.category')}</th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">{t('newOrder.service')}</th>
               <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase">{t('services.rate')}</th>
-              <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase">{t('services.minMax')}</th>
+              <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase">{t('services.minMax')}</th><th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase">Options</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-100">
             {services.map((s: any) => (
               <tr key={s.id} className="hover:bg-gray-50/50">
-                <td className="px-6 py-4 text-sm text-gray-500 font-mono">{s.id.substring(0,8)}</td>
                 <td className="px-6 py-4 text-sm text-gray-600">{s.category?.name || 'N/A'}</td>
                 <td className="px-6 py-4 text-sm font-medium text-gray-900">{s.name}</td>
                 <td className="px-6 py-4 text-sm text-right text-emerald-600 font-semibold">${Number(s.pricePer1k).toFixed(4)} <span className="text-[11px] text-gray-400 font-normal">{Number(s.minQuantity)===1&&Number(s.maxQuantity)===1?' / item':' / 1K'}</span></td>
-                <td className="px-6 py-4 text-sm text-right text-gray-500">{s.minQuantity} / {s.maxQuantity}</td>
+                <td className="px-6 py-4 text-sm text-right text-gray-500">{s.minQuantity} / {s.maxQuantity}</td><td className="px-6 py-4 text-sm text-right">{s.refillable?'Refill available':'-'}{s.cancelable?' · Cancel available':''}</td>
               </tr>
             ))}
           </tbody>

@@ -208,39 +208,67 @@ app.get('/api/health', async (_req, res) => {
   catch { apiError(res, 503, 'Database unavailable', 'DB_UNAVAILABLE'); }
 });
 
+// Small in-memory cache for public, read-only data. It prevents every landing-page click/refresh
+// from hitting Postgres and is safe because these values are not user-specific or secret.
+let publicConfigCache: { expires: number; value: any } | null = null;
+let showcaseCache: { expires: number; value: any } | null = null;
+let publicServicesCache: { expires: number; value: any } | null = null;
+const PUBLIC_CACHE_MS = 30_000;
+
 // Public configuration: never expose secrets.
 app.get('/api/client/config', async (_req, res) => {
+  res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=120');
+  if (publicConfigCache && publicConfigCache.expires > Date.now()) return res.json(publicConfigCache.value);
   const rows = await db.select().from(settings);
   const s = Object.fromEntries(rows.map(x => [x.key, x.value]));
-  res.json({ siteName: s.site_name || 'RapidSMM', currencySymbol: '$', currencyCode: 'USD', shahnawyEnabled: s.shahnawy_enabled === 'true', shahnawyMinAmount: num(s.shahnawy_min_amount || '5'), shahnawyMaxAmount: num(s.shahnawy_max_amount || '10000'), siteDescription: s.site_description || '', supportEmail: s.support_email || process.env.SUPPORT_EMAIL || 'support@smmrapid.store', siteLogo: s.site_logo || '', usdExchangeRate: num(s.usd_exchange_rate || '50'), heleketCurrency: process.env.HELEKET_CURRENCY || 'USD', heleketEnabled: Boolean(process.env.HELEKET_MERCHANT_ID && process.env.HELEKET_PAYMENT_API_KEY) });
+  const value = { siteName: s.site_name || 'RapidSMM', currencySymbol: '$', currencyCode: 'USD', shahnawyEnabled: s.shahnawy_enabled === 'true', shahnawyMinAmount: num(s.shahnawy_min_amount || '5'), shahnawyMaxAmount: num(s.shahnawy_max_amount || '10000'), siteDescription: s.site_description || '', supportEmail: s.support_email || process.env.SUPPORT_EMAIL || 'support@smmrapid.store', siteLogo: s.site_logo || '', usdExchangeRate: num(s.usd_exchange_rate || '50'), heleketCurrency: process.env.HELEKET_CURRENCY || 'USD', heleketEnabled: Boolean(process.env.HELEKET_MERCHANT_ID && process.env.HELEKET_PAYMENT_API_KEY) };
+  publicConfigCache = { expires: Date.now() + PUBLIC_CACHE_MS, value };
+  res.json(value);
 });
 
 // Public, read-only preview used by the landing page — no pricing/account secrets, safe to expose logged-out.
 app.get('/api/public/showcase', async (_req, res) => {
+  res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=120');
+  if (showcaseCache && showcaseCache.expires > Date.now()) return res.json(showcaseCache.value);
   const [[catRow], [svcRow]] = await Promise.all([
     db.select({ count: sql<number>`count(*)` }).from(categories).where(eq(categories.status, 'active')),
     db.select({ count: sql<number>`count(*)` }).from(services).where(eq(services.status, 'active')),
   ]);
-  const preview = await db.query.services.findMany({ where: eq(services.status, 'active'), with: { category: true }, orderBy: [asc(services.sortOrder)], limit: 8 });
-  res.json({
+  const [preview, rows] = await Promise.all([
+    db.query.services.findMany({ where: eq(services.status, 'active'), with: { category: true }, orderBy: [asc(services.sortOrder)], limit: 8 }),
+    db.select().from(settings),
+  ]);
+  const s = Object.fromEntries(rows.map(x => [x.key, x.value]));
+  const value = {
     categoryCount: Number(catRow?.count || 0),
     serviceCount: Number(svcRow?.count || 0),
     services: preview.filter(s => s.category?.status === 'active').map(s => ({ id: s.id, name: s.name, category: s.category?.name || '', rate: s.pricePer1k, min: s.minQuantity, max: s.maxQuantity })),
-  });
+    config: { siteName: s.site_name || 'RapidSMM', currencySymbol: '$', currencyCode: 'USD', siteDescription: s.site_description || '', supportEmail: s.support_email || process.env.SUPPORT_EMAIL || 'support@smmrapid.store', siteLogo: s.site_logo || '' },
+  };
+  showcaseCache = { expires: Date.now() + PUBLIC_CACHE_MS, value };
+  res.json(value);
 });
 
 // Full public catalog of everything for sale, grouped by category — required so anonymous
 // visitors (including payment-processor reviewers) can see the actual goods/services on offer
 // without needing to create an account first.
 app.get('/api/public/services', async (_req, res) => {
-  const cats = await db.select().from(categories).where(eq(categories.status, 'active')).orderBy(categories.sortOrder);
-  const svcs = await db.query.services.findMany({ where: eq(services.status, 'active'), orderBy: [asc(services.sortOrder)] });
-  const grouped = cats.map(c => ({
-    id: c.id,
-    name: c.name,
-    services: svcs.filter(s => s.categoryId === c.id).map(s => ({ id: s.id, name: s.name, description: s.description, rate: s.pricePer1k, min: s.minQuantity, max: s.maxQuantity })),
-  })).filter(c => c.services.length > 0);
-  res.json({ categories: grouped });
+  res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=120');
+  if (publicServicesCache && publicServicesCache.expires > Date.now()) return res.json(publicServicesCache.value);
+  const [cats, svcs] = await Promise.all([
+    db.select().from(categories).where(eq(categories.status, 'active')).orderBy(categories.sortOrder),
+    db.query.services.findMany({ where: eq(services.status, 'active'), orderBy: [asc(services.sortOrder)] }),
+  ]);
+  const byCategory = new Map<string, any[]>();
+  for (const s of svcs) {
+    const list = byCategory.get(s.categoryId) || [];
+    list.push({ id: s.id, name: s.name, description: s.description, rate: s.pricePer1k, min: s.minQuantity, max: s.maxQuantity });
+    byCategory.set(s.categoryId, list);
+  }
+  const grouped = cats.map(c => ({ id: c.id, name: c.name, services: byCategory.get(c.id) || [] })).filter(c => c.services.length > 0);
+  const value = { categories: grouped };
+  publicServicesCache = { expires: Date.now() + PUBLIC_CACHE_MS, value };
+  res.json(value);
 });
 
 // Public contact form — no login required. Anyone (including a payment-processor reviewer)

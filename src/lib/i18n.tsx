@@ -498,48 +498,6 @@ const uiPhrasePairs: Array<[string, string]> = [
 ];
 const uiPhraseMap: Record<string,string> = Object.fromEntries(uiPhrasePairs.flatMap(([en,ar]) => [[en,ar],[ar,en]]));
 
-function installDomTranslator(lang: Lang) {
-  if (typeof document === 'undefined') return () => {};
-  const originals = new WeakMap<Text,string>();
-  let lastLang = lang;
-  const shouldSkip = (node: Node) => {
-    const p = node.parentElement;
-    if (!p) return true;
-    return ['SCRIPT','STYLE','NOSCRIPT','TEXTAREA'].includes(p.tagName) || p.closest('[data-no-auto-translate]') !== null;
-  };
-  const translateNode = (node: Text) => {
-    if (shouldSkip(node)) return;
-    const current = node.nodeValue ?? '';
-    let original = originals.get(node);
-    if (original === undefined || (current !== original && current !== uiPhraseMap[original])) {
-      original = current;
-      originals.set(node, original);
-    }
-    const trimmed = original.trim();
-    if (!trimmed) return;
-    const mapped = uiPhraseMap[trimmed];
-    if (!mapped) return;
-    const out = lang === 'ar' ? (uiPhraseMap[mapped] === original ? mapped : mapped) : mapped;
-    // The pair map is symmetric; determine target from the original language.
-    const pair = uiPhrasePairs.find(([en, ar]) => en === original.trim() || ar === original.trim());
-    if (!pair) return;
-    const target = lang === 'ar' ? pair[1] : pair[0];
-    node.nodeValue = original.replace(trimmed, target);
-  };
-  const scan = (root: Node) => {
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-    let n: Node | null;
-    while ((n = walker.nextNode())) translateNode(n as Text);
-  };
-  scan(document.body);
-  const observer = new MutationObserver(muts => muts.forEach(m => {
-    m.addedNodes.forEach(scan);
-    m.target && m.target.nodeType === Node.TEXT_NODE && translateNode(m.target as Text);
-  }));
-  observer.observe(document.body,{subtree:true,childList:true,characterData:true});
-  return () => observer.disconnect();
-}
-
 interface LanguageContextValue {
   lang: Lang;
   dir: 'ltr' | 'rtl';
@@ -572,7 +530,6 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     try { window.localStorage.setItem('lang', lang); } catch { /* ignore storage errors */ }
   }, [lang]);
 
-  useEffect(() => installDomTranslator(lang), [lang]);
 
   const value = useMemo<LanguageContextValue>(() => ({
     lang,

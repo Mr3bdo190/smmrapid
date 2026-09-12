@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Search } from 'lucide-react';
@@ -8,17 +8,28 @@ import { useTranslation } from '../lib/i18n';
 interface SvcRow { id: string; name: string; description: string | null; rate: string; min: number; max: number; }
 interface CatRow { id: string; name: string; services: SvcRow[]; }
 
+async function fetchPublic(path: string, timeoutMs = 8000) {
+ const controller = new AbortController();
+ const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+ try { return await fetch(path, { signal: controller.signal, headers: { Accept: 'application/json' } }); }
+ finally { window.clearTimeout(timer); }
+}
+
 export default function PublicServices() {
   const { t } = useTranslation();
   const [q, setQ] = useState('');
   const { data, isLoading } = useQuery({
     queryKey: ['public-services'],
-    queryFn: async () => { const res = await fetch('/api/public/services'); if (!res.ok) throw new Error('failed'); return res.json() as Promise<{ categories: CatRow[] }>; },
+    queryFn: async () => { const res = await fetchPublic('/api/public/services'); if (!res.ok) throw new Error('failed'); return res.json() as Promise<{ categories: CatRow[] }>; },
   });
 
-  const categories = (data?.categories || [])
-    .map(c => ({ ...c, services: c.services.filter(s => !q || s.name.toLowerCase().includes(q.toLowerCase())) }))
-    .filter(c => c.services.length > 0);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const categories = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return (data?.categories || [])
+      .map(c => ({ ...c, services: needle ? c.services.filter(s => s.name.toLowerCase().includes(needle)) : c.services }))
+      .filter(c => c.services.length > 0);
+  }, [data, q]);
 
   return (
     <PublicPageShell title={t('publicServices.title')}>
@@ -47,7 +58,7 @@ export default function PublicServices() {
             <div className="overflow-hidden rounded-2xl border border-white/10">
               <table className="w-full text-sm">
                 <tbody>
-                  {cat.services.map((s, i) => (
+                  {cat.services.slice(0, expanded[cat.id] || q.trim() ? cat.services.length : 30).map((s, i) => (
                     <tr key={s.id} className={i !== cat.services.length - 1 ? 'border-b border-white/[0.06]' : ''}>
                       <td className="px-5 py-3.5">
                         <div className="text-slate-100">{s.name}</div>
@@ -63,6 +74,11 @@ export default function PublicServices() {
                 </tbody>
               </table>
             </div>
+            {cat.services.length > 30 && !q.trim() && (
+              <button type="button" onClick={() => setExpanded(v => ({ ...v, [cat.id]: !v[cat.id] }))} className="mt-3 text-sm font-bold text-violet-600 hover:text-violet-700">
+                {expanded[cat.id] ? 'Show less' : `Show all ${cat.services.length} services`}
+              </button>
+            )}
           </div>
         ))}
       </div>

@@ -9,6 +9,9 @@ const pool = new Pool(
     ? { 
         connectionString: process.env.DATABASE_URL, 
         max: 10,
+        min: 0,
+        idleTimeoutMillis: 30_000,
+        connectionTimeoutMillis: 8_000,
         family: 4,
         ssl: process.env.DATABASE_URL.includes('supabase') || process.env.DATABASE_URL.includes('sslmode=require') 
           ? { rejectUnauthorized: false } 

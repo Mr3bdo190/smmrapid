@@ -22,14 +22,21 @@ const FAQ_AR = [
  ['عملة المحفظة إيه؟','عملة المحفظة الأساسية هي USD. طرق الدفع الخارجية ممكن تستخدم عملة مختلفة ويتم تحويلها قبل إضافة الرصيد.']
 ];
 
+async function fetchPublic(path: string, timeoutMs = 8000) {
+ const controller = new AbortController();
+ const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+ try { return await fetch(path, { signal: controller.signal, headers: { Accept: 'application/json' } }); }
+ finally { window.clearTimeout(timer); }
+}
+
 export default function LandingPage(){
  const {dir}=useTranslation(); const ar=dir==='rtl'; const navigate=useNavigate();
  const {user,registerWithEmail,loginWithEmail,resetPassword}=useAuth();
  const [menu,setMenu]=useState(false); const [auth,setAuth]=useState<'login'|'register'|null>(null); const [email,setEmail]=useState(''); const [password,setPassword]=useState(''); const [name,setName]=useState(''); const [referralCode,setReferralCode]=useState(''); const [faq,setFaq]=useState(0);
  const referralFromUrl=useMemo(()=>new URLSearchParams(window.location.search).get('ref')?.trim().toUpperCase()||localStorage.getItem('ref')||'',[]);
  React.useEffect(()=>{if(referralFromUrl){setReferralCode(referralFromUrl);setAuth('register');}},[referralFromUrl]);
- const {data:showcase}=useQuery({queryKey:['public-showcase'],queryFn:async()=>{const r=await fetch('/api/public/showcase');return r.json()},retry:1});
- const {data:config}=useQuery({queryKey:['client-config'],queryFn:async()=>{const r=await fetch('/api/client/config');return r.json()},retry:1});
+ const {data:showcase}=useQuery({queryKey:['public-showcase'],queryFn:async()=>{const r=await fetchPublic('/api/public/showcase');if(!r.ok)throw new Error('Failed to load public showcase');return r.json()},staleTime:60_000,gcTime:10*60_000,retry:1});
+ const config=showcase?.config;
  const services=showcase?.services||[]; const serviceCount=Number(showcase?.serviceCount||0); const categoryCount=Number(showcase?.categoryCount||0); const faqs=ar?FAQ_AR:FAQ_EN;
  const text=ar?{
   navServices:'الخدمات',navHow:'إزاي بيشتغل؟',navBlog:'المدونة',navSupport:'الدعم',dashboard:'لوحة التحكم',login:'تسجيل الدخول',start:'ابدأ مجانًا',

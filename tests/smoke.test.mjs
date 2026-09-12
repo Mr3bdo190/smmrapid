@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const root = path.resolve(new URL('..', import.meta.url).pathname);
+const read = (p) => fs.readFileSync(p, 'utf8');
 const server = fs.readFileSync(path.join(root, 'server.ts'), 'utf8');
 const src = path.join(root, 'src');
 
@@ -68,6 +69,7 @@ test('removed legacy payment gateway is not wired into the client', () => {
 });
 
 test('Heleket gateway and verification file are wired', () => {
+const read = (p) => fs.readFileSync(p, 'utf8');
   const server = fs.readFileSync('server.ts', 'utf8');
   const client = fs.readFileSync('src/pages/client/ClientAddFunds.tsx', 'utf8');
   assert.match(server, /\/api\/heleket\/create/);
@@ -86,6 +88,7 @@ test('provider and API key hardening is present', () => {
 });
 
 test('wallet ledger inserts are resilient and payment UI has working actions', () => {
+const read = (p) => fs.readFileSync(p, 'utf8');
   const server = fs.readFileSync(path.join(root, 'server.ts'), 'utf8');
   const payments = fs.readFileSync(path.join(root, 'src/pages/admin/AdminPayments.tsx'), 'utf8');
   assert.match(server, /id:\s*crypto\.randomUUID\(\).*createdAt:\s*new Date\(\)/s);
@@ -95,6 +98,7 @@ test('wallet ledger inserts are resilient and payment UI has working actions', (
 });
 
 test('referral links are generated for legacy accounts and referral URLs open registration', () => {
+const read = (p) => fs.readFileSync(p, 'utf8');
   const server = fs.readFileSync(path.join(root, 'server.ts'), 'utf8');
   const landing = fs.readFileSync(path.join(root, 'src/pages/LandingPage.tsx'), 'utf8');
   assert.match(server, /if\s*\(!u\.referralCode\)/);
@@ -102,6 +106,7 @@ test('referral links are generated for legacy accounts and referral URLs open re
 });
 
 test('provider sync returns useful provider errors and supports common response shapes', () => {
+const read = (p) => fs.readFileSync(p, 'utf8');
   const server = fs.readFileSync(path.join(root, 'server.ts'), 'utf8');
   assert.match(server, /Provider error:/);
   assert.match(server, /Array\.isArray\(data\.services\)/);
@@ -110,6 +115,7 @@ test('provider sync returns useful provider errors and supports common response 
 });
 
 test('provider control center endpoints and ledger compatibility migration exist', () => {
+const read = (p) => fs.readFileSync(p, 'utf8');
   const server = fs.readFileSync(path.join(root, 'server.ts'), 'utf8');
   assert.match(server, /\/api\/admin\/providers\/\:id\/test/);
   assert.match(server, /\/api\/admin\/providers\/\:id\/services/);
@@ -148,6 +154,7 @@ test('admin control center additions are wired', () => {
 });
 
 test('complete affiliate system is wired', () => {
+const read = (p) => fs.readFileSync(p, 'utf8');
   const server = fs.readFileSync(path.join(root, 'server.ts'), 'utf8');
   const client = fs.readFileSync(path.join(root, 'src/pages/client/ClientAffiliates.tsx'), 'utf8');
   const admin = fs.readFileSync(path.join(root, 'src/pages/admin/AdminAffiliates.tsx'), 'utf8');
@@ -169,6 +176,7 @@ test('complete affiliate system is wired', () => {
 
 
 test('phase 2 notifications and secure API key lifecycle are wired', () => {
+const read = (p) => fs.readFileSync(p, 'utf8');
   const server = fs.readFileSync('server.ts','utf8');
   const schema = fs.readFileSync('src/db/schema.ts','utf8');
   assert.match(schema, /export const notifications = pgTable\('notifications'/);
@@ -211,6 +219,7 @@ test('phase 1 raffle migration remains present and phase 2 docs are present', ()
 
 test('phase 3 schema import and monetization features are wired', () => {
   const schema = fs.readFileSync('src/db/schema.ts','utf8');
+const read = (p) => fs.readFileSync(p, 'utf8');
   const server = fs.readFileSync('server.ts','utf8');
   const order = fs.readFileSync('src/pages/client/ClientNewOrder.tsx','utf8');
   const affiliates = fs.readFileSync('src/pages/client/ClientAffiliates.tsx','utf8');
@@ -254,3 +263,12 @@ test('phase 9 customer-facing and credential hardening is wired', () => {
   assert.equal(fs.readFileSync(path.join(root,'package.json'),'utf8').includes('@google/genai'), false);
 });
 
+
+test('dashboard uses valid payment and ticket enum values', () => {
+const read = (p) => fs.readFileSync(p, 'utf8');
+  const server = read('server.ts');
+  assert.ok(server.includes("eq(payments.status, 'Approved')"), 'dashboard funded total must use Approved payment status');
+  assert.ok(server.includes("tickets.status} in ('Open','Answered')"), 'dashboard open tickets must use valid ticket statuses');
+  assert.ok(!server.includes("eq(payments.status, 'Completed')"), 'invalid Completed payment status must not be used');
+  assert.ok(!server.includes("tickets.status} in ('Open','Pending')"), 'invalid Pending ticket status must not be used');
+});

@@ -4,6 +4,7 @@ import net from 'node:net';
 dns.setDefaultResultOrder('ipv4first');
 import crypto from 'node:crypto';
 import path from 'node:path';
+import fs from 'node:fs/promises';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { createServer as createViteServer } from 'vite';
@@ -357,9 +358,9 @@ app.get('/api/client/dashboard', requireAuth, async (req: any, res) => {
       refunded: sql<number>`count(*) filter (where ${orders.status} = 'Refunded')`,
     }).from(orders).where(eq(orders.userId, userId)),
     db.select({ total: sql<string>`coalesce(sum(${orders.charge}), 0)` }).from(orders).where(and(eq(orders.userId, userId), sql`${orders.status} not in ('Canceled','Refunded')`)),
-    db.select({ total: sql<string>`coalesce(sum(${payments.amount}), 0)` }).from(payments).where(and(eq(payments.userId, userId), eq(payments.status, 'Completed'))),
+    db.select({ total: sql<string>`coalesce(sum(${payments.amount}), 0)` }).from(payments).where(and(eq(payments.userId, userId), eq(payments.status, 'Approved'))),
     db.query.orders.findMany({ where: eq(orders.userId, userId), with: { service: true }, orderBy: [desc(orders.createdAt)], limit: 8 }),
-    db.select({ total: sql<number>`count(*)` }).from(tickets).where(and(eq(tickets.userId, userId), sql`${tickets.status} in ('Open','Pending')`)),
+    db.select({ total: sql<number>`count(*)` }).from(tickets).where(and(eq(tickets.userId, userId), sql`${tickets.status} in ('Open','Answered')`)),
     db.select({ total: sql<number>`count(*)` }).from(notifications).where(and(eq(notifications.userId, userId), isNull(notifications.readAt))),
   ]);
   const o = orderStats[0];
@@ -1064,7 +1065,7 @@ app.get('/api/admin/stats',requireAuth,requireAdmin,async(_req,res)=>{
     db.select({total:sql<string>`coalesce(sum(${payments.amount}),0)`}).from(payments).where(eq(payments.status,'Approved')),
     db.select({count:sql<number>`count(*)`}).from(providers).where(and(eq(providers.isDeleted,false),eq(providers.status,'active'))),
     db.select({count:sql<number>`count(*)`}).from(services).where(eq(services.status,'active')),
-    db.select({count:sql<number>`count(*)`}).from(tickets).where(sql`${tickets.status} in ('Open','Pending')`),
+    db.select({count:sql<number>`count(*)`}).from(tickets).where(sql`${tickets.status} in ('Open','Answered')`),
     db.select({count:sql<number>`count(*)`}).from(orders).where(sql`${orders.createdAt} >= current_date`),
     db.select({total:sql<string>`coalesce(sum(${payments.amount}),0)`}).from(payments).where(and(eq(payments.status,'Approved'),sql`${payments.createdAt} >= current_date`)),
   ]);
@@ -1443,8 +1444,37 @@ async function ensureWalletLedgerSchema(){
   await db.execute(sql`ALTER TABLE wallet_ledger ALTER COLUMN created_at TYPE timestamp USING created_at::timestamp`);
 }
 
+async function ensureApplicationSchema(){
+  // Render/Supabase deployments may have been created from an earlier phase and
+  // therefore miss one or more later tables/columns. Run the idempotent clean-start
+  // SQL plus all post-install migrations once at startup. This makes a fresh deploy
+  // self-healing instead of leaving authenticated users on a blank dashboard.
+  const migrationFiles = [
+    'drizzle/0000_clean_install.sql',
+    'drizzle/0001_seed_categories.sql',
+    'drizzle/0004_wallet_ledger_compatibility.sql',
+    'drizzle/0005_affiliate_system.sql',
+    'drizzle/0006_phase1_critical_fixes.sql',
+    'drizzle/0007_phase2_notifications.sql',
+    'drizzle/0008_phase3_monetization.sql',
+    'drizzle/0009_service_execution_mode.sql',
+    'drizzle/0010_order_refund_counters.sql',
+    'drizzle/0011_phase9_security_hardening.sql',
+  ];
+  await db.execute(sql`CREATE TABLE IF NOT EXISTS rapid_schema_migrations (name text PRIMARY KEY, applied_at timestamp NOT NULL DEFAULT now())`);
+  for (const relative of migrationFiles) {
+    const name = path.basename(relative);
+    const result = await db.execute(sql`SELECT name FROM rapid_schema_migrations WHERE name = ${name} LIMIT 1`);
+    if (result.rows?.length) continue;
+    const contents = await fs.readFile(path.join(process.cwd(), relative), 'utf8');
+    await db.execute(sql.raw(contents));
+    await db.execute(sql`INSERT INTO rapid_schema_migrations(name) VALUES (${name}) ON CONFLICT (name) DO NOTHING`);
+  }
+}
+
 async function startServer(){
   validateEnv();
+  try { await ensureApplicationSchema(); } catch (e) { console.error('[startup] application schema migration failed', e); throw e; }
   try { await ensureAuthSchema(); } catch (e) { console.error('[startup] auth schema check failed', e); throw e; }
   try { await ensureWalletLedgerSchema(); } catch (e) { console.error('[startup] wallet_ledger schema check failed', e); throw e; }
   try { await ensurePhase9Schema(); } catch (e) { console.error('[startup] phase9 schema check failed', e); throw e; }

@@ -194,7 +194,7 @@ app.get('/api/health', async (_req, res) => {
 app.get('/api/client/config', async (_req, res) => {
   const rows = await db.select().from(settings);
   const s = Object.fromEntries(rows.map(x => [x.key, x.value]));
-  res.json({ siteName: s.site_name || 'RapidSMM', currencySymbol: '$', currencyCode: 'USD', vodafoneCashNumber: s.vodafone_cash_number || '', shahnawyEnabled: s.shahnawy_enabled === 'true', shahnawyMerchantWalletNumber: s.shahnawy_merchant_wallet_number || s.vodafone_cash_number || '', shahnawyMinAmount: num(s.shahnawy_min_amount || '5'), shahnawyMaxAmount: num(s.shahnawy_max_amount || '10000'), siteDescription: s.site_description || '', supportEmail: s.support_email || process.env.SUPPORT_EMAIL || 'support@smmrapid.store', siteLogo: s.site_logo || '', usdExchangeRate: num(s.usd_exchange_rate || '50'), heleketCurrency: process.env.HELEKET_CURRENCY || 'USD', heleketEnabled: Boolean(process.env.HELEKET_MERCHANT_ID && process.env.HELEKET_PAYMENT_API_KEY) });
+  res.json({ siteName: s.site_name || 'RapidSMM', currencySymbol: '$', currencyCode: 'USD', shahnawyEnabled: s.shahnawy_enabled === 'true', shahnawyMinAmount: num(s.shahnawy_min_amount || '5'), shahnawyMaxAmount: num(s.shahnawy_max_amount || '10000'), siteDescription: s.site_description || '', supportEmail: s.support_email || process.env.SUPPORT_EMAIL || 'support@smmrapid.store', siteLogo: s.site_logo || '', usdExchangeRate: num(s.usd_exchange_rate || '50'), heleketCurrency: process.env.HELEKET_CURRENCY || 'USD', heleketEnabled: Boolean(process.env.HELEKET_MERCHANT_ID && process.env.HELEKET_PAYMENT_API_KEY) });
 });
 
 // Public, read-only preview used by the landing page — no pricing/account secrets, safe to expose logged-out.
@@ -1020,6 +1020,66 @@ app.delete('/api/admin/mystery-boxes/:id',requireAuth,requireAdmin,async(req:any
   if(!t)return apiError(res,404,'Tier not found');
   res.json({success:true});
 });
+// Client rewards/affiliate/raffle APIs.
+app.get('/api/client/raffles', requireAuth, async (req:any,res:any) => {
+  try {
+    const rows = await db.select().from(raffles).orderBy(desc(raffles.createdAt));
+    const out:any[] = [];
+    for (const r of rows) {
+      const [countRow] = await db.select({count: sql<number>`count(*)`}).from(raffleTickets).where(eq(raffleTickets.raffleId, r.id));
+      const [userCount] = await db.select({count: sql<number>`count(*)`}).from(raffleTickets).where(and(eq(raffleTickets.raffleId, r.id), eq(raffleTickets.userId, req.dbUser.id)));
+      let winnerEmail:any = null;
+      if (r.winnerId) { const [w] = await db.select({email: users.email}).from(users).where(eq(users.id, r.winnerId)); winnerEmail = w?.email || null; }
+      out.push({...r, ticketsCount:Number(countRow?.count||0), userTicketsCount:Number(userCount?.count||0), winnerEmail});
+    }
+    res.json(out);
+  } catch (e:any) { apiError(res,500,e.message||'Failed to load raffles','RAFFLE_LOAD_FAILED'); }
+});
+
+app.post('/api/client/raffles/:id/buy', requireAuth, async (req:any,res:any) => {
+  try {
+    const qty=Math.max(1,Math.min(10,Math.floor(num(req.body?.qty)||1)));
+    let result:any;
+    await db.transaction(async tx=>{
+      const [r]=await tx.select().from(raffles).where(eq(raffles.id,req.params.id)).for('update');
+      if(!r) throw new Error('Raffle not found');
+      if(r.status!=='Open' || new Date(r.endDate)<=new Date()) throw new Error('Raffle is closed');
+      const [cnt]=await tx.select({count:sql<number>`count(*)`}).from(raffleTickets).where(eq(raffleTickets.raffleId,r.id));
+      const [mine]=await tx.select({count:sql<number>`count(*)`}).from(raffleTickets).where(and(eq(raffleTickets.raffleId,r.id),eq(raffleTickets.userId,req.dbUser.id)));
+      if(r.maxTickets && Number(cnt.count)+qty>r.maxTickets) throw new Error('Not enough tickets available');
+      if(r.maxTicketsPerUser && Number(mine.count)+qty>r.maxTicketsPerUser) throw new Error('Maximum tickets per user exceeded');
+      if(Number(mine.count)>0) throw new Error('You already have a ticket for this raffle');
+      const [u]=await tx.select().from(users).where(eq(users.id,req.dbUser.id)).for('update');
+      const cost=money(num(r.ticketPrice)*qty); if(num(u.balance)<cost) throw new Error('Insufficient wallet balance');
+      await tx.update(users).set({balance:money(num(u.balance)-cost).toFixed(4)}).where(eq(users.id,u.id));
+      await tx.insert(walletLedger).values({id:crypto.randomUUID(),userId:u.id,amount:(-cost).toFixed(4),type:'debit',description:`Raffle ticket: ${r.title}`,referenceId:r.id,createdAt:new Date()});
+      await tx.insert(raffleTickets).values({raffleId:r.id,userId:u.id}); result={success:true,qty,cost};
+    }); res.json(result);
+  } catch(e:any){apiError(res,400,e.message||'Failed to buy ticket','RAFFLE_BUY_FAILED');}
+});
+
+app.get('/api/client/shortlinks', requireAuth, async (req:any,res:any) => {
+  try { const rows=await db.select().from(shortlinks).where(eq(shortlinks.status,'active')).orderBy(desc(shortlinks.createdAt)); const claims=await db.select().from(shortlinkClaims).where(eq(shortlinkClaims.userId,req.dbUser.id)); const claimed=new Set(claims.map((x:any)=>String(x.shortlinkId))); res.json(rows.map((x:any)=>({...x,claimed:claimed.has(String(x.id))}))); }
+  catch(e:any){apiError(res,500,e.message||'Failed to load rewards','SHORTLINK_LOAD_FAILED');}
+});
+app.post('/api/client/shortlinks/:id/start', requireAuth, async(req:any,res:any)=>{
+  try { const [s]=await db.select().from(shortlinks).where(and(eq(shortlinks.id,req.params.id),eq(shortlinks.status,'active'))); if(!s)return apiError(res,404,'Reward link not found','NOT_FOUND'); const [claim]=await db.select().from(shortlinkClaims).where(and(eq(shortlinkClaims.userId,req.dbUser.id),eq(shortlinkClaims.shortlinkId,s.id))); if(claim)return apiError(res,409,'Reward already claimed','ALREADY_CLAIMED'); const token=crypto.randomBytes(24).toString('hex'); await db.insert(shortlinkTokens).values({token,userId:req.dbUser.id,shortlinkId:s.id,createdAt:new Date(),expiresAt:new Date(Date.now()+15*60*1000)}); res.json({success:true,url:s.url,token}); }
+  catch(e:any){apiError(res,400,e.message||'Failed to start reward','SHORTLINK_START_FAILED');}
+});
+app.post('/api/client/shortlinks/:id/claim', requireAuth, async(req:any,res:any)=>{
+  try { const token=String(req.body?.token||''); if(!token)return apiError(res,400,'Reward token is required','TOKEN_REQUIRED'); let result:any; await db.transaction(async tx=>{ const [s]=await tx.select().from(shortlinks).where(and(eq(shortlinks.id,req.params.id),eq(shortlinks.status,'active'))); if(!s)throw new Error('Reward link not found'); const [tok]=await tx.select().from(shortlinkTokens).where(and(eq(shortlinkTokens.token,token),eq(shortlinkTokens.userId,req.dbUser.id),eq(shortlinkTokens.shortlinkId,s.id))).for('update'); if(!tok || (tok.expiresAt && new Date(tok.expiresAt)<=new Date()))throw new Error('Reward session expired; start again'); const [already]=await tx.select().from(shortlinkClaims).where(and(eq(shortlinkClaims.userId,req.dbUser.id),eq(shortlinkClaims.shortlinkId,s.id))); if(already)throw new Error('Reward already claimed'); await tx.insert(shortlinkClaims).values({id:crypto.randomUUID(),userId:req.dbUser.id,shortlinkId:s.id,claimedAt:new Date()}); await creditWallet(tx,req.dbUser.id,num(s.rewardAmount),`Reward: ${s.name}`,s.id); await tx.delete(shortlinkTokens).where(eq(shortlinkTokens.token,token)); result={success:true,reward:s.rewardAmount}; }); res.json(result); }
+  catch(e:any){apiError(res,400,e.message||'Failed to claim reward','SHORTLINK_CLAIM_FAILED');}
+});
+
+app.get('/api/client/affiliates/stats', requireAuth, async(req:any,res:any)=>{
+  try { let u=req.dbUser; if(!u.referralCode){const code=crypto.randomBytes(6).toString('hex').toUpperCase();const [x]=await db.update(users).set({referralCode:code}).where(and(eq(users.id,u.id),isNull(users.referralCode))).returning();u=x||u;} const referred=await db.select({id:users.id,email:users.email,status:users.status,createdAt:users.createdAt}).from(users).where(eq(users.referredBy,u.id)).orderBy(desc(users.createdAt)); const clickRows=await db.select({count:sql<number>`count(*)`}).from(referralClicks).where(eq(referralClicks.referralCode,u.referralCode!)); let paidUsers:any[]=[]; let depositTotal=0; if(referred.length){const ids=referred.map(x=>x.id); paidUsers=await db.select({userId:payments.userId}).from(payments).where(and(eq(payments.status,'Approved'),inArray(payments.userId,ids))); const [d]=await db.select({total:sql<string>`coalesce(sum(${payments.amount}),0)`}).from(payments).where(and(eq(payments.status,'Approved'),inArray(payments.userId,ids))); depositTotal=num(d?.total||0);} const commissions=await db.select({id:affiliateCommissions.id,paymentId:affiliateCommissions.paymentId,amount:affiliateCommissions.amount,createdAt:affiliateCommissions.createdAt,referredEmail:users.email}).from(affiliateCommissions).leftJoin(users,eq(users.id,affiliateCommissions.referredUserId)).where(eq(affiliateCommissions.affiliateId,u.id)).orderBy(desc(affiliateCommissions.createdAt)); res.json({referralCode:u.referralCode,referralLink:`${req.protocol}://${req.get('host')}/?ref=${u.referralCode}`,clicks:Number(clickRows[0]?.count||0),signups:referred.length,paidReferrals:new Set(paidUsers.map(x=>x.userId)).size,referralDeposits:money(depositTotal),totalCommission:money(commissions.reduce((a,c)=>a+num(c.amount),0)),referred,commissions}); }
+  catch(e:any){apiError(res,500,e.message||'Failed to load affiliate data','AFFILIATE_STATS_FAILED');}
+});
+app.post('/api/client/affiliates/click', async(req,res)=>{ try { const code=String(req.body?.referralCode||'').trim().toUpperCase(); if(!code)return apiError(res,400,'Referral code required'); const [u]=await db.select({id:users.id}).from(users).where(eq(users.referralCode,code)); if(!u)return apiError(res,404,'Referral code not found','NOT_FOUND'); await db.insert(referralClicks).values({id:crypto.randomUUID(),referralCode:code}); res.json({success:true}); } catch(e:any){apiError(res,400,e.message||'Unable to record click');} });
+
+app.post('/api/client/game/claim', requireAuth, async(req:any,res:any)=>{ try { let result:any; await db.transaction(async tx=>{const [u]=await tx.select().from(users).where(eq(users.id,req.dbUser.id)).for('update'); const now=new Date(); if(u.lastClaimDate && now.getTime()-new Date(u.lastClaimDate).getTime()<24*60*60*1000)throw new Error('Daily reward already claimed'); const streak=(u.lastClaimDate && now.getTime()-new Date(u.lastClaimDate).getTime()<48*60*60*1000)?u.currentStreak+1:1; const points=10; await tx.update(users).set({gamePoints:u.gamePoints+points,currentStreak:streak,lastClaimDate:now}).where(eq(users.id,u.id)); result={points,currentStreak:streak};}); res.json(result); } catch(e:any){apiError(res,400,e.message||'Failed to claim reward');} });
+app.post('/api/client/game/exchange', requireAuth, async(req:any,res:any)=>{ try { let result:any; await db.transaction(async tx=>{const [u]=await tx.select().from(users).where(eq(users.id,req.dbUser.id)).for('update'); if(u.gamePoints<100)throw new Error('You need 100 points'); await tx.update(users).set({gamePoints:u.gamePoints-100,keys:u.keys+1}).where(eq(users.id,u.id)); result={success:true,keys:u.keys+1,gamePoints:u.gamePoints-100};}); res.json(result); } catch(e:any){apiError(res,400,e.message||'Exchange failed');} });
+
 app.post('/api/client/mystery-boxes/open',requireAuth,async(req:any,res)=>{try{let result:any;await db.transaction(async tx=>{const [u]=await tx.select().from(users).where(eq(users.id,req.dbUser.id)).for('update');if(u.keys<1)throw new Error('You need a key');const tiers=await tx.select().from(mysteryBoxTiers).where(eq(mysteryBoxTiers.status,'active'));const total=tiers.reduce((a,t)=>a+t.probability,0);if(!tiers.length||total<=0)throw new Error('Mystery box is unavailable');let n=crypto.randomInt(0,total),chosen=tiers[tiers.length-1];for(const t of tiers){if(n<t.probability){chosen=t;break;}n-=t.probability;}const reward=money(num(chosen.minAmount)+Math.random()*(num(chosen.maxAmount)-num(chosen.minAmount)));await tx.update(users).set({keys:u.keys-1}).where(eq(users.id,u.id));await creditWallet(tx,u.id,reward,`Mystery Box: ${chosen.name}` ,chosen.id);result={tier:chosen.name,reward};});res.json(result);}catch(e:any){apiError(res,400,e.message);}});
 
 // Public SMM API — served at /api/v2 (the documented, current path) with /api/v1 kept

@@ -33,6 +33,8 @@ export default function ClientNewOrder() {
   const [search, setSearch] = useState('');
   const [link, setLink] = useState('');
   const [quantity, setQuantity] = useState<number | ''>('');
+  const [couponCode, setCouponCode] = useState('');
+  const [couponResult, setCouponResult] = useState<any>(null);
   const [favorites, setFavorites] = useState<string[]>(() => JSON.parse(localStorage.getItem('favoriteServices') || '[]'));
   const [recent, setRecent] = useState<string[]>(() => JSON.parse(localStorage.getItem('recentServices') || '[]'));
 
@@ -73,10 +75,20 @@ export default function ClientNewOrder() {
     setRecent(next); localStorage.setItem('recentServices', JSON.stringify(next));
   };
 
+  const validateCoupon = async () => {
+    try {
+      if (!couponCode.trim()) return setCouponResult(null);
+      const tok = await user!.getIdToken();
+      const r = await apiFetch('/api/client/coupons/validate', user, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` }, body: JSON.stringify({ code: couponCode, subtotal: totalPrice }) });
+      const data = await r.json(); if (!r.ok) throw new Error(data?.error || 'Invalid coupon');
+      setCouponResult(data); toast.success(`Coupon applied: -$${Number(data.discount).toFixed(4)}`);
+    } catch (e:any) { setCouponResult(null); toast.error(e.message || 'Invalid coupon'); }
+  };
+
   const order = useMutation({
     mutationFn: async () => {
       const tok = await user!.getIdToken();
-      const r = await apiFetch('/api/client/orders', user, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` }, body: JSON.stringify({ serviceId, link, quantity: Number(quantity) }) });
+      const r = await apiFetch('/api/client/orders', user, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` }, body: JSON.stringify({ serviceId, link, quantity: Number(quantity), couponCode: couponCode.trim() || undefined }) });
       if (!r.ok) throw new Error(await readError(r, 'Failed to place order'));
       return r.json();
     },

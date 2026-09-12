@@ -12,7 +12,7 @@ import { db } from './src/db/index';
 import {
   users, orders, payments, tickets, ticketMessages, services, categories, settings,
   providers, shortlinks, shortlinkClaims, shortlinkTokens, raffles, raffleTickets,
-  mysteryBoxTiers, walletLedger, referralClicks, affiliateCommissions, auditLogs,
+  mysteryBoxTiers, walletLedger, referralClicks, affiliateCommissions, affiliateWithdrawals, coupons, couponUses, auditLogs,
   systemReports, contactMessages, refillRequests, notifications
 } from './src/db/schema';
 import { adminAuth } from './src/lib/firebase-admin';
@@ -400,6 +400,22 @@ function calculateProviderCost(service: any, quantity: number) {
   return isSingleUnitService(service) ? money(num(service.providerPrice) * quantity) : money(num(service.providerPrice) * quantity / 1000);
 }
 
+async function calculateCouponDiscount(tx: any, userId: string, codeRaw: unknown, subtotal: number) {
+  const code = String(codeRaw || '').trim().toUpperCase();
+  if (!code) return { discount: 0, coupon: null };
+  const [c] = await tx.select().from(coupons).where(and(eq(coupons.code, code), eq(coupons.status, 'active'))).for('update');
+  if (!c) throw new Error('Coupon not found or inactive');
+  if (c.expiresAt && new Date(c.expiresAt) <= new Date()) throw new Error('Coupon expired');
+  if (c.usageLimit !== null && c.usageLimit !== undefined && Number(c.usedCount) >= Number(c.usageLimit)) throw new Error('Coupon usage limit reached');
+  const [uc] = await tx.select({ count: sql<number>`count(*)` }).from(couponUses).where(and(eq(couponUses.couponId, c.id), eq(couponUses.userId, userId)));
+  if (Number(uc?.count || 0) >= Number(c.perUserLimit || 1)) throw new Error('Coupon already used');
+  if (subtotal < num(c.minSpend)) throw new Error(`Minimum spend is ${num(c.minSpend).toFixed(2)}`);
+  let discount = c.type === 'fixed' ? num(c.value) : subtotal * num(c.value) / 100;
+  if (c.maxDiscount !== null && c.maxDiscount !== undefined) discount = Math.min(discount, num(c.maxDiscount));
+  discount = Math.min(money(discount), subtotal);
+  return { discount, coupon: c };
+}
+
 async function validateOrderInput(serviceId: unknown, link: unknown, quantity: unknown) {
   if (!uuidLike(serviceId) || typeof link !== 'string' || link.trim().length < 1 || link.length > 2048) throw new Error('Invalid order data');
   const service = await db.query.services.findFirst({ where: eq(services.id, String(serviceId)), with: { category: true, provider: true } });
@@ -419,17 +435,25 @@ async function validateOrderInput(serviceId: unknown, link: unknown, quantity: u
   return { service, q, charge, singleUnit };
 }
 
+app.post('/api/client/coupons/validate', requireAuth, async(req:any,res:any)=>{try{const subtotal=money(num(req.body?.subtotal));const result=await db.transaction(tx=>calculateCouponDiscount(tx,req.dbUser.id,req.body?.code,subtotal));res.json({valid:true,discount:result.discount,finalTotal:money(subtotal-result.discount)});}catch(e:any){apiError(res,400,e.message||'Invalid coupon','COUPON_INVALID');}});
+
 app.post('/api/client/orders', requireAuth, async (req: any, res) => {
   try {
     const { service, q, charge } = await validateOrderInput(req.body?.serviceId, req.body?.link, req.body?.quantity);
-    let orderId = '';
+    let orderId = ''; let finalCharge = charge; let discount = 0;
     await db.transaction(async tx => {
-      await debitWallet(tx, req.dbUser.id, charge, `Order charge: ${service.name}`);
-      const [o] = await tx.insert(orders).values({ userId: req.dbUser.id, serviceId: service.id, link: req.body.link.trim(), quantity: q, charge: charge.toFixed(4), cost: calculateProviderCost(service, q).toFixed(4), status: 'Pending' }).returning();
+      const couponResult = await calculateCouponDiscount(tx, req.dbUser.id, req.body?.couponCode, charge);
+      discount = couponResult.discount; finalCharge = money(charge - discount);
+      await debitWallet(tx, req.dbUser.id, finalCharge, `Order charge: ${service.name}`);
+      const [o] = await tx.insert(orders).values({ userId: req.dbUser.id, serviceId: service.id, link: req.body.link.trim(), quantity: q, charge: finalCharge.toFixed(4), cost: calculateProviderCost(service, q).toFixed(4), status: 'Pending' }).returning();
       orderId = o.id;
+      if (couponResult.coupon) {
+        await tx.insert(couponUses).values({ couponId: couponResult.coupon.id, userId: req.dbUser.id, orderId, discount: discount.toFixed(4) });
+        await tx.update(coupons).set({ usedCount: Number(couponResult.coupon.usedCount || 0) + 1 }).where(eq(coupons.id, couponResult.coupon.id));
+      }
     });
     placeOrderToProvider(orderId).catch(err => console.error('provider order error', err));
-    res.status(201).json({ success: true, orderId });
+    res.status(201).json({ success: true, orderId, originalCharge: charge.toFixed(4), discount: discount.toFixed(4), charge: finalCharge.toFixed(4) });
   } catch (e: any) { apiError(res, 400, e.message || 'Invalid order', 'ORDER_ERROR'); }
 });
 
@@ -885,6 +909,13 @@ app.put('/api/client/notifications/read-all', requireAuth, async (req:any,res:an
   res.json({ success: true });
 });
 
+app.get('/api/admin/affiliate-withdrawals',requireAuth,requireAdmin,async(_req,res)=>{const rows=await db.select().from(affiliateWithdrawals).orderBy(desc(affiliateWithdrawals.createdAt));res.json(rows);});
+app.put('/api/admin/affiliate-withdrawals/:id',requireAuth,requireAdmin,async(req:any,res:any)=>{try{const status=req.body?.status==='Approved'?'Approved':req.body?.status==='Rejected'?'Rejected':null;if(!status)return apiError(res,400,'Invalid withdrawal status');let row:any;await db.transaction(async tx=>{const [w]=await tx.select().from(affiliateWithdrawals).where(eq(affiliateWithdrawals.id,req.params.id)).for('update');if(!w)throw new Error('Withdrawal not found');if(w.status!=='Pending')throw new Error('Withdrawal already resolved');const [x]=await tx.update(affiliateWithdrawals).set({status,adminNote:String(req.body?.adminNote||'').trim()||null,resolvedAt:new Date()}).where(eq(affiliateWithdrawals.id,w.id)).returning();row=x;});await createNotification(row.userId,'affiliate',`Withdrawal ${status}`,`Your affiliate withdrawal of $${num(row.amount).toFixed(4)} was ${status.toLowerCase()}.`,`/dashboard/affiliates`);await audit(req.dbUser.id,'RESOLVE_AFFILIATE_WITHDRAWAL','AFFILIATE_WITHDRAWAL',row.id);res.json(row);}catch(e:any){apiError(res,400,e.message||'Unable to resolve withdrawal');}});
+
+app.get('/api/admin/coupons',requireAuth,requireAdmin,async(_req,res)=>res.json(await db.select().from(coupons).orderBy(desc(coupons.createdAt))));
+app.post('/api/admin/coupons',requireAuth,requireAdmin,async(req:any,res:any)=>{try{const code=String(req.body?.code||'').trim().toUpperCase().replace(/\s+/g,'');const type=req.body?.type==='fixed'?'fixed':'percent';const value=num(req.body?.value);if(!/^[A-Z0-9_-]{3,40}$/.test(code)||value<=0||(type==='percent'&&value>100))return apiError(res,400,'Invalid coupon data');const [c]=await db.insert(coupons).values({code,type,value:value.toFixed(4),minSpend:money(num(req.body?.minSpend||0)).toFixed(4),maxDiscount:req.body?.maxDiscount===''||req.body?.maxDiscount==null?null:money(num(req.body.maxDiscount)).toFixed(4),usageLimit:req.body?.usageLimit?Number(req.body.usageLimit):null,perUserLimit:Math.max(1,Number(req.body?.perUserLimit||1)),expiresAt:req.body?.expiresAt?new Date(req.body.expiresAt):null,status:'active'}).returning();await audit(req.dbUser.id,'CREATE_COUPON','COUPON',c.id);res.status(201).json(c);}catch(e:any){apiError(res,400,e.message||'Unable to create coupon','COUPON_CREATE_FAILED');}});
+app.put('/api/admin/coupons/:id',requireAuth,requireAdmin,async(req:any,res:any)=>{try{const status=req.body?.status==='inactive'?'inactive':'active';const [c]=await db.update(coupons).set({status}).where(eq(coupons.id,req.params.id)).returning();if(!c)return apiError(res,404,'Coupon not found');await audit(req.dbUser.id,'UPDATE_COUPON','COUPON',c.id);res.json(c);}catch(e:any){apiError(res,400,e.message||'Unable to update coupon');}});
+
 // Admin settings/users/categories/services/providers/orders/payments/tickets/reports/audit/raffles/mystery
 const secretKeys = new Set(['shahnawy_public_key','shahnawy_secret_key','provider_api_key']);
 app.get('/api/admin/settings',requireAuth,requireAdmin,async(_req,res)=>{const rows=await db.select().from(settings); const out:any={}; for(const r of rows)out[r.key]=secretKeys.has(r.key)?'********':r.value; res.json(out);});
@@ -1154,6 +1185,24 @@ app.post('/api/client/shortlinks/:id/start', requireAuth, async(req:any,res:any)
 app.post('/api/client/shortlinks/:id/claim', requireAuth, async(req:any,res:any)=>{
   try { const token=String(req.body?.token||''); if(!token)return apiError(res,400,'Reward token is required','TOKEN_REQUIRED'); let result:any; await db.transaction(async tx=>{ const [s]=await tx.select().from(shortlinks).where(and(eq(shortlinks.id,req.params.id),eq(shortlinks.status,'active'))); if(!s)throw new Error('Reward link not found'); const [tok]=await tx.select().from(shortlinkTokens).where(and(eq(shortlinkTokens.token,token),eq(shortlinkTokens.userId,req.dbUser.id),eq(shortlinkTokens.shortlinkId,s.id))).for('update'); if(!tok || (tok.expiresAt && new Date(tok.expiresAt)<=new Date()))throw new Error('Reward session expired; start again'); const [already]=await tx.select().from(shortlinkClaims).where(and(eq(shortlinkClaims.userId,req.dbUser.id),eq(shortlinkClaims.shortlinkId,s.id))); if(already)throw new Error('Reward already claimed'); await tx.insert(shortlinkClaims).values({id:crypto.randomUUID(),userId:req.dbUser.id,shortlinkId:s.id,claimedAt:new Date()}); await creditWallet(tx,req.dbUser.id,num(s.rewardAmount),`Reward: ${s.name}`,s.id); await tx.delete(shortlinkTokens).where(eq(shortlinkTokens.token,token)); result={success:true,reward:s.rewardAmount}; }); res.json(result); }
   catch(e:any){apiError(res,400,e.message||'Failed to claim reward','SHORTLINK_CLAIM_FAILED');}
+});
+
+app.get('/api/client/affiliates/withdrawals', requireAuth, async(req:any,res:any)=>{
+  const rows=await db.select().from(affiliateWithdrawals).where(eq(affiliateWithdrawals.userId,req.dbUser.id)).orderBy(desc(affiliateWithdrawals.createdAt));
+  res.json(rows);
+});
+app.post('/api/client/affiliates/withdrawals', requireAuth, async(req:any,res:any)=>{
+  try {
+    const amount=money(num(req.body?.amount)); const method=String(req.body?.method||'').trim(); const destination=String(req.body?.destination||'').trim();
+    if(amount<=0||!method||destination.length<3||destination.length>255) throw new Error('Invalid withdrawal request');
+    const rows=await db.select().from(settings); const enabled=String(rows.find((x:any)=>x.key==='affiliate_withdrawal_enabled')?.value||'true')==='true'; const min=money(num(rows.find((x:any)=>x.key==='affiliate_min_withdrawal')?.value||5)); if(!enabled)throw new Error('Affiliate withdrawals are disabled'); if(amount<min)throw new Error(`Minimum withdrawal is ${min.toFixed(2)}`);
+    const [pending]=await db.select({total:sql<string>`coalesce(sum(${affiliateWithdrawals.amount}),0)`}).from(affiliateWithdrawals).where(and(eq(affiliateWithdrawals.userId,req.dbUser.id),eq(affiliateWithdrawals.status,'Pending')));
+    const [earned]=await db.select({total:sql<string>`coalesce(sum(${affiliateCommissions.amount}),0)`}).from(affiliateCommissions).where(eq(affiliateCommissions.affiliateId,req.dbUser.id));
+    const [paid]=await db.select({total:sql<string>`coalesce(sum(${affiliateWithdrawals.amount}),0)`}).from(affiliateWithdrawals).where(and(eq(affiliateWithdrawals.userId,req.dbUser.id),eq(affiliateWithdrawals.status,'Approved')));
+    const available=money(num(earned?.total||0)-num(paid?.total||0)-num(pending?.total||0)); if(amount>available)throw new Error(`Insufficient affiliate balance. Available ${available.toFixed(4)}`);
+    const [w]=await db.insert(affiliateWithdrawals).values({userId:req.dbUser.id,amount:amount.toFixed(4),method,destination,status:'Pending'}).returning();
+    await createNotification(req.dbUser.id,'affiliate','Withdrawal requested',`Your affiliate withdrawal of $${amount.toFixed(4)} is pending review.`,`/dashboard/affiliates`); res.status(201).json(w);
+  }catch(e:any){apiError(res,400,e.message||'Withdrawal failed','AFFILIATE_WITHDRAWAL_FAILED');}
 });
 
 app.get('/api/client/affiliates/stats', requireAuth, async(req:any,res:any)=>{

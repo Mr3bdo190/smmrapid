@@ -1,5 +1,5 @@
 import { relations } from 'drizzle-orm';
-import { boolean, decimal, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid, numeric, index } from 'drizzle-orm/pg-core';
+import { boolean, decimal, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid, numeric, index, unique } from 'drizzle-orm/pg-core';
 
 export const roleEnum = pgEnum('role', ['admin', 'user']);
 export const userStatusEnum = pgEnum('user_status', ['active', 'suspended', 'banned']);
@@ -301,6 +301,42 @@ export const affiliateCommissions = pgTable('affiliate_commissions', {
   referredIdx: index('affiliate_commissions_referred_idx').on(t.referredUserId),
   paymentIdx: index('affiliate_commissions_payment_idx').on(t.paymentId),
 }));
+
+export const affiliateWithdrawals = pgTable('affiliate_withdrawals', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  amount: decimal('amount', { precision: 12, scale: 4 }).notNull(),
+  method: text('method').notNull(),
+  destination: text('destination').notNull(),
+  status: text('status').default('Pending').notNull(),
+  adminNote: text('admin_note'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  resolvedAt: timestamp('resolved_at'),
+}, (t) => ({ userIdx: index('affiliate_withdrawals_user_idx').on(t.userId), statusIdx: index('affiliate_withdrawals_status_idx').on(t.status), createdAtIdx: index('affiliate_withdrawals_created_at_idx').on(t.createdAt) }));
+
+export const coupons = pgTable('coupons', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  code: text('code').notNull().unique(),
+  type: text('type').default('percent').notNull(),
+  value: decimal('value', { precision: 12, scale: 4 }).notNull(),
+  minSpend: decimal('min_spend', { precision: 12, scale: 4 }).default('0').notNull(),
+  maxDiscount: decimal('max_discount', { precision: 12, scale: 4 }),
+  usageLimit: integer('usage_limit'),
+  perUserLimit: integer('per_user_limit').default(1).notNull(),
+  usedCount: integer('used_count').default(0).notNull(),
+  expiresAt: timestamp('expires_at'),
+  status: text('status').default('active').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (t) => ({ codeIdx: index('coupons_code_idx').on(t.code), statusIdx: index('coupons_status_idx').on(t.status) }));
+
+export const couponUses = pgTable('coupon_uses', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  couponId: uuid('coupon_id').references(() => coupons.id).notNull(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  orderId: uuid('order_id').references(() => orders.id),
+  discount: decimal('discount', { precision: 12, scale: 4 }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (t) => ({ couponIdx: index('coupon_uses_coupon_idx').on(t.couponId), userIdx: index('coupon_uses_user_idx').on(t.userId), orderIdx: index('coupon_uses_order_idx').on(t.orderId) }));
 
 export const contactMessages = pgTable('contact_messages', {
   id: uuid('id').primaryKey().defaultRandom(),

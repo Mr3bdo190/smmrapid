@@ -206,3 +206,22 @@ test('phase 1 raffle migration remains present and phase 2 docs are present', ()
   assert.ok(fs.existsSync('PHASE1_CRITICAL_FIXES.md'));
   assert.ok(fs.existsSync('PHASE2_CRITICAL_FIXES.md'));
 });
+
+
+test('phase 3 schema import and monetization features are wired', () => {
+  const schema = fs.readFileSync('src/db/schema.ts','utf8');
+  const server = fs.readFileSync('server.ts','utf8');
+  const order = fs.readFileSync('src/pages/client/ClientNewOrder.tsx','utf8');
+  const affiliates = fs.readFileSync('src/pages/client/ClientAffiliates.tsx','utf8');
+  const migration = fs.readFileSync('drizzle/0008_phase3_monetization.sql','utf8');
+  assert.match(schema, /unique\s*\}/);
+  assert.match(schema, /unique\(\)\.on\(t\.userId, t\.shortlinkId\)/);
+  assert.match(server, /\/api\/client\/coupons\/validate/);
+  assert.match(server, /\/api\/client\/affiliates\/withdrawals/);
+  assert.match(server, /\/api\/admin\/affiliate-withdrawals/);
+  assert.match(order, /couponCode/);
+  assert.match(affiliates, /affiliates\/withdrawals/);
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS affiliate_withdrawals/);
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS coupons/);
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS coupon_uses/);
+});

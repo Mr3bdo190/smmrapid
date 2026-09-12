@@ -357,6 +357,16 @@ app.get('/api/client/orders', requireAuth, async (req: any, res) => {
   const rows = await db.query.orders.findMany({ where: eq(orders.userId, req.dbUser.id), orderBy: [desc(orders.createdAt)], with: { service: true } });
   res.json(rows);
 });
+app.post('/api/client/orders/:id/refresh', requireAuth, async (req: any, res) => {
+  try {
+    const [o] = await db.select().from(orders).where(and(eq(orders.id, req.params.id), eq(orders.userId, req.dbUser.id)));
+    if (!o) return apiError(res, 404, 'Order not found', 'NOT_FOUND');
+    if (!o.providerOrderId) return res.json(o);
+    await checkOrderStatus(o.id);
+    const [updated] = await db.select().from(orders).where(eq(orders.id, o.id));
+    res.json(updated || o);
+  } catch (e: any) { apiError(res, 400, e.message || 'Failed to refresh order', 'ORDER_REFRESH_FAILED'); }
+});
 
 // Refill: allowed once an order has run (Completed/Partial) and the service supports it.
 // Shared by the client UI route and the public API's `refill` action.
@@ -399,14 +409,31 @@ async function requestCancelForOrder(orderId: string, userId: string) {
   if (!service?.providerId) { const e: any = new Error('No provider configured for this service'); e.status = 400; e.code = 'NOT_ELIGIBLE'; throw e; }
   const [provider] = await db.select().from(providers).where(and(eq(providers.id, service.providerId), eq(providers.isDeleted, false)));
   if (!provider) { const e: any = new Error('Provider unavailable'); e.status = 503; e.code = 'PROVIDER_UNAVAILABLE'; throw e; }
+  // Always refresh the provider counters before cancellation so a partial
+  // order is never treated as a full refund.
+  await checkOrderStatus(o.id).catch(() => undefined);
+  const [fresh] = await db.query.orders.findMany({ where: eq(orders.id, o.id), with: { service: true } });
+  if (fresh?.status === 'Canceled' || fresh?.status === 'Partial' || fresh?.status === 'Refunded') {
+    return { refunded: true, status: fresh.status, remains: fresh.remains, startCount: fresh.startCount, refundedAmount: fresh.refundedAmount };
+  }
   await db.update(orders).set({ cancelRequested: true }).where(eq(orders.id, o.id));
   const result = await new ProviderClient(provider.apiUrl, provider.apiKey).cancel(o.providerOrderId);
   if (result?.error) {
     await db.update(orders).set({ cancelRequested: false }).where(eq(orders.id, o.id));
     const e: any = new Error(result.error); e.status = 502; e.code = 'PROVIDER_ERROR'; throw e;
   }
-  const refunded = await refundOrderOnce(o.id, num(o.charge), 'Canceled by provider');
-  return { refunded };
+  // Do not refund here. The provider may have delivered part of the order.
+  // The status call below (and the background worker) settles only the
+  // unfulfilled quantity.
+  await checkOrderStatus(o.id).catch(() => undefined);
+  const [updated] = await db.select().from(orders).where(eq(orders.id, o.id));
+  return {
+    refunded: Number(updated?.refundedAmount || 0) > Number(o.refundedAmount || 0),
+    status: updated?.status || o.status,
+    remains: updated?.remains ?? o.remains,
+    startCount: updated?.startCount ?? o.startCount,
+    refundedAmount: updated?.refundedAmount ?? o.refundedAmount
+  };
 }
 app.post('/api/client/orders/:id/cancel', requireAuth, async (req: any, res) => {
   try { const r = await requestCancelForOrder(req.params.id, req.dbUser.id); res.json({ success: true, ...r }); }
@@ -480,8 +507,13 @@ app.post('/api/client/orders', requireAuth, async (req: any, res) => {
         await tx.update(coupons).set({ usedCount: Number(couponResult.coupon.usedCount || 0) + 1 }).where(eq(coupons.id, couponResult.coupon.id));
       }
     });
-    placeOrderToProvider(orderId).catch(err => console.error('provider order error', err));
-    res.status(201).json({ success: true, orderId, originalCharge: charge.toFixed(4), discount: discount.toFixed(4), charge: finalCharge.toFixed(4) });
+    if (service.executionMode === 'provider') {
+      const dispatch = await placeOrderToProvider(orderId);
+      if (!dispatch.ok) {
+        return apiError(res, 502, 'تم إنشاء الطلب لكن تعذر إرساله للمزود. تم إرجاع المبلغ إلى رصيدك تلقائياً. يمكنك المحاولة مرة أخرى أو اختيار خدمة أخرى.', 'PROVIDER_ORDER_FAILED');
+      }
+    }
+    res.status(201).json({ success: true, orderId, executionMode: service.executionMode, originalCharge: charge.toFixed(4), discount: discount.toFixed(4), charge: finalCharge.toFixed(4) });
   } catch (e: any) {
     const raw = String(e?.message || '');
     if (/insufficient balance/i.test(raw)) return apiError(res, 400, 'Your balance is not enough to complete this order.', 'INSUFFICIENT_BALANCE');
@@ -995,8 +1027,8 @@ app.put('/api/admin/categories/:id',requireAuth,requireAdmin,async(req:any,res)=
 app.delete('/api/admin/categories/:id',requireAuth,requireAdmin,async(req:any,res)=>{const used=await db.query.services.findFirst({where:eq(services.categoryId,req.params.id)});if(used)return apiError(res,409,'Category has services; deactivate it instead');await db.delete(categories).where(eq(categories.id,req.params.id));res.json({success:true});});
 
 app.get('/api/admin/services',requireAuth,requireAdmin,async(_req,res)=>res.json(await db.query.services.findMany({with:{category:true,provider:true},orderBy:[asc(services.sortOrder)]})));
-app.post('/api/admin/services',requireAuth,requireAdmin,async(req:any,res)=>{const d=req.body||{};const min=Number(d.minQuantity),max=Number(d.maxQuantity),price=num(d.pricePer1k);if(!uuidLike(d.categoryId)||!d.name||!positiveMoney(price)||!Number.isInteger(min)||!Number.isInteger(max)||min<1||max<min)return apiError(res,400,'Invalid service data');const cat=await db.query.categories.findFirst({where:eq(categories.id,d.categoryId)});if(!cat)return apiError(res,404,'Category not found');if(d.providerId&&uuidLike(d.providerId)){const pr=await db.query.providers.findFirst({where:and(eq(providers.id,d.providerId),eq(providers.isDeleted,false))});if(!pr)return apiError(res,404,'Provider not found');}const [s]=await db.insert(services).values({categoryId:d.categoryId,name:String(d.name).trim(),pricePer1k:money(price).toFixed(4),minQuantity:min,maxQuantity:max,providerId:uuidLike(d.providerId)?d.providerId:null,providerServiceId:d.providerServiceId||null,providerPrice:positiveMoney(d.providerPrice)?money(num(d.providerPrice)).toFixed(4):'0.0000',description:d.description||null,sortOrder:Number(d.sortOrder||0),cashbackPercentage:Math.max(0,Math.min(100,Number(d.cashbackPercentage||0))),refillable:!!d.refillable,cancelable:!!d.cancelable,status:d.status==='inactive'?'inactive':'active'}).returning();res.status(201).json(s);});
-app.put('/api/admin/services/:id',requireAuth,requireAdmin,async(req:any,res:any)=>{const d=req.body||{};const current=await db.query.services.findFirst({where:eq(services.id,req.params.id)});if(!current)return apiError(res,404,'Service not found');const oldMeta=(current.providerMeta||{}) as any;const nextProviderId=d.providerId||null;const nextProviderServiceId=d.providerServiceId||null;const customName=Boolean(nextProviderId&&nextProviderServiceId);const descriptionValue=String(d.description??'').trim();const customDescription=descriptionValue.length>0;const nextMeta={...oldMeta,customName,customDescription,description:customDescription?descriptionValue:null};const [s]=await db.update(services).set({name:String(d.name||current.name).trim(),categoryId:d.categoryId,pricePer1k:String(d.pricePer1k),minQuantity:Number(d.minQuantity),maxQuantity:Number(d.maxQuantity),providerId:nextProviderId,providerServiceId:nextProviderServiceId,providerPrice:d.providerPrice?String(d.providerPrice):'0.0000',description:d.description||null,sortOrder:Number(d.sortOrder||0),cashbackPercentage:Number(d.cashbackPercentage||0),refillable:!!d.refillable,cancelable:!!d.cancelable,status:d.status==='inactive'?'inactive':'active',providerMeta:nextMeta}).where(eq(services.id,req.params.id)).returning();res.json(s);});
+app.post('/api/admin/services',requireAuth,requireAdmin,async(req:any,res)=>{const d=req.body||{};const min=Number(d.minQuantity),max=Number(d.maxQuantity),price=num(d.pricePer1k);if(!uuidLike(d.categoryId)||!d.name||!positiveMoney(price)||!Number.isInteger(min)||!Number.isInteger(max)||min<1||max<min)return apiError(res,400,'Invalid service data');const cat=await db.query.categories.findFirst({where:eq(categories.id,d.categoryId)});if(!cat)return apiError(res,404,'Category not found');if(d.providerId&&uuidLike(d.providerId)){const pr=await db.query.providers.findFirst({where:and(eq(providers.id,d.providerId),eq(providers.isDeleted,false))});if(!pr)return apiError(res,404,'Provider not found');}const [s]=await db.insert(services).values({categoryId:d.categoryId,name:String(d.name).trim(),pricePer1k:money(price).toFixed(4),minQuantity:min,maxQuantity:max,providerId:uuidLike(d.providerId)?d.providerId:null,executionMode:d.executionMode==='manual'?'manual':'provider',providerServiceId:d.providerServiceId||null,providerPrice:positiveMoney(d.providerPrice)?money(num(d.providerPrice)).toFixed(4):'0.0000',description:d.description||null,sortOrder:Number(d.sortOrder||0),cashbackPercentage:Math.max(0,Math.min(100,Number(d.cashbackPercentage||0))),refillable:!!d.refillable,cancelable:!!d.cancelable,status:d.status==='inactive'?'inactive':'active'}).returning();res.status(201).json(s);});
+app.put('/api/admin/services/:id',requireAuth,requireAdmin,async(req:any,res:any)=>{const d=req.body||{};const current=await db.query.services.findFirst({where:eq(services.id,req.params.id)});if(!current)return apiError(res,404,'Service not found');const oldMeta=(current.providerMeta||{}) as any;const nextProviderId=d.providerId||null;const nextProviderServiceId=d.providerServiceId||null;const customName=Boolean(nextProviderId&&nextProviderServiceId);const descriptionValue=String(d.description??'').trim();const customDescription=descriptionValue.length>0;const nextMeta={...oldMeta,customName,customDescription,description:customDescription?descriptionValue:null};const [s]=await db.update(services).set({name:String(d.name||current.name).trim(),categoryId:d.categoryId,pricePer1k:String(d.pricePer1k),minQuantity:Number(d.minQuantity),maxQuantity:Number(d.maxQuantity),providerId:nextProviderId,executionMode:d.executionMode==='manual'?'manual':'provider',providerServiceId:nextProviderServiceId,providerPrice:d.providerPrice?String(d.providerPrice):'0.0000',description:d.description||null,sortOrder:Number(d.sortOrder||0),cashbackPercentage:Number(d.cashbackPercentage||0),refillable:!!d.refillable,cancelable:!!d.cancelable,status:d.status==='inactive'?'inactive':'active',providerMeta:nextMeta}).where(eq(services.id,req.params.id)).returning();res.json(s);});
 app.delete('/api/admin/services/:id',requireAuth,requireAdmin,async(req:any,res:any)=>{const [current]=await db.select().from(services).where(eq(services.id,req.params.id));if(!current)return apiError(res,404,'Service not found');if(current.status==='inactive')return res.json({success:true,status:'inactive',alreadyInactive:true});const [updated]=await db.update(services).set({status:'inactive'}).where(eq(services.id,current.id)).returning();await audit(req.dbUser.id,'DEACTIVATE_SERVICE','SERVICE',current.id,undefined,current.status,'inactive');res.json({success:true,status:updated.status});});app.get('/api/admin/providers',requireAuth,requireAdmin,async(_req,res)=>{const ps=await db.select({id:providers.id,name:providers.name,apiUrl:providers.apiUrl,profitMargin:providers.profitMargin,status:providers.status,isDeleted:providers.isDeleted}).from(providers).where(eq(providers.isDeleted,false));res.json(ps);});
 app.put('/api/admin/services/bulk',requireAuth,requireAdmin,async(req:any,res:any)=>{try{const ids=Array.isArray(req.body?.serviceIds)?req.body.serviceIds.filter(uuidLike):[];const status=req.body?.status==='inactive'?'inactive':req.body?.status==='active'?'active':null;if(!ids.length||!status)return apiError(res,400,'serviceIds and valid status are required','INVALID_BULK_UPDATE');const rows=await db.select({id:services.id}).from(services).where(inArray(services.id,ids));if(!rows.length)return apiError(res,404,'No matching services found','NOT_FOUND');await db.update(services).set({status}).where(inArray(services.id,rows.map(r=>r.id)));await audit(req.dbUser.id,'BULK_UPDATE_SERVICES','SERVICE',rows.map(r=>r.id).join(','),`${rows.length} services -> ${status}`);res.json({success:true,changed:rows.length,status});}catch(e:any){apiError(res,400,e.message||'Bulk update failed','BULK_UPDATE_FAILED');}});app.post('/api/admin/providers',requireAuth,requireAdmin,async(req:any,res)=>{if(!req.body?.name||!validUrl(req.body.apiUrl)||!req.body.apiKey)return apiError(res,400,'Invalid provider');await assertSafeProviderUrl(String(req.body.apiUrl));const settingRows=await db.select().from(settings);const defaultMargin=Number(settingRows.find((x:any)=>x.key==='default_profit_margin')?.value ?? 50);const margin=Number(req.body.profitMargin ?? defaultMargin);if(!Number.isInteger(margin)||margin<0||margin>10000)return apiError(res,400,'Invalid profit margin');const [p]=await db.insert(providers).values({name:String(req.body.name).trim(),apiUrl:String(req.body.apiUrl).trim(),apiKey:String(req.body.apiKey),profitMargin:margin,status:req.body.status==='inactive'?'inactive':'active'}).returning();await audit(req.dbUser.id,'CREATE_PROVIDER','PROVIDER',p.id);res.status(201).json({id:p.id,name:p.name,apiUrl:p.apiUrl,status:p.status});});
 app.put('/api/admin/providers/:id',requireAuth,requireAdmin,async(req:any,res)=>{try{const [old]=await db.select().from(providers).where(and(eq(providers.id,req.params.id),eq(providers.isDeleted,false)));if(!old)return apiError(res,404,'Provider not found');const name=String(req.body?.name ?? old.name).trim();const apiUrl=String(req.body?.apiUrl ?? old.apiUrl).trim();const apiKey=String(req.body?.apiKey ?? '').trim();const margin=Number(req.body?.profitMargin ?? old.profitMargin);const status=req.body?.status==='inactive'?'inactive':'active';if(name.length<2||name.length>100||!validUrl(apiUrl)||!Number.isInteger(margin)||margin<0||margin>10000)return apiError(res,400,'Invalid provider data');await assertSafeProviderUrl(apiUrl);const patch:any={name,apiUrl,profitMargin:margin,status};if(apiKey)patch.apiKey=apiKey;const [updated]=await db.update(providers).set(patch).where(eq(providers.id,old.id)).returning({id:providers.id,name:providers.name,apiUrl:providers.apiUrl,profitMargin:providers.profitMargin,status:providers.status,isDeleted:providers.isDeleted});await audit(req.dbUser.id,'UPDATE_PROVIDER','PROVIDER',old.id,undefined,old.name,updated.name);res.json(updated);}catch(e:any){apiError(res,400,e.message||'Invalid provider');}});

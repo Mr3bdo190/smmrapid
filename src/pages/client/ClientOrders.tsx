@@ -24,13 +24,19 @@ export default function ClientOrders() {
   });
   const cancel = useMutation({
     mutationFn: async (id: string) => { const t = await user!.getIdToken(); const r = await apiFetch(`/api/client/orders/${id}/cancel`, user, { method: 'POST', headers: { Authorization: `Bearer ${t}` } }); if (!r.ok) throw new Error(await readErr(r, 'Cancel request failed')); return r.json(); },
-    onSuccess: () => { notify.success('Order canceled — refund will reflect in your wallet shortly'); qc.invalidateQueries({ queryKey: ['client-orders'] }); qc.invalidateQueries({ queryKey: ['client-me'] }); },
+    onSuccess: (data: any) => { notify.success(Number(data?.refundedAmount || 0) > 0 ? 'Order canceled. The unfulfilled quantity was refunded to your wallet.' : 'Cancellation requested. The provider is processing it now; your refund will be calculated from the unfulfilled quantity.'); qc.invalidateQueries({ queryKey: ['client-orders'] }); qc.invalidateQueries({ queryKey: ['client-me'] }); },
+    onError: (e: any) => notify.error(e.message),
+  });
+
+  const refreshOrder = useMutation({
+    mutationFn: async (id: string) => { const t = await user!.getIdToken(); const r = await apiFetch(`/api/client/orders/${id}/refresh`, user, { method: 'POST', headers: { Authorization: `Bearer ${t}` } }); if (!r.ok) throw new Error(await readErr(r, 'Could not refresh order')); return r.json(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['client-orders'] }); qc.invalidateQueries({ queryKey: ['client-me'] }); },
     onError: (e: any) => notify.error(e.message),
   });
 
   const rows = orders.filter((o: any) => (status === 'all' || o.status === status) && (`${o.id} ${o.service?.name || ''} ${o.link}`.toLowerCase().includes(q.toLowerCase())));
   const exportCsv = () => {
-    const csv = ['Order ID,Service,Link,Quantity,Charge,Status,Created', ...rows.map((o: any) => [o.id, o.service?.name || '', o.link, o.quantity, o.charge, o.status, o.createdAt].map(v => `"${String(v ?? '').replaceAll('"', '""')}"`).join(','))].join('\n');
+    const csv = ['Order ID,Service,Link,Quantity,Start Count,Remains,Charge,Status,Created', ...rows.map((o: any) => [o.id, o.service?.name || '', o.link, o.quantity, o.startCount ?? '', o.remains ?? '', o.charge, o.status, o.createdAt].map(v => `"${String(v ?? '').replaceAll('"', '""')}"`).join(','))].join('\n');
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = 'orders.csv'; a.click(); notify.success('Orders exported');
   };
 
@@ -48,10 +54,10 @@ export default function ClientOrders() {
         <select className="input-primary w-auto" value={status} onChange={e => setStatus(e.target.value)}><option value="all">All statuses</option>{['Pending', 'Processing', 'In Progress', 'Completed', 'Partial', 'Canceled', 'Refunded'].map(s => <option key={s}>{s}</option>)}</select>
       </div>
       <div className="bg-white rounded-xl border overflow-x-auto">
-        <table className="min-w-[1000px] w-full text-left">
-          <thead className="bg-gray-50"><tr>{['ID', 'Service', 'Link', 'Quantity', 'Charge', 'Status', 'Created', 'Actions'].map(h => <th key={h} className="px-4 py-3 text-xs text-gray-500 uppercase">{h}</th>)}</tr></thead>
+        <table className="min-w-[1250px] w-full text-left">
+          <thead className="bg-gray-50"><tr>{['ID', 'Service', 'Link', 'Quantity', 'Start', 'Remains', 'Charge', 'Status', 'Created', 'Actions'].map(h => <th key={h} className="px-4 py-3 text-xs text-gray-500 uppercase">{h}</th>)}</tr></thead>
           <tbody className="divide-y">
-            {isLoading ? <tr><td colSpan={8} className="p-8 text-center">Loading...</td></tr> : rows.length ? rows.map((o: any) => {
+            {isLoading ? <tr><td colSpan={10} className="p-8 text-center">Loading...</td></tr> : rows.length ? rows.map((o: any) => {
               const canRefill = o.service?.refillable && REFILLABLE_STATUSES.includes(o.status);
               const canCancel = o.service?.cancelable && CANCELABLE_STATUSES.includes(o.status) && !o.cancelRequested;
               return (
@@ -60,17 +66,20 @@ export default function ClientOrders() {
                   <td className="px-4 py-3 text-sm font-medium">{o.service?.name}</td>
                   <td className="px-4 py-3 text-sm max-w-[200px] truncate">{o.link}</td>
                   <td className="px-4 py-3 text-sm">{o.quantity}</td>
+                  <td className="px-4 py-3 text-sm">{Number.isFinite(Number(o.startCount)) ? Number(o.startCount).toLocaleString() : '-'}</td>
+                  <td className="px-4 py-3 text-sm">{Number.isFinite(Number(o.remains)) ? Number(o.remains).toLocaleString() : '-'}</td>
                   <td className="px-4 py-3 text-sm font-semibold">${Number(o.charge).toFixed(4)}</td>
                   <td className="px-4 py-3 text-sm"><span className="px-2 py-1 rounded-full bg-gray-100">{o.status}</span>{o.cancelRequested && <span className="ml-1 text-xs text-amber-600">(cancel pending)</span>}</td>
                   <td className="px-4 py-3 text-xs text-gray-500">{o.createdAt ? new Date(o.createdAt).toLocaleString() : '-'}</td>
                   <td className="px-4 py-3 text-xs whitespace-nowrap">
+                    {o.providerOrderId && ['Pending', 'Processing', 'In Progress'].includes(o.status) && <button disabled={refreshOrder.isPending} onClick={() => refreshOrder.mutate(o.id)} className="text-gray-600 hover:text-gray-900 mr-3" title="Refresh provider status"><RefreshCw className="w-4 h-4 inline mr-1" />Update</button>}
                     {canRefill && <button disabled={refill.isPending} onClick={() => refill.mutate(o.id)} className="text-indigo-600 hover:text-indigo-900 mr-3" title="Request refill"><RotateCcw className="w-4 h-4 inline mr-1" />Refill</button>}
                     {canCancel && <button disabled={cancel.isPending} onClick={() => confirm('Cancel this order and refund it to your wallet?') && cancel.mutate(o.id)} className="text-red-600 hover:text-red-900" title="Cancel order"><XCircle className="w-4 h-4 inline mr-1" />Cancel</button>}
                     {!canRefill && !canCancel && <span className="text-gray-300">-</span>}
                   </td>
                 </tr>
               );
-            }) : <tr><td colSpan={8} className="p-8 text-center text-gray-500">No matching orders.</td></tr>}
+            }) : <tr><td colSpan={10} className="p-8 text-center text-gray-500">No matching orders.</td></tr>}
           </tbody>
         </table>
       </div>

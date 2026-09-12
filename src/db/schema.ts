@@ -6,6 +6,7 @@ export const userStatusEnum = pgEnum('user_status', ['active', 'suspended', 'ban
 export const providerStatusEnum = pgEnum('provider_status', ['active', 'inactive']);
 export const categoryStatusEnum = pgEnum('category_status', ['active', 'inactive']);
 export const serviceStatusEnum = pgEnum('service_status', ['active', 'inactive']);
+export const serviceExecutionModeEnum = pgEnum('service_execution_mode', ['provider', 'manual']);
 export const orderStatusEnum = pgEnum('order_status', ['Pending', 'Processing', 'In Progress', 'Completed', 'Partial', 'Canceled', 'Refunded']);
 export const paymentStatusEnum = pgEnum('payment_status', ['Pending', 'Approved', 'Rejected']);
 export const ticketStatusEnum = pgEnum('ticket_status', ['Open', 'Answered', 'Closed']);
@@ -66,6 +67,7 @@ export const services = pgTable('services', {
   id: uuid('id').primaryKey().defaultRandom(),
   categoryId: uuid('category_id').references(() => categories.id).notNull(),
   providerId: uuid('provider_id').references(() => providers.id),
+  executionMode: serviceExecutionModeEnum('execution_mode').default('provider').notNull(),
   providerServiceId: text('provider_service_id'),
   name: text('name').notNull(),
   pricePer1k: decimal('price_per_1k', { precision: 12, scale: 4 }).notNull(),
@@ -98,6 +100,7 @@ export const orders = pgTable('orders', {
   providerError: text('provider_error'),
   startCount: integer('start_count').default(0).notNull(),
   remains: integer('remains').default(0).notNull(),
+  refundedAmount: decimal('refunded_amount', { precision: 12, scale: 4 }).default('0.0000').notNull(),
   cancelRequested: boolean('cancel_requested').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),

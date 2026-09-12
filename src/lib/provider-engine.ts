@@ -124,41 +124,100 @@ export async function refundOrderOnce(orderId:string, amount:number, reason:stri
   return db.transaction(async tx=>{
     const [o]=await tx.select().from(orders).where(eq(orders.id,orderId)).for('update');
     if(!o)return false;
-    if(['Canceled','Refunded'].includes(o.status))return false;
-    const [u]=await tx.select().from(users).where(eq(users.id,o.userId)).for('update'); if(!u)throw new Error('User not found');
-    const next=money(Number(u.balance)+amount);
+    const alreadyRefunded=Number(o.refundedAmount||0);
+    const remainingRefund=money(Math.max(0, Number(o.charge)-alreadyRefunded));
+    const credit=money(Math.min(amount, remainingRefund));
+    if(!(credit>0))return false;
+    const [u]=await tx.select().from(users).where(eq(users.id,o.userId)).for('update');
+    if(!u)throw new Error('User not found');
+    const next=money(Number(u.balance)+credit);
     await tx.update(users).set({balance:next.toFixed(4)}).where(eq(users.id,u.id));
-    await tx.insert(walletLedger).values({id:crypto.randomUUID(),userId:u.id,amount:amount.toFixed(4),type:'credit',description:`Order refund: ${reason}`,referenceId:o.id,createdAt:new Date()});
-    await tx.update(orders).set({status:'Refunded',providerError:reason,updatedAt:new Date()}).where(eq(orders.id,o.id));
+    await tx.insert(walletLedger).values({id:crypto.randomUUID(),userId:u.id,amount:credit.toFixed(4),type:'credit',description:`Order refund: ${reason}`,referenceId:o.id,createdAt:new Date()});
+    const totalRefunded=money(alreadyRefunded+credit);
+    await tx.update(orders).set({refundedAmount:totalRefunded.toFixed(4),providerError:reason,updatedAt:new Date()}).where(eq(orders.id,o.id));
     return true;
   });
 }
 
-export async function placeOrderToProvider(orderId:string){
-  const [order]=await db.select().from(orders).where(eq(orders.id,orderId)); if(!order||order.status!=='Pending'||order.providerOrderId)return;
+function calculateUnfulfilledRefund(order:any, remains:number){
+  const quantity=Number(order.quantity||0);
+  const charge=Number(order.charge||0);
+  if(quantity<=0 || charge<=0 || !Number.isFinite(remains)) return 0;
+  const r=Math.max(0,Math.min(quantity,Math.floor(remains)));
+  return money(charge*(r/quantity));
+}
+
+export async function placeOrderToProvider(orderId:string):Promise<{ok:boolean;error?:string;refunded?:boolean}> {
+  const [order]=await db.select().from(orders).where(eq(orders.id,orderId));
+  if(!order) return {ok:false,error:'Order not found'};
+  if(order.status!=='Pending'||order.providerOrderId) return {ok:true};
   const [service]=await db.select().from(services).where(eq(services.id,order.serviceId));
-  if(!service?.providerId||!service.providerServiceId)return refundOrderOnce(orderId,Number(order.charge),'No provider configured');
+  if(!service) return {ok:false,error:'Service not found'};
+  if(service.executionMode==='manual') return {ok:true};
+  if(!service.providerId||!service.providerServiceId){ const refunded=await refundOrderOnce(orderId,Number(order.charge),'No provider configured'); return {ok:false,error:'No provider configured',refunded}; }
   const [provider]=await db.select().from(providers).where(eq(providers.id,service.providerId));
-  if(!provider||provider.status!=='active'||provider.isDeleted)return refundOrderOnce(orderId,Number(order.charge),'Provider inactive');
+  if(!provider||provider.status!=='active'||provider.isDeleted){ const refunded=await refundOrderOnce(orderId,Number(order.charge),'Provider inactive'); return {ok:false,error:'Provider inactive',refunded}; }
   const client=new ProviderClient(provider.apiUrl,provider.apiKey); const r=await client.addOrder(service.providerServiceId,order.link,order.quantity);
-  if(r.error)return refundOrderOnce(orderId,Number(order.charge),r.error);
-  if(!r.order)return refundOrderOnce(orderId,Number(order.charge),'Invalid provider response');
-  await db.update(orders).set({providerOrderId:String(r.order),status:'Processing',providerError:null,updatedAt:new Date()}).where(eq(orders.id,orderId));
+  if(r.error){ const refunded=await refundOrderOnce(orderId,Number(order.charge),String(r.error)); return {ok:false,error:String(r.error),refunded}; }
+  if(!r.order){ const refunded=await refundOrderOnce(orderId,Number(order.charge),'Invalid provider response'); return {ok:false,error:'Invalid provider response',refunded}; }
+  const initialStart = Number.isFinite(Number(r.start_count)) ? Math.max(0, Number(r.start_count)) : 0;
+  await db.update(orders).set({providerOrderId:String(r.order),status:'Processing',providerError:null,startCount:initialStart,remains:order.quantity,updatedAt:new Date()}).where(eq(orders.id,orderId));
+  // Fetch the provider's real start_count/remains immediately after dispatch.
+  await checkOrderStatus(orderId).catch(() => undefined);
+  return {ok:true};
 }
 
 const mapStatus=(s:string)=>{const x=s.toLowerCase(); if(x==='pending')return'Pending';if(x==='processing')return'Processing';if(x==='in progress')return'In Progress';if(x==='completed')return'Completed';if(x==='partial')return'Partial';if(['canceled','cancelled'].includes(x))return'Canceled';return null;};
 
 export async function checkOrderStatus(orderId:string){
-  const [o]=await db.select().from(orders).where(eq(orders.id,orderId));if(!o?.providerOrderId||['Completed','Canceled','Refunded','Partial'].includes(o.status))return;
-  const [s]=await db.select().from(services).where(eq(services.id,o.serviceId));if(!s?.providerId)return;const [p]=await db.select().from(providers).where(eq(providers.id,s.providerId));if(!p)return;
-  const r=await new ProviderClient(p.apiUrl,p.apiKey).status(o.providerOrderId);if(r.error||!r.status)return;
-  const status=mapStatus(String(r.status));const remains=Number.isFinite(Number(r.remains))?Math.max(0,Number(r.remains)):o.remains;const start=Number.isFinite(Number(r.start_count))?Math.max(0,Number(r.start_count)):o.startCount;
+  const [o]=await db.select().from(orders).where(eq(orders.id,orderId));
+  if(!o?.providerOrderId || ['Completed','Canceled','Refunded'].includes(o.status))return;
+  const [s]=await db.select().from(services).where(eq(services.id,o.serviceId));
+  if(!s?.providerId)return;
+  const [p]=await db.select().from(providers).where(eq(providers.id,s.providerId));
+  if(!p)return;
+
+  const r=await new ProviderClient(p.apiUrl,p.apiKey).status(o.providerOrderId);
+  if(r.error)return;
+  const status= r.status ? mapStatus(String(r.status)) : null;
+  const rawRemains=Number(r.remains);
+  const rawStart=Number(r.start_count);
+  const start=Number.isFinite(rawStart)?Math.max(0,Math.floor(rawStart)):o.startCount;
+  // Some providers omit remains. Derive it from the current start count when possible.
+  let remains=Number.isFinite(rawRemains)?Math.max(0,Math.floor(rawRemains)):Number(o.remains);
+  if(!Number.isFinite(rawRemains) && Number.isFinite(rawStart) && Number(o.quantity)>0){
+    remains=Math.max(0,Number(o.quantity)-(Math.max(0,rawStart)-Math.max(0,Number(o.startCount||0))));
+  }
+  remains=Math.max(0,Math.min(Number(o.quantity),remains));
+
   await db.transaction(async tx=>{
-    const [locked]=await tx.select().from(orders).where(eq(orders.id,o.id)).for('update');if(!locked||['Completed','Canceled','Refunded','Partial'].includes(locked.status))return;
-    if(status==='Canceled'){
-      const [u]=await tx.select().from(users).where(eq(users.id,locked.userId)).for('update');if(!u)throw new Error('User not found');const next=money(Number(u.balance)+Number(locked.charge));await tx.update(users).set({balance:next.toFixed(4)}).where(eq(users.id,u.id));await tx.insert(walletLedger).values({id:crypto.randomUUID(),userId:u.id,amount:Number(locked.charge).toFixed(4),type:'credit',description:'Order canceled refund',referenceId:locked.id,createdAt:new Date()});
-    }else if(status==='Partial' && locked.quantity>0){const refund=money(Number(locked.charge)*(remains/locked.quantity));if(refund>0){const[u]=await tx.select().from(users).where(eq(users.id,locked.userId)).for('update');if(u){const next=money(Number(u.balance)+refund);await tx.update(users).set({balance:next.toFixed(4)}).where(eq(users.id,u.id));await tx.insert(walletLedger).values({id:crypto.randomUUID(),userId:u.id,amount:refund.toFixed(4),type:'credit',description:'Partial order refund',referenceId:locked.id,createdAt:new Date()});}}}
-    await tx.update(orders).set({status:status||locked.status,remains,startCount:start,updatedAt:new Date()}).where(eq(orders.id,locked.id));
+    const [locked]=await tx.select().from(orders).where(eq(orders.id,o.id)).for('update');
+    if(!locked || ['Refunded'].includes(locked.status))return;
+    const nextStatus=status||locked.status;
+
+    if(nextStatus==='Canceled' || nextStatus==='Partial'){
+      const refund=calculateUnfulfilledRefund(locked,remains);
+      if(refund>0){
+        const alreadyRefunded=Number(locked.refundedAmount||0);
+        const available=money(Math.max(0,refund-alreadyRefunded));
+        if(available>0){
+          const [u]=await tx.select().from(users).where(eq(users.id,locked.userId)).for('update');
+          if(!u)throw new Error('User not found');
+          const nextBalance=money(Number(u.balance)+available);
+          await tx.update(users).set({balance:nextBalance.toFixed(4)}).where(eq(users.id,u.id));
+          await tx.insert(walletLedger).values({id:crypto.randomUUID(),userId:u.id,amount:available.toFixed(4),type:'credit',description:nextStatus==='Canceled'?'Cancellation refund for unfulfilled quantity':'Partial order refund for unfulfilled quantity',referenceId:locked.id,createdAt:new Date()});
+          await tx.update(orders).set({refundedAmount:money(alreadyRefunded+available).toFixed(4)}).where(eq(orders.id,locked.id));
+        }
+      }
+    }
+
+    await tx.update(orders).set({
+      status:nextStatus,
+      remains,
+      startCount:start,
+      cancelRequested: nextStatus==='Canceled' ? false : locked.cancelRequested,
+      updatedAt:new Date()
+    }).where(eq(orders.id,locked.id));
   });
 }
 
@@ -172,5 +231,5 @@ export function startProviderWorker(){
     workerRunning=true;
     try{const pending=await db.query.orders.findMany({where:eq(orders.status,'Pending'),limit:50});for(const o of pending)await placeOrderToProvider(o.id).catch(console.error);const active=await db.query.orders.findMany({where:inArray(orders.status,['Processing','In Progress']),limit:100});for(const o of active)await checkOrderStatus(o.id).catch(console.error);}catch(e){console.error('Provider worker',e);}finally{workerRunning=false;}};
   run();
-  setInterval(run,60_000);
+  setInterval(run,30_000);
 }

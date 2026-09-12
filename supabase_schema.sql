@@ -122,6 +122,7 @@ CREATE TABLE orders (
     provider_error TEXT,
     start_count INTEGER DEFAULT 0 NOT NULL,
     remains INTEGER DEFAULT 0 NOT NULL,
+    refunded_amount NUMERIC(12,4) DEFAULT 0.0000 NOT NULL,
     cancel_requested BOOLEAN DEFAULT FALSE NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL

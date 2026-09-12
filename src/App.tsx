@@ -10,6 +10,7 @@ import Privacy from './pages/Privacy';
 import RefundPolicy from './pages/RefundPolicy';
 import PlatformSEO from './pages/PlatformSEO';
 import PublicSupport from './pages/PublicSupport';
+import BlogPage from './pages/BlogPage';
 
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'));
@@ -77,6 +78,8 @@ export default function App() {
           <Route path="/services" element={<PublicServices />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/support" element={<PublicSupport />} />
+          <Route path="/blog" element={<BlogPage />} />
+          <Route path="/blog/" element={<BlogPage />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/refund-policy" element={<RefundPolicy />} />

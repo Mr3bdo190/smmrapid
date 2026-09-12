@@ -19,7 +19,7 @@ export default function PublicPageShell({ children, title }: { children: React.R
           <Link to="/" className="rapid-public-brand"><span className="brand-mark">R</span><span>Rapid<span>SMM</span></span></Link>
           <nav className="rapid-public-links">
             <Link to="/services">{t('nav.services')}</Link>
-            <Link to="/blog/">Blog</Link>
+            <Link to="/blog">Blog</Link>
             <Link to="/contact">{t('contact.title')}</Link>
             <Link to="/support">Support</Link>
           </nav>
@@ -30,7 +30,7 @@ export default function PublicPageShell({ children, title }: { children: React.R
           <button className="rapid-public-menu" onClick={() => setOpen(!open)} aria-label="Menu">{open ? <X/> : <Menu/>}</button>
         </div>
         {open && <div className="rapid-public-mobile">
-          <Link onClick={() => setOpen(false)} to="/services">{t('nav.services')}</Link><Link onClick={() => setOpen(false)} to="/blog/">Blog</Link><Link onClick={() => setOpen(false)} to="/contact">{t('contact.title')}</Link><Link onClick={() => setOpen(false)} to="/support">Support</Link>
+          <Link onClick={() => setOpen(false)} to="/services">{t('nav.services')}</Link><Link onClick={() => setOpen(false)} to="/blog">Blog</Link><Link onClick={() => setOpen(false)} to="/contact">{t('contact.title')}</Link><Link onClick={() => setOpen(false)} to="/support">Support</Link>
         </div>}
       </header>
       <main className="rapid-public-main">
@@ -40,7 +40,7 @@ export default function PublicPageShell({ children, title }: { children: React.R
       <footer className="rapid-public-footer">
         <div className="rapid-public-footer-inner">
           <div><Link to="/" className="rapid-public-brand"><span className="brand-mark">R</span><span>Rapid<span>SMM</span></span></Link><p>{dir === 'rtl' ? 'منصة خدمات تسويق وإدارة طلبات السوشيال ميديا.' : 'A clear platform for social media marketing services and order management.'}</p></div>
-          <div className="rapid-public-footer-links"><Link to="/services">{t('nav.services')}</Link><Link to="/blog/">Blog</Link><Link to="/support">Support</Link><Link to="/terms">{t('legal.terms')}</Link><Link to="/privacy">{t('legal.privacy')}</Link><Link to="/refund-policy">{t('legal.refund')}</Link></div>
+          <div className="rapid-public-footer-links"><Link to="/services">{t('nav.services')}</Link><Link to="/blog">Blog</Link><Link to="/support">Support</Link><Link to="/terms">{t('legal.terms')}</Link><Link to="/privacy">{t('legal.privacy')}</Link><Link to="/refund-policy">{t('legal.refund')}</Link></div>
           <div className="rapid-public-footer-note">© {new Date().getFullYear()} {siteName}</div>
         </div>
       </footer>

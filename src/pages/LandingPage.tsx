@@ -1,4 +1,4 @@
-Import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowRight, Check, ChevronDown, Headphones, Layers3, Menu, ShieldCheck, Sparkles, Wallet, X, Zap } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';

@@ -31,7 +31,7 @@ export default function AdminOrders() {
     queryFn: async () => {
       const token = await user!.getIdToken();
       const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE), status, ...(q ? { q } : {}) });
-      const r = await apiFetch(`/api/admin/orders?${params}`, user, { headers: { Authorization: *** ${token}` } });
+      const r = await apiFetch(`/api/admin/orders?${params}`, user, { headers: { Authorization: Bearer ${token}` } });
       if (!r.ok) throw new Error(await e(r, 'Failed to load orders'));
       return r.json();
     },

@@ -17,7 +17,7 @@ function UserDetailsModal({ userId, onClose }: { userId: string, onClose: () => 
     queryKey: ['admin-user-details', userId],
     queryFn: async () => {
       const token = await user?.getIdToken();
-      const res = await apiFetch(`/api/admin/users/${userId}`, user, { headers: { Authorization: *** ${token}` } });
+      const res = await apiFetch(`/api/admin/users/${userId}`, user, { headers: { Authorization: Bearer ${token}` } });
       if (!res.ok) throw new Error('Failed to load user details');
       return res.json();
     },

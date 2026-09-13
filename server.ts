@@ -1162,7 +1162,7 @@ app.get('/api/admin/analytics/top-services', requireAuth, requireAdmin, async(re
     SELECT s.name, COUNT(*) as order_count, SUM(o.cost) as revenue
     FROM ${orders} o
     JOIN ${services} s ON o.service_id = s.id
-    WHERE o.createdAt >= NOW() - INTERVAL '30 days'
+    WHERE o.created_at >= NOW() - INTERVAL '30 days'
     GROUP BY s.id, s.name
     ORDER BY order_count DESC
     LIMIT 10
@@ -1207,7 +1207,7 @@ app.get('/api/admin/analytics/export', requireAuth, requireAdmin, async(req,res)
     SELECT s.name, COUNT(*) as order_count, SUM(o.cost) as revenue
     FROM ${orders} o
     JOIN ${services} s ON o.service_id = s.id
-    WHERE o.createdAt >= NOW() - INTERVAL '${sql.raw(String(days) + " days")}'
+    WHERE o.created_at >= NOW() - INTERVAL '${sql.raw(String(days) + " days")}'
     GROUP BY s.id, s.name
     ORDER BY order_count DESC
     LIMIT 10

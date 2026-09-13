@@ -15,7 +15,7 @@ import {
   users, orders, payments, tickets, ticketMessages, services, categories, settings,
   providers, shortlinks, shortlinkClaims, shortlinkTokens, raffles, raffleTickets,
   mysteryBoxTiers, walletLedger, referralClicks, affiliateCommissions, affiliateWithdrawals, coupons, couponUses, auditLogs,
-  systemReports, contactMessages, refillRequests, notifications
+  systemReports, contactMessages, refillRequests, notifications, systemLogs
 } from './src/db/schema';
 import { adminAuth } from './src/lib/firebase-admin';
 import { ProviderClient, placeOrderToProvider, startProviderWorker, checkOrderStatus, refundOrderOnce } from './src/lib/provider-engine';
@@ -84,6 +84,26 @@ const apiError = (res: express.Response, status: number, message: string, code =
 const num = (v: unknown) => typeof v === 'number' ? v : Number(v);
 const money = (v: number) => Math.round((v + Number.EPSILON) * 10000) / 10000;
 const positiveMoney = (v: unknown) => Number.isFinite(num(v)) && num(v) > 0;
+
+const getMinSetting = async (key: string, fallback: number) => {
+  const rows = await db.select().from(settings);
+  const val = rows.find(s => s.key === key)?.value;
+  const n = num(val);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+};
+
+const logSystemError = async (level: 'error' | 'warning' | 'info', message: string, details?: any) => {
+  try {
+    await db.insert(systemLogs).values({
+      level,
+      message,
+      details: details ? (typeof details === 'string' ? details : JSON.stringify(details)) : null,
+    });
+  } catch (e) {
+    // Never let logging itself crash the request
+    console.error('Failed to write system log:', e);
+  }
+};
 const uuidLike = (v: unknown) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
 const validUrl = (v: unknown) => { try { const u = new URL(String(v)); return ['http:', 'https:'].includes(u.protocol); } catch { return false; } };
 
@@ -622,6 +642,8 @@ app.post('/api/client/payments', paymentLimiter, requireAuth, async (req: any, r
   if (!Number.isFinite(rate) || rate <= 0) return apiError(res, 503, 'Exchange rate is not configured — set it in Admin Settings', 'RATE_NOT_CONFIGURED');
   const usdAmount = money(amountEgp / rate);
   if (!positiveMoney(usdAmount)) return apiError(res, 400, 'Invalid amount', 'INVALID_AMOUNT');
+  const minDepositUsd = num(settingsRows.find(s => s.key === 'min_deposit_amount')?.value ?? 1);
+  if (usdAmount < minDepositUsd) return apiError(res, 400, `Minimum deposit is $${minDepositUsd.toFixed(2)}`, 'MIN_AMOUNT_ERROR');
   const [p] = await db.insert(payments).values({
     userId: req.dbUser.id,
     amount: usdAmount.toFixed(4),
@@ -731,6 +753,8 @@ app.post('/api/heleket/create', paymentLimiter, requireAuth, async (req: any, re
     // (Electronic-wallet deposits are paid in EGP and converted to USD using the admin exchange rate.)
     const amount = num(req.body?.amount);
     if (!positiveMoney(amount) || amount < 1 || amount > 1000000) return apiError(res, 400, 'Invalid amount', 'INVALID_AMOUNT');
+    const minDeposit = await getMinSetting('min_deposit_amount', 1);
+    if (amount < minDeposit) return apiError(res, 400, `Minimum deposit is $${minDeposit.toFixed(2)}`, 'MIN_AMOUNT_ERROR');
     getHeleketCredentials(); // fails fast with a clear message if HELEKET_MERCHANT_ID/HELEKET_PAYMENT_API_KEY are missing or malformed
     const currency = process.env.HELEKET_CURRENCY || 'USD';
     const baseUrl = process.env.PUBLIC_APP_URL || `${req.protocol}://${req.get('host')}`;
@@ -882,6 +906,8 @@ app.post('/api/shahnawy/create', paymentLimiter, requireAuth, async (req:any, re
     const rate = num((await db.select().from(settings)).find((s:any)=>s.key==='usd_exchange_rate')?.value || '50');
     if (!Number.isFinite(rate) || rate <= 0) return apiError(res, 503, 'Exchange rate is not configured', 'RATE_NOT_CONFIGURED');
     const usdAmount = money(amountEgp / rate);
+    const minDepositUsd = await getMinSetting('min_deposit_amount', 1);
+    if (usdAmount < minDepositUsd) return apiError(res, 400, `Minimum deposit is $${minDepositUsd.toFixed(2)} USD`, 'MIN_AMOUNT_ERROR');
     const [p] = await db.insert(payments).values({
       userId: req.dbUser.id,
       amount: usdAmount.toFixed(4),
@@ -1039,7 +1065,7 @@ app.put('/api/admin/coupons/:id',requireAuth,requireAdmin,async(req:any,res:any)
 // Admin settings/users/categories/services/providers/orders/payments/tickets/reports/audit/raffles/mystery
 const secretKeys = new Set(['shahnawy_public_key','shahnawy_secret_key','provider_api_key']);
 app.get('/api/admin/settings',requireAuth,requireAdmin,async(_req,res)=>{const rows=await db.select().from(settings); const out:any={}; for(const r of rows)out[r.key]=secretKeys.has(r.key)?'********':r.value; res.json(out);});
-app.put('/api/admin/settings',adminLimiter,requireAuth,requireAdmin,async(req:any,res)=>{const allowed=new Set(['site_name','currency_symbol','vodafone_cash_number','site_description','support_email','site_logo','affiliate_commission_percentage','usd_exchange_rate','default_profit_margin','shahnawy_enabled','shahnawy_base_url','shahnawy_public_key','shahnawy_secret_key','shahnawy_merchant_wallet_number','shahnawy_min_amount','shahnawy_max_amount','add_funds_wallet_intro_en','add_funds_wallet_intro_ar','add_funds_wallet_verification_en','add_funds_wallet_verification_ar','add_funds_vf_instruction_en','add_funds_vf_instruction_ar','add_funds_or_instruction_en','add_funds_or_instruction_ar','add_funds_et_instruction_en','add_funds_et_instruction_ar','add_funds_crypto_intro_en','add_funds_crypto_intro_ar','add_funds_crypto_invoice_en','add_funds_crypto_invoice_ar']); for(const [key,val] of Object.entries(req.body||{})){if(!allowed.has(key))return apiError(res,400,`Setting not allowed: ${key}`,'INVALID_SETTING'); const value=String(val).trim(); if(secretKeys.has(key)&&value==='********') continue; if(key==='shahnawy_enabled'&&!['true','false'].includes(value))return apiError(res,400,'Invalid gateway enabled value','INVALID_SETTING'); if(key==='shahnawy_base_url'&&!/^https?:\/\//i.test(value))return apiError(res,400,'Invalid Sha7nawy base URL','INVALID_SETTING'); if(['shahnawy_min_amount','shahnawy_max_amount'].includes(key)&&(!Number.isFinite(num(value))||num(value)<1||num(value)>10000000))return apiError(res,400,'Invalid Sha7nawy amount limit','INVALID_SETTING'); if(key==='affiliate_commission_percentage'&&(!Number.isFinite(num(value))||num(value)<0||num(value)>100))return apiError(res,400,'Invalid commission percentage','INVALID_SETTING'); if(key==='usd_exchange_rate'&&(!Number.isFinite(num(value))||num(value)<=0||num(value)>100000))return apiError(res,400,'Invalid exchange rate','INVALID_SETTING'); if(key==='default_profit_margin'&&(!Number.isFinite(num(value))||num(value)<0||num(value)>10000))return apiError(res,400,'Invalid default profit margin','INVALID_SETTING'); await db.insert(settings).values({key,value}).onConflictDoUpdate({target:settings.key,set:{value}});} await audit(req.dbUser.id,'UPDATE_SETTINGS','SETTINGS','settings'); publicConfigCache=null; showcaseCache=null; publicServicesCache=null; res.json({success:true});});
+app.put('/api/admin/settings',adminLimiter,requireAuth,requireAdmin,async(req:any,res)=>{const allowed=new Set(['site_name','currency_symbol','vodafone_cash_number','site_description','support_email','site_logo','affiliate_commission_percentage','usd_exchange_rate','default_profit_margin','min_deposit_amount','min_withdrawal_amount','shahnawy_enabled','shahnawy_base_url','shahnawy_public_key','shahnawy_secret_key','shahnawy_merchant_wallet_number','shahnawy_min_amount','shahnawy_max_amount','add_funds_wallet_intro_en','add_funds_wallet_intro_ar','add_funds_wallet_verification_en','add_funds_wallet_verification_ar','add_funds_vf_instruction_en','add_funds_vf_instruction_ar','add_funds_or_instruction_en','add_funds_or_instruction_ar','add_funds_et_instruction_en','add_funds_et_instruction_ar','add_funds_crypto_intro_en','add_funds_crypto_intro_ar','add_funds_crypto_invoice_en','add_funds_crypto_invoice_ar']); for(const [key,val] of Object.entries(req.body||{})){if(!allowed.has(key))return apiError(res,400,`Setting not allowed: ${key}`,'INVALID_SETTING'); const value=String(val).trim(); if(secretKeys.has(key)&&value==='********') continue; if(key==='shahnawy_enabled'&&!['true','false'].includes(value))return apiError(res,400,'Invalid gateway enabled value','INVALID_SETTING'); if(key==='shahnawy_base_url'&&!/^https?:\/\//i.test(value))return apiError(res,400,'Invalid Sha7nawy base URL','INVALID_SETTING'); if(['shahnawy_min_amount','shahnawy_max_amount'].includes(key)&&(!Number.isFinite(num(value))||num(value)<1||num(value)>10000000))return apiError(res,400,'Invalid Sha7nawy amount limit','INVALID_SETTING'); if(key==='affiliate_commission_percentage'&&(!Number.isFinite(num(value))||num(value)<0||num(value)>100))return apiError(res,400,'Invalid commission percentage','INVALID_SETTING'); if(key==='usd_exchange_rate'&&(!Number.isFinite(num(value))||num(value)<=0||num(value)>100000))return apiError(res,400,'Invalid exchange rate','INVALID_SETTING'); if(key==='default_profit_margin'&&(!Number.isFinite(num(value))||num(value)<0||num(value)>10000))return apiError(res,400,'Invalid default profit margin','INVALID_SETTING'); if(['min_deposit_amount','min_withdrawal_amount'].includes(key)&&(!Number.isFinite(num(value))||num(value)<0||num(value)>10000000))return apiError(res,400,`${key} must be a positive number`,`INVALID_SETTING`); await db.insert(settings).values({key,value}).onConflictDoUpdate({target:settings.key,set:{value}});} await audit(req.dbUser.id,'UPDATE_SETTINGS','SETTINGS','settings'); publicConfigCache=null; showcaseCache=null; publicServicesCache=null; res.json({success:true});});
 app.get('/api/admin/users',requireAuth,requireAdmin,async(req:any,res)=>{
   res.setHeader('Cache-Control','no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma','no-cache');
@@ -1419,6 +1445,8 @@ app.get('/api/admin/reports',requireAuth,requireAdmin,async(req:any,res)=>{
   res.json({data,total:Number(count),page,pageSize});
 });
 app.put('/api/admin/reports/:id/status',adminLimiter,requireAuth,requireAdmin,async(req:any,res)=>{if(!['Unresolved','Resolved'].includes(req.body?.status))return apiError(res,400,'Invalid report status');const [r]=await db.update(systemReports).set({status:req.body.status}).where(eq(systemReports.id,req.params.id)).returning();if(!r)return apiError(res,404,'Report not found');await audit(req.dbUser.id,'UPDATE_REPORT_STATUS','REPORT',r.id,undefined,undefined,r.status);res.json(r);});
+app.get('/api/admin/system-logs',adminLimiter,requireAuth,requireAdmin,async(req:any,res)=>{try{const page=Math.max(1,parseInt(req.query.page)||1);const pageSize=Math.min(500,Math.max(1,parseInt(req.query.pageSize)||100));const level=typeof req.query.level==='string'?req.query.level:'';const where=level?eq(systemLogs.level,level):undefined;const [data,[{count}]]=await Promise.all([(where?db.select().from(systemLogs).where(where):db.select().from(systemLogs)).orderBy(desc(systemLogs.createdAt)).limit(pageSize).offset((page-1)*pageSize),where?db.select({count:sql<number>`count(*)`}).from(systemLogs).where(where):db.select({count:sql<number>`count(*)`}).from(systemLogs)]);res.json({data,total:Number(count),page,pageSize});}catch(e:any){apiError(res,500,'Failed to fetch logs',e?.message||String(e));}});
+app.delete('/api/admin/system-logs',adminLimiter,requireAuth,requireAdmin,async(req:any,res)=>{try{const cutoff=new Date(Date.now()-30*24*60*60*1000);await db.delete(systemLogs).where(sql`${systemLogs.createdAt} < ${cutoff}`);res.json({success:true,deleted:true});}catch(e:any){apiError(res,500,'Failed to clear logs',e?.message||String(e));}});
 
 app.get('/api/admin/shortlinks',requireAuth,requireAdmin,async(_req,res)=>res.json(await db.select().from(shortlinks).orderBy(desc(shortlinks.createdAt))));
 app.post('/api/admin/shortlinks',adminLimiter,requireAuth,requireAdmin,async(req:any,res)=>{const reward=num(req.body?.rewardAmount);if(!req.body?.name||!validUrl(req.body?.url)||!positiveMoney(reward))return apiError(res,400,'Invalid shortlink');const [s]=await db.insert(shortlinks).values({name:String(req.body.name).trim(),url:req.body.url,rewardAmount:money(reward).toFixed(4),status:'active'}).returning();res.status(201).json(s);});
@@ -1516,7 +1544,7 @@ app.post('/api/client/affiliates/withdrawals', requireAuth, async(req:any,res:an
   try {
     const amount=money(num(req.body?.amount)); const method=String(req.body?.method||'').trim(); const destination=String(req.body?.destination||'').trim();
     if(amount<=0||!method||destination.length<3||destination.length>255) throw new Error('Invalid withdrawal request');
-    const rows=await db.select().from(settings); const enabled=String(rows.find((x:any)=>x.key==='affiliate_withdrawal_enabled')?.value||'true')==='true'; const min=money(num(rows.find((x:any)=>x.key==='affiliate_min_withdrawal')?.value||5)); if(!enabled)throw new Error('Affiliate withdrawals are disabled'); if(amount<min)throw new Error(`Minimum withdrawal is ${min.toFixed(2)}`);
+    const rows=await db.select().from(settings); const enabled=String(rows.find((x:any)=>x.key==='affiliate_withdrawal_enabled')?.value||'true')==='true'; const min=money(num(rows.find((x:any)=>x.key==='affiliate_min_withdrawal')?.value||5)); const globalMin=money(num(rows.find((x:any)=>x.key==='min_withdrawal_amount')?.value||0)); const effectiveMin=Math.max(min,globalMin); if(!enabled)throw new Error('Affiliate withdrawals are disabled'); if(amount<effectiveMin)throw new Error(`Minimum withdrawal is $${effectiveMin.toFixed(2)}`);
     const [pending]=await db.select({total:sql<string>`coalesce(sum(${affiliateWithdrawals.amount}),0)`}).from(affiliateWithdrawals).where(and(eq(affiliateWithdrawals.userId,req.dbUser.id),eq(affiliateWithdrawals.status,'Pending')));
     const [earned]=await db.select({total:sql<string>`coalesce(sum(${affiliateCommissions.amount}),0)`}).from(affiliateCommissions).where(eq(affiliateCommissions.affiliateId,req.dbUser.id));
     const [paid]=await db.select({total:sql<string>`coalesce(sum(${affiliateWithdrawals.amount}),0)`}).from(affiliateWithdrawals).where(and(eq(affiliateWithdrawals.userId,req.dbUser.id),eq(affiliateWithdrawals.status,'Approved')));
@@ -1667,6 +1695,7 @@ async function ensureApplicationSchema(){
     'drizzle/0009_service_execution_mode.sql',
     'drizzle/0010_order_refund_counters.sql',
     'drizzle/0011_phase9_security_hardening.sql',
+    'drizzle/0012_system_logs_and_limits.sql',
   ];
   await db.execute(sql`CREATE TABLE IF NOT EXISTS rapid_schema_migrations (name text PRIMARY KEY, applied_at timestamp NOT NULL DEFAULT now())`);
   for (const relative of migrationFiles) {
@@ -1690,7 +1719,7 @@ async function startServer(){
   // so a typo'd or unknown /api/* path returns JSON instead of index.html.
   app.use('/api', (_req, res) => apiError(res, 404, 'Not found', 'NOT_FOUND'));
   if(!isProd){const vite=await createViteServer({server:{middlewareMode:true},appType:'spa'});app.use(vite.middlewares);}else{const distPath=path.join(process.cwd(),'dist');app.use(express.static(distPath,{ maxAge: '1y', etag: true, lastModified: true, setHeaders: (res, filePath) => { if (filePath.endsWith('.html')) { res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate'); res.setHeader('Pragma', 'no-cache'); res.setHeader('Expires', '0'); } else if (filePath.match(/\.(js|css|woff2?|ttf|svg|png|jpg|jpeg|gif|webp|ico)$/)) { res.setHeader('Cache-Control', 'public, max-age=31536000, immutable'); } else { res.setHeader('Cache-Control', 'public, max-age=300'); } } }));app.get('*',(_req,res)=>res.sendFile(path.join(distPath,'index.html'),{headers:{'Cache-Control':'no-cache, no-store, must-revalidate'}}));}
-  app.use((err:any,_req:any,res:any,_next:any)=>{console.error(err);if(!res.headersSent)apiError(res,500,'Internal server error','INTERNAL_ERROR');});
+  app.use((err:any,_req:any,res:any,_next:any)=>{console.error(err); if(!res.headersSent){ logSystemError('error','Internal server error',err?.message || String(err)); apiError(res,500,'Internal server error','INTERNAL_ERROR'); }});
   const server = app.listen(PORT,'0.0.0.0',()=>{console.log(`Server listening on ${PORT}`);startProviderWorker();});
 
   const shutdown = (signal: string) => {

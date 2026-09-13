@@ -6,16 +6,328 @@ import { useTranslation } from '../../lib/i18n';
 import { apiFetch } from '../../lib/api';
 import { Wallet, ShieldCheck, Bitcoin, ExternalLink } from 'lucide-react';
 
-const walletMethods=[{value:'vf_cash',label:'Vodafone Cash'},{value:'or_cash',label:'Orange Cash'},{value:'et_cash',label:'Etisalat Cash'}];
-export default function ClientAddFunds(){
- const {user}=useAuth(); const {t, dir, lang}=useTranslation(); const [gateway,setGateway]=useState<'wallet'|'crypto'>('wallet'); const [amount,setAmount]=useState<number|''>(''); const [walletMethod,setWalletMethod]=useState('vf_cash'); const [phoneNumber,setPhoneNumber]=useState(''); const [pendingPayment,setPendingPayment]=useState<any>(null); const [cryptoPayment,setCryptoPayment]=useState<any>(null);
- const {data:config}=useQuery({queryKey:['client-config'],queryFn:async()=>{const r=await apiFetch('/api/client/config',user);return r.ok?r.json():{};}});
- const walletPay=useMutation({mutationFn:async()=>{const t=await user?.getIdToken();const r=await apiFetch('/api/shahnawy/create',user,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${t}`},body:JSON.stringify({amount:Number(amount),number:phoneNumber,method:walletMethod})});const b=await r.json().catch(()=>({}));if(!r.ok)throw new Error(b.error||b.message||'Payment failed');return b;},onSuccess:b=>{setPendingPayment(b);notify.success('تم إنشاء طلب الدفع. أكّد العملية من محفظتك.');},onError:(e:any)=>notify.error(e.message)});
- const confirmWallet=useMutation({mutationFn:async()=>{const t=await user?.getIdToken();const r=await apiFetch('/api/shahnawy/confirm',user,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${t}`},body:JSON.stringify({paymentId:pendingPayment?.paymentId})});const b=await r.json().catch(()=>({}));if(!r.ok&&r.status!==202)throw new Error(b.error||b.message||'Confirmation failed');return b;},onSuccess:b=>{if(b.status==='completed'){notify.success('تم تأكيد الدفع وإضافة الرصيد.');setPendingPayment(null);setAmount('');setPhoneNumber('');}else notify.info('العملية ما زالت معلقة، جرّب التحقق مرة أخرى.');},onError:(e:any)=>notify.error(e.message)});
- const cryptoPay=useMutation({mutationFn:async()=>{const t=await user?.getIdToken();const r=await apiFetch('/api/heleket/create',user,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${t}`},body:JSON.stringify({amount:Number(amount)})});const b=await r.json().catch(()=>({}));if(!r.ok)throw new Error(b.error||b.message||'Crypto payment failed');return b;},onSuccess:b=>{setCryptoPayment(b);notify.success('تم إنشاء طلب الدفع بنجاح.');},onError:(e:any)=>notify.error(e.message)});
- const rate=Number(config?.usdExchangeRate||0); const usdPreview=amount&&rate?Number(amount)/rate:null; const selected=walletMethods.find(x=>x.value===walletMethod)||walletMethods[0]; const addFunds= config?.addFunds || {}; const walletIntro=addFunds.walletIntro?.[lang] || ''; const walletVerification=addFunds.walletVerification?.[lang] || ''; const methodInstruction=addFunds.methods?.[walletMethod]?.[lang] || ''; const cryptoIntro=addFunds.cryptoIntro?.[lang] || ''; const cryptoInvoiceInstruction=addFunds.cryptoInvoiceInstruction?.[lang] || '';
- return <div className="max-w-5xl mx-auto space-y-7"><div dir={dir}><h2 className="text-2xl font-bold text-gray-900">{t('addFunds.title')}</h2><p className="text-sm text-gray-500 mt-1">{t('addFunds.chooseMethod')}</p></div>
- <div className="grid md:grid-cols-2 gap-4"><button onClick={()=>setGateway('wallet')} className={`rounded-2xl border-2 p-5 text-right ${gateway==='wallet'?'border-indigo-600 bg-indigo-50':'border-gray-200 bg-white'}`}><Wallet className="w-6 h-6 text-indigo-600 mb-2"/><b>{t('addFunds.eWallet')}</b><p className="text-xs text-gray-500 mt-1">{t('addFunds.walletMethods')}</p></button><button onClick={()=>setGateway('crypto')} className={`rounded-2xl border-2 p-5 text-right ${gateway==='crypto'?'border-emerald-600 bg-emerald-50':'border-gray-200 bg-white'}`}><Bitcoin className="w-6 h-6 text-emerald-600 mb-2"/><b>{t('addFunds.crypto')}</b><p className="text-xs text-gray-500 mt-1">{t('addFunds.cryptoDesc')}</p></button></div>
- {gateway==='wallet'&&<>{!config?.shahnawyEnabled?<div className="rounded-xl border border-amber-200 bg-amber-50 p-4">{t('addFunds.walletUnavailable')}</div>:<div className="bg-white rounded-2xl border p-6 space-y-6"><div className="rounded-xl bg-indigo-50 p-4"><b>{t('addFunds.eWallet')}</b><p className="text-sm mt-1">{walletIntro}</p><p className="text-xs text-indigo-700 mt-1">{walletVerification}</p></div><div><label className="block text-sm font-medium mb-2">{t('addFunds.chooseWallet')}</label><div className="grid md:grid-cols-3 gap-3">{walletMethods.map(m=>{const instruction=addFunds.methods?.[m.value]?.[lang] || ''; return <button key={m.value} type="button" onClick={()=>setWalletMethod(m.value)} className={`p-4 rounded-xl border-2 text-right ${walletMethod===m.value?'border-indigo-600 bg-indigo-50':'border-gray-200'}`}><b>{m.label}</b><div className="text-xs text-gray-500 mt-1">{instruction}</div></button>})}</div></div><div className="grid md:grid-cols-2 gap-5"><div><label className="block text-sm font-medium mb-1">{t('addFunds.amountEgp')}</label><input type="number" min={config?.shahnawyMinAmount||5} max={config?.shahnawyMaxAmount||10000} value={amount} onChange={e=>setAmount(e.target.value===''?'':Number(e.target.value))} className="input-primary"/>{usdPreview!==null&&<p className="text-xs text-emerald-700 mt-2">{t('addFunds.approxCredit')} <b>${usdPreview.toFixed(2)}</b>.</p>}</div><div><label className="block text-sm font-medium mb-1">{t('addFunds.paymentWallet')}</label><input type="tel" maxLength={11} value={phoneNumber} onChange={e=>setPhoneNumber(e.target.value.replace(/\D/g,'').slice(0,11))} className="input-primary" placeholder="01XXXXXXXXX" aria-label={t('addFunds.paymentWallet')}/></div></div><div className="rounded-xl border bg-gray-50 p-4 text-sm">{methodInstruction}</div><button onClick={()=>walletPay.mutate()} disabled={walletPay.isPending||!amount||!/^01\d{9}$/.test(phoneNumber)} className="w-full btn-primary py-3">{walletPay.isPending?t('addFunds.creating'):t('addFunds.create')}</button></div>}{pendingPayment&&<div className="bg-white rounded-2xl border border-emerald-200 p-6"><div className="flex gap-2 text-emerald-700 font-bold mb-3"><ShieldCheck/> طلب دفع قيد التأكيد</div><p className="text-sm">المبلغ: <b>{pendingPayment.amountEgp} EGP</b></p><p className="text-sm break-all">{t('addFunds.reference')}: <b>{pendingPayment.reference||'-'}</b></p><div className="rounded-xl bg-amber-50 p-4 my-4 text-sm">{methodInstruction}</div><button onClick={()=>confirmWallet.mutate()} disabled={confirmWallet.isPending} className="w-full btn-primary">{confirmWallet.isPending?t('addFunds.verifying'):t('addFunds.confirmPayment')}</button></div>}</>}
- {gateway==='crypto'&&<div className="bg-white rounded-2xl border p-6 space-y-5"><div className="rounded-xl bg-emerald-50 p-4"><b>{t('addFunds.crypto')}</b><p className="text-sm text-gray-600 mt-1">{cryptoIntro}</p></div><div><label className="block text-sm font-medium mb-1">{t('addFunds.amountUsd')}</label><input type="number" min="1" max="1000000" step="0.01" value={amount} onChange={e=>setAmount(e.target.value===''?'':Number(e.target.value))} className="input-primary" placeholder="10"/></div><button onClick={()=>cryptoPay.mutate()} disabled={cryptoPay.isPending||!amount||!config?.heleketEnabled} className="w-full btn-primary py-3">{cryptoPay.isPending?t('addFunds.creatingInvoice'):config?.heleketEnabled?t('addFunds.createInvoice'):t('addFunds.cryptoUnavailable')}</button>{cryptoPayment&&<div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5"><b className="text-emerald-800">{t('addFunds.invoiceReady')}</b><p className="text-sm my-3">{cryptoInvoiceInstruction}</p>{cryptoPayment.paymentUrl?<a href={cryptoPayment.paymentUrl} target="_blank" rel="noreferrer" className="btn-primary inline-flex items-center gap-2">{t('addFunds.openInvoice')} <ExternalLink className="w-4 h-4"/></a>:<p className="text-sm text-red-600">{t('addFunds.noInvoice')}</p>}</div>}</div>}</div>;
+const walletMethods = [{ value: 'vf_cash', label: 'Vodafone Cash' }, { value: 'or_cash', label: 'Orange Cash' }, { value: 'et_cash', label: 'Etisalat Cash' }];
+
+export default function ClientAddFunds() {
+  const { user } = useAuth();
+  const { t, dir, lang } = useTranslation();
+  const [gateway, setGateway] = useState<'wallet' | 'crypto'>('wallet');
+  const [amount, setAmount] = useState<number | ''>('');
+  const [walletMethod, setWalletMethod] = useState('vf_cash');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [pendingPayment, setPendingPayment] = useState<any>(null);
+  const [cryptoPayment, setCryptoPayment] = useState<any>(null);
+
+  const { data: config } = useQuery({
+    queryKey: ['client-config'],
+    queryFn: async () => {
+      const r = await apiFetch('/api/client/config', user);
+      return r.ok ? r.json() : {};
+    },
+  });
+
+  const handleApiError = (res: Response) => {
+    if (!res.ok) {
+      return res.json().then((b: any) => {
+        throw new Error(b.error || b.message || b.errorKey || 'Request failed');
+      }).catch(() => {
+        throw new Error('Request failed');
+      });
+    }
+    return res.json();
+  };
+
+  const walletPay = useMutation({
+    mutationFn: async () => {
+      const token = await user?.getIdToken();
+      const r = await apiFetch('/api/shahnawy/create', user, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ amount: Number(amount), number: phoneNumber, method: walletMethod }),
+      });
+      const b = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        if (r.status === 400 && b.code === 'MIN_AMOUNT_ERROR') {
+          const minMatch = b.error?.match(/\$(\d+(?:\.\d+)?)/);
+          const min = minMatch ? parseFloat(minMatch[1]) : 1;
+          throw new Error(t('errors.minAmount', { min: min.toFixed(2) }));
+        }
+        throw new Error(b.error || b.message || 'Payment failed');
+      }
+      return b;
+    },
+    onSuccess: (b) => {
+      setPendingPayment(b);
+      notify.success(t('addFunds.paymentCreated'));
+    },
+    onError: (e: any) => notify.error(e.message),
+  });
+
+  const confirmWallet = useMutation({
+    mutationFn: async () => {
+      const token = await user?.getIdToken();
+      const r = await apiFetch('/api/shahnawy/confirm', user, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ paymentId: pendingPayment?.paymentId }),
+      });
+      const b = await r.json().catch(() => ({}));
+      if (!r.ok && r.status !== 202) throw new Error(b.error || b.message || 'Confirmation failed');
+      return b;
+    },
+    onSuccess: (b) => {
+      if (b.status === 'completed') {
+        notify.success(t('addFunds.paymentConfirmed'));
+        setPendingPayment(null);
+        setAmount('');
+        setPhoneNumber('');
+      } else {
+        notify.info(t('addFunds.paymentStillPending'));
+      }
+    },
+    onError: (e: any) => notify.error(e.message),
+  });
+
+  const cryptoPay = useMutation({
+    mutationFn: async () => {
+      const token = await user?.getIdToken();
+      const r = await apiFetch('/api/heleket/create', user, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ amount: Number(amount) }),
+      });
+      const b = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        if (r.status === 400 && b.code === 'MIN_AMOUNT_ERROR') {
+          const minMatch = b.error?.match(/\$(\d+(?:\.\d+)?)/);
+          const min = minMatch ? parseFloat(minMatch[1]) : 1;
+          throw new Error(t('errors.minAmount', { min: min.toFixed(2) }));
+        }
+        throw new Error(b.error || b.message || 'Crypto payment failed');
+      }
+      return b;
+    },
+    onSuccess: (b) => {
+      setCryptoPayment(b);
+      notify.success(t('addFunds.invoiceCreated'));
+    },
+    onError: (e: any) => notify.error(e.message),
+  });
+
+  const rate = Number(config?.usdExchangeRate || 0);
+  const usdPreview = amount && rate ? Number(amount) / rate : null;
+  const selected = walletMethods.find(x => x.value === walletMethod) || walletMethods[0];
+  const addFunds = config?.addFunds || {};
+  const walletIntro = addFunds.walletIntro?.[lang] || '';
+  const walletVerification = addFunds.walletVerification?.[lang] || '';
+  const methodInstruction = addFunds.methods?.[walletMethod]?.[lang] || '';
+  const cryptoIntro = addFunds.cryptoIntro?.[lang] || '';
+  const cryptoInvoiceInstruction = addFunds.cryptoInvoiceInstruction?.[lang] || '';
+
+  return (
+    <div className="max-w-5xl mx-auto space-y-7">
+      <div dir={dir}>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t('addFunds.title')}</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('addFunds.chooseMethod')}</p>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4">
+        <button
+          onClick={() => setGateway('wallet')}
+          className={`rounded-2xl border-2 p-5 text-right ${
+            gateway === 'wallet'
+              ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20'
+              : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
+          }`}
+        >
+          <Wallet className="w-6 h-6 text-indigo-600 mb-2" />
+          <b className="text-gray-900 dark:text-white">{t('addFunds.eWallet')}</b>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('addFunds.walletMethods')}</p>
+        </button>
+
+        <button
+          onClick={() => setGateway('crypto')}
+          className={`rounded-2xl border-2 p-5 text-right ${
+            gateway === 'crypto'
+              ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-900/20'
+              : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
+          }`}
+        >
+          <Bitcoin className="w-6 h-6 text-emerald-600 mb-2" />
+          <b className="text-gray-900 dark:text-white">{t('addFunds.crypto')}</b>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('addFunds.cryptoDesc')}</p>
+        </button>
+      </div>
+
+      {/* Wallet Gateway */}
+      {gateway === 'wallet' && (
+        <>
+          {!config?.shahnawyEnabled ? (
+            <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/30 p-4">
+              <p className="text-amber-800 dark:text-amber-300">{t('addFunds.walletUnavailable')}</p>
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 space-y-6">
+              <div className="rounded-xl bg-indigo-50 dark:bg-indigo-900/20 p-4">
+                <b className="text-gray-900 dark:text-white">{t('addFunds.eWallet')}</b>
+                <p className="text-sm mt-1 text-indigo-700 dark:text-indigo-300">{walletIntro}</p>
+                <p className="text-xs text-indigo-700 dark:text-indigo-300 mt-1">{walletVerification}</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  {t('addFunds.chooseWallet')}
+                </label>
+                <div className="grid md:grid-cols-3 gap-3">
+                  {walletMethods.map(m => {
+                    const instruction = addFunds.methods?.[m.value]?.[lang] || '';
+                    return (
+                      <button
+                        key={m.value}
+                        type="button"
+                        onClick={() => setWalletMethod(m.value)}
+                        className={`p-4 rounded-xl border-2 text-right ${
+                          walletMethod === m.value
+                            ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20'
+                            : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
+                        }`}
+                      >
+                        <b className="text-gray-900 dark:text-white">{m.label}</b>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{instruction}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t('addFunds.amountEgp')}
+                  </label>
+                  <input
+                    type="number"
+                    min={config?.shahnawyMinAmount || 5}
+                    max={config?.shahnawyMaxAmount || 10000}
+                    value={amount}
+                    onChange={e => setAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                    className="input-primary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
+                  />
+                  {usdPreview !== null && (
+                    <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-2">
+                      {t('addFunds.approxCredit')} <b>${usdPreview.toFixed(2)}</b>.
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t('addFunds.paymentWallet')}
+                  </label>
+                  <input
+                    type="tel"
+                    maxLength={11}
+                    value={phoneNumber}
+                    onChange={e => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                    className="input-primary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
+                    placeholder="01XXXXXXXXX"
+                    aria-label={t('addFunds.paymentWallet')}
+                  />
+                </div>
+              </div>
+
+              <div className="rounded-xl bg-gray-50 dark:bg-gray-700 p-4 text-sm text-gray-700 dark:text-gray-300">
+                {methodInstruction}
+              </div>
+
+              <button
+                onClick={() => walletPay.mutate()}
+                disabled={walletPay.isPending || !amount || !/^01\d{9}$/.test(phoneNumber)}
+                className="w-full btn-primary py-3"
+              >
+                {walletPay.isPending ? t('addFunds.creating') : t('addFunds.create')}
+              </button>
+
+              {pendingPayment && (
+                <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/30 p-5">
+                  <b className="text-emerald-800 dark:text-emerald-300">{t('addFunds.invoiceReady')}</b>
+                  <p className="text-sm my-3 text-emerald-800 dark:text-emerald-300">
+                    {walletVerification}
+                  </p>
+                  <button
+                    onClick={() => confirmWallet.mutate()}
+                    disabled={confirmWallet.isPending}
+                    className="btn-primary"
+                  >
+                    {confirmWallet.isPending ? t('addFunds.verifying') : t('addFunds.confirmPayment')}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Crypto Gateway */}
+      {gateway === 'crypto' && (
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 space-y-5">
+          <div className="rounded-xl bg-emerald-50 dark:bg-emerald-900/20 p-4">
+            <b className="text-gray-900 dark:text-white">{t('addFunds.crypto')}</b>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{cryptoIntro}</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {t('addFunds.amountUsd')}
+            </label>
+            <input
+              type="number"
+              min="1"
+              max="1000000"
+              step="0.01"
+              value={amount}
+              onChange={e => setAmount(e.target.value === '' ? '' : Number(e.target.value))}
+              className="input-primary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
+              placeholder="10"
+            />
+          </div>
+
+          <button
+            onClick={() => cryptoPay.mutate()}
+            disabled={cryptoPay.isPending || !amount || !config?.heleketEnabled}
+            className="w-full btn-primary py-3"
+          >
+            {cryptoPay.isPending
+              ? t('addFunds.creatingInvoice')
+              : config?.heleketEnabled
+              ? t('addFunds.createInvoice')
+              : t('addFunds.cryptoUnavailable')}
+          </button>
+
+          {cryptoPayment && (
+            <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/30 p-5">
+              <b className="text-emerald-800 dark:text-emerald-300">{t('addFunds.invoiceReady')}</b>
+              <p className="text-sm my-3 text-emerald-800 dark:text-emerald-300">
+                {cryptoInvoiceInstruction}
+              </p>
+              {cryptoPayment.paymentUrl ? (
+                <a
+                  href={cryptoPayment.paymentUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-primary inline-flex items-center gap-2"
+                >
+                  {t('addFunds.openInvoice')} <ExternalLink className="w-4 h-4" />
+                </a>
+              ) : (
+                <p className="text-sm text-red-600 dark:text-red-400">
+                  {t('addFunds.noInvoice')}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }

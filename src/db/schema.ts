@@ -173,6 +173,17 @@ export const settings = pgTable('settings', {
   value: text('value').notNull(),
 });
 
+export const systemLogs = pgTable('system_logs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  level: text('level').notNull(),
+  message: text('message').notNull(),
+  details: text('details'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (t) => ({
+  levelIdx: index('system_logs_level_idx').on(t.level),
+  createdAtIdx: index('system_logs_created_at_idx').on(t.createdAt),
+}));
+
 export const auditLogs = pgTable('audit_logs', {
   id: uuid('id').defaultRandom().primaryKey(),
   adminId: uuid('admin_id').references(() => users.id).notNull(),

@@ -1138,7 +1138,7 @@ app.get('/api/admin/analytics/orders-over-time', requireAuth, requireAdmin, asyn
     ORDER BY day ASC
   `);
   res.json(result.rows.map(r => ({
-    day: r.day.toISOString().split('T')[0],
+    day: new Date(r.day).toISOString().split('T')[0],
     count: Number(r.count),
     revenue: Number(r.revenue || 0),
     avg_order_value: Number(r.avg_order_value || 0)
@@ -1161,7 +1161,7 @@ app.get('/api/admin/analytics/top-services', requireAuth, requireAdmin, async(re
   const result = await db.execute(sql`
     SELECT s.name, COUNT(*) as order_count, SUM(o.cost) as revenue
     FROM ${orders} o
-    JOIN ${services} s ON o.serviceId = s.id
+    JOIN ${services} s ON o.service_id = s.id
     WHERE o.createdAt >= NOW() - INTERVAL '30 days'
     GROUP BY s.id, s.name
     ORDER BY order_count DESC
@@ -1190,7 +1190,7 @@ app.get('/api/admin/analytics/export', requireAuth, requireAdmin, async(req,res)
   `);
 
   const ordersData = ordersResult.rows.map(r => ({
-    day: r.day.toISOString().split('T')[0],
+    day: new Date(r.day).toISOString().split('T')[0],
     count: Number(r.count),
     revenue: Number(r.revenue || 0),
     avg_order_value: Number(r.avg_order_value || 0)
@@ -1206,7 +1206,7 @@ app.get('/api/admin/analytics/export', requireAuth, requireAdmin, async(req,res)
   const servicesResult = await db.execute(sql`
     SELECT s.name, COUNT(*) as order_count, SUM(o.cost) as revenue
     FROM ${orders} o
-    JOIN ${services} s ON o.serviceId = s.id
+    JOIN ${services} s ON o.service_id = s.id
     WHERE o.createdAt >= NOW() - INTERVAL '${sql.raw(String(days) + " days")}'
     GROUP BY s.id, s.name
     ORDER BY order_count DESC

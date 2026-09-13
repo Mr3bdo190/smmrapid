@@ -58,7 +58,7 @@ export default function AdminLayout() {
           <ul className="space-y-1 px-3">
             {navItems.map((item) => (
               <li key={item.key}>
-                <Link to={item.href} onClick={() => setIsMobileMenuOpen(false)} className={cn("rapid-nav-item flex items-center gap-3 px-3 py-3 rounded-2xl text-sm font-bold transition-colors", location.pathname === item.href ? "is-active" : "text-slate-300 hover:bg-white hover:text-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white")}>
+                <Link to={item.href} onClick={() => setIsMobileMenuOpen(false)} className={cn("rapid-nav-item flex items-center gap-3 px-3 py-3 rounded-2xl text-sm font-bold transition-colors", location.pathname === item.href ? "is-active" : "text-slate-300 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700")}>
                   <item.icon className="w-5 h-5" /> {t(item.key)}
                 </Link>
               </li>

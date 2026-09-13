@@ -151,10 +151,19 @@ export default function AdminUsers() {
     bulkStatusMutation.mutate({ ids: Array.from(selected), newStatus: bulkStatus });
   };
 
-  const handleExport = (scope: 'page' | 'all') => {
+  const handleExport = async (scope: 'page' | 'all') => {
     const params = new URLSearchParams({ status: statusFilter, ...(q ? { q } : {}) });
     if (scope === 'page') params.set('page', String(page));
-    window.open('/api/admin/users/export?' + params, '_blank');
+    const token = await user?.getIdToken();
+    const response = await apiFetch('/api/admin/users/export?' + params, user, { headers: { Authorization: 'Bearer ' + token } });
+    if (!response.ok) throw new Error('Export failed');
+    const blob = new Blob([await response.text()], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'users-export.csv';
+    a.click();
+    URL.revokeObjectURL(url);
     notify.success(t('common.exportSuccess'));
   };
 

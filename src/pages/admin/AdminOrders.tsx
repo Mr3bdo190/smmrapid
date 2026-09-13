@@ -68,11 +68,20 @@ export default function AdminOrders() {
     bulkStatusMutation.mutate({ ids: Array.from(selected), newStatus: bulkStatus });
   };
 
-  const handleExport = (scope: 'page' | 'all') => {
+  const handleExport = async (scope: 'page' | 'all') => {
     const params = new URLSearchParams({ status, ...(q ? { q } : {}) });
     if (scope === 'page') params.set('page', String(page));
-    window.open('/api/admin/orders/export?' + params, '_blank');
-    notify.success(t('common.exportSuccess'));
+    const token = await user?.getIdToken();
+    const response = await apiFetch('/api/admin/orders/export?' + params, user, { headers: { Authorization: 'Bearer ' + token } });
+    if (!response.ok) { notify.error('Export failed'); return; }
+    const blob = new Blob([await response.text()], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'orders-export.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    notify.success(t('admin.orders.exportSuccess'));
   };
 
   const rows = oq.data?.data || [];

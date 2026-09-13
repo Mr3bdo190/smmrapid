@@ -59,6 +59,18 @@
     <link rel="prefetch" href="/og-image.jpg" as="image" />
   </head>
   <body>
+    <!-- Theme init: prevent flash of incorrect theme -->
+    <script>
+      (function() {
+        var theme = localStorage.getItem('theme');
+        if (!theme) {
+          theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        if (theme === 'dark') document.documentElement.classList.add('dark');
+        document.documentElement.lang = localStorage.getItem('lang') === 'ar' ? 'ar' : 'en';
+        document.documentElement.dir = localStorage.getItem('lang') === 'ar' ? 'rtl' : 'ltr';
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

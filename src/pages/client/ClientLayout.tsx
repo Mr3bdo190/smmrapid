@@ -3,7 +3,7 @@ import { useLocation, Link, Outlet, Navigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
-import { useTranslation, LanguageSwitcher } from '../../lib/i18n';
+import { useTranslation, LanguageSwitcher, ThemeToggle } from '../../lib/i18n';
 import { LayoutDashboard, ShoppingCart, ListOrdered, Wallet, LogOut, Menu, X, User, Ticket, LifeBuoy, Tags, Link2, Code, Users, Gift, Gamepad2, RefreshCw, Bell, Plus } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -106,7 +106,8 @@ export default function ClientLayout() {
           })}
         </nav>
         <div className="rapid-sidebar-foot p-4 space-y-2">
-          <LanguageSwitcher className="w-full justify-center border-gray-300 text-gray-600 hover:bg-gray-50" />
+          <LanguageSwitcher className="w-full justify-center border-gray-300 text-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700" />
+          <ThemeToggle className="w-full justify-center border-gray-300 dark:border-gray-600" />
           <button onClick={logOut} className="flex items-center gap-3 px-3 py-2 w-full rounded-md text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"><LogOut className="w-5 h-5" /> {t('common.signOut')}</button>
         </div>
       </aside>
@@ -131,6 +132,7 @@ export default function ClientLayout() {
               <span className="text-xs text-slate-500 hidden sm:block">{t('common.currentBalance')}</span>
             </div>
             <Link to="/dashboard/profile" className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold border border-violet-200 transition-colors">{(freshUser || dbUser).email[0].toUpperCase()}</Link>
+            <ThemeToggle className="hidden md:inline-flex border-gray-300 dark:border-gray-600" />
           </div>
         </header>
         <div className="rapid-content flex-1 overflow-y-auto p-4 md:p-8"><div className="mx-auto max-w-[1480px] client-page-frame">

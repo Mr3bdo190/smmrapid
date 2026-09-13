@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
 import { useTranslation } from '../../lib/i18n';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, BarChart, Bar, PieChart, Pie, Cell, LabelList } from 'recharts';
-import { Users, ShoppingCart, Wallet, RefreshCw, AlertCircle, Server, ListOrdered, Headphones, CreditCard, Activity, Calendar, Download, TrendingUp, TrendingDown } from 'lucide-react';
+import { Users, ShoppingCart, Wallet, RefreshCw, AlertCircle, Server, ListOrdered, Headphones, CreditCard, Activity, Calendar, Download } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
 
@@ -135,8 +135,8 @@ export default function AdminDashboard() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 tracking-tight">{t('admin.dashboard.analytics')}</h2>
-          <p className="mt-1 text-sm text-gray-500">{t('admin.dashboard.subtitle')}</p>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">{t('admin.dashboard.analytics')}</h2>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{t('admin.dashboard.subtitle')}</p>
         </div>
         <div className="flex items-center gap-3">
           {/* Period Selector */}
@@ -160,8 +160,7 @@ export default function AdminDashboard() {
             {t('admin.dashboard.export')}
           </button>
           <button onClick={handleRefresh} className="btn-ghost flex items-center gap-2">
-            <RefreshCw className={'w-4 h-4' + (isFetching ? ' animate-spin' : '')}
-          />
+            <RefreshCw className={'w-4 h-4' + (isFetching ? ' animate-spin' : '')} />
           {t('admin.dashboard.refresh')}
           </button>
         </div>
@@ -186,17 +185,18 @@ export default function AdminDashboard() {
       {/* Charts Row 1 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Orders & Revenue Line Chart */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <h3 className="font-bold text-gray-900 mb-4">{t('admin.dashboard.ordersChart')}</h3>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5">
+          <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-4">{t('admin.dashboard.ordersChart')}</h3>
           <ResponsiveContainer width="100%" height={260}>
             <LineChart data={ordersData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#9CA3AA' }} />
-              <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#9CA3AA' }} />
-              <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#9CA3AA' }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--grid-color, #e2e8f0)" />
+              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--axis-color, #94a3b8)' }} />
+              <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--axis-color, #94a3b8)' }} />
+              <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--axis-color, #94a3b8)' }} />
               <Tooltip
-                contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '6px' }}
+                contentStyle={{ backgroundColor: 'var(--tooltip-bg, #fff)', border: '1px solid var(--border-color, #e5e7eb)', borderRadius: '6px' }}
                 labelStyle={{ fontSize: '11px' }}
+                formatter={(value: any, name: string) => name === t('admin.dashboard.revenue') ? [money(value), name] : [value, name]}
               />
               <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
               <Line yAxisId="left" type="monotone" dataKey="orders" stroke="#3B82F6" strokeWidth={2} dot={{ r: 3 }} name={t('admin.dashboard.orders')} activeDot={{ r: 5 }} />
@@ -206,8 +206,8 @@ export default function AdminDashboard() {
         </div>
 
         {/* Order Status Pie Chart */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <h3 className="font-bold text-gray-900 mb-4">{t('admin.dashboard.ordersByStatus')}</h3>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5">
+          <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-4">{t('admin.dashboard.ordersByStatus')}</h3>
           <ResponsiveContainer width="100%" height={260}>
             <PieChart>
               <Pie
@@ -226,7 +226,7 @@ export default function AdminDashboard() {
                   <Cell key={'cell-' + i} fill={statusData[i]?.color || '#CBD5E1'} />
                 ))}
               </Pie>
-              <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '6px' }} />
+              <Tooltip contentStyle={{ backgroundColor: 'var(--tooltip-bg, #fff)', border: '1px solid var(--border-color, #e5e7eb)', borderRadius: '6px' }} />
             </PieChart>
           </ResponsiveContainer>
         </div>
@@ -235,36 +235,36 @@ export default function AdminDashboard() {
       {/* Charts Row 2 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Top Services Bar Chart */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <h3 className="font-bold text-gray-900 mb-4">{t('admin.dashboard.topServices')}</h3>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5">
+          <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-4">{t('admin.dashboard.topServices')}</h3>
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={servicesData} layout="vertical" margin={{ top: 5, right: 20, left: 80, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-              <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#9CA3AA' }} />
-              <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#6B7280' }} width={80} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--grid-color, #e2e8f0)" horizontal={false} />
+              <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--axis-color, #94a3b8)' }} />
+              <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--axis-color, #94a3b8)' }} width={80} />
               <Tooltip
-                contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '6px' }}
+                contentStyle={{ backgroundColor: 'var(--tooltip-bg, #fff)', border: '1px solid var(--border-color, #e5e7eb)', borderRadius: '6px' }}
                 labelStyle={{ fontSize: '11px' }}
               />
               <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
               <Bar dataKey="orders" fill="#3B82F6" name={t('admin.dashboard.orders')} radius={[0, 4, 4, 0]} />
               <Bar dataKey="revenue" fill="#10B981" name={t('admin.dashboard.revenue')} radius={[0, 4, 4, 0]} />
-              <LabelList dataKey="orders" position="right" style={{ fontSize: '10px', fill: '#6B7280' }} />
+              <LabelList dataKey="orders" position="right" style={{ fontSize: '10px', fill: 'var(--axis-color, #94a3b8)' }} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
         {/* Today + Platform Status */}
         <div className="space-y-5">
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <h3 className="font-bold text-gray-900 mb-4">{t('admin.dashboard.today')}</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5">
+            <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-4">{t('admin.dashboard.today')}</h3>
             <div className="grid grid-cols-2 gap-4">
               <Metric label={t('admin.dashboard.ordersToday')} value={data.todayOrders} icon={ShoppingCart} />
               <Metric label={t('admin.dashboard.revenueToday')} value={money(data.todayRevenue)} icon={Wallet} />
             </div>
           </div>
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <h3 className="font-bold text-gray-900 mb-4">{t('admin.dashboard.platformStatus')}</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5">
+            <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-4">{t('admin.dashboard.platformStatus')}</h3>
             <div className="space-y-3">
               <StatusLine icon={Server} label={t('admin.dashboard.activeProviders')} value={data.activeProviders} />
               <StatusLine icon={ListOrdered} label={t('admin.dashboard.activeServices')} value={data.activeServices} />
@@ -276,13 +276,13 @@ export default function AdminDashboard() {
       </div>
 
       {/* Quick Management */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-        <h3 className="font-bold text-gray-900 mb-4">{t('admin.dashboard.quickManagement')}</h3>
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5">
+        <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-4">{t('admin.dashboard.quickManagement')}</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Link className="btn-ghost justify-between" to="/admin/orders">{t('admin.dashboard.orders')} <ArrowRightIcon /></Link>
-          <Link className="btn-ghost justify-between" to="/admin/users">{t('admin.dashboard.users')} <ArrowRightIcon /></Link>
-          <Link className="btn-ghost justify-between" to="/admin/providers">{t('admin.dashboard.providers')} <ArrowRightIcon /></Link>
-          <Link className="btn-ghost justify-between" to="/admin/reports">{t('admin.dashboard.reports')} <ArrowRightIcon /></Link>
+          <Link className="btn-ghost justify-between dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-600" to="/admin/orders">{t('admin.dashboard.orders')} <ArrowRightIcon /></Link>
+          <Link className="btn-ghost justify-between dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-600" to="/admin/users">{t('admin.dashboard.users')} <ArrowRightIcon /></Link>
+          <Link className="btn-ghost justify-between dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-600" to="/admin/providers">{t('admin.dashboard.providers')} <ArrowRightIcon /></Link>
+          <Link className="btn-ghost justify-between dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-600" to="/admin/reports">{t('admin.dashboard.reports')} <ArrowRightIcon /></Link>
         </div>
       </div>
     </div>
@@ -290,7 +290,7 @@ export default function AdminDashboard() {
 }
 
 function ArrowRightIcon() {
-  return <Activity className="w-4 h-4 text-gray-400" />;
+  return <Activity className="w-4 h-4 text-gray-400 dark:text-gray-500" />;
 }
 
 function StatCard({ icon: Icon, title, value, subtitle }: { icon: any; title: string; value: any; subtitle?: string }) {

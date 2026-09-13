@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { Globe } from 'lucide-react';
+import { Globe, Sun, Moon } from 'lucide-react';
 
 export type Lang = 'en' | 'ar';
 
@@ -605,6 +605,41 @@ export const translations: Dict = {
   'legal.privacy': { en: 'Privacy Policy', ar: 'سياسة الخصوصية' },
   'legal.refund': { en: 'Refund & Delivery Policy', ar: 'سياسة الاسترجاع والتنفيذ' },
   'legal.lastUpdated': { en: 'Last updated: {date}', ar: 'آخر تحديث: {date}' },
+  'admin.dashboard.revenue': { en: 'Revenue', ar: 'الإيرادات' },
+  'admin.orders.exportSuccess': { en: 'Orders exported', ar: 'تم تصدير الطلبات' },
+  'common.retry': { en: 'Retry', ar: 'إعادة المحاولة' },
+  'common.user': { en: 'User', ar: 'مستخدم' },
+  'dashboard.recentOrdersSubtitle': { en: 'Recent orders on the platform', ar: 'أحدث الطلبات على المنصة' },
+  'dashboard.totalFunded': { en: 'Total Funded', ar: 'إجمالي المدفوعات' },
+  // Status labels
+  'status.pending': { en: 'Pending', ar: 'معلق' },
+  'status.processing': { en: 'Processing', ar: 'قيد المعالجة' },
+  'status.completed': { en: 'Completed', ar: 'مكتمل' },
+  'status.canceled': { en: 'Canceled', ar: 'ملغي' },
+  'status.refunded': { en: 'Refunded', ar: 'مسترد' },
+  'status.partial': { en: 'Partial', ar: 'جزئي' },
+  // Affiliates
+  'affiliates.subtitle': { en: 'Earn commission for every referral that deposits', ar: 'اكسب عمولة عن كل إحالة تودع' },
+  'affiliates.yourLink': { en: 'Your Referral Link', ar: 'رابط الإحالة الخاص بك' },
+  'affiliates.linkHint': { en: 'Share this link to start earning', ar: 'شارك هذا الرابط للبدء في الربح' },
+  'affiliates.generating': { en: 'Generating...', ar: 'جاري الإنشاء...' },
+  'affiliates.copyLink': { en: 'Copy Link', ar: 'نسخ الرابط' },
+  'affiliates.copyFailed': { en: 'Failed to copy', ar: 'فشل النسخ' },
+  'affiliates.linkCopied': { en: 'Link copied!', ar: 'تم نسخ الرابط!' },
+  'affiliates.linkNotReady': { en: 'Link not ready yet', ar: 'الرابط غير جاهز بعد' },
+  'affiliates.code': { en: 'Referral Code', ar: 'كود الإحالة' },
+  'affiliates.clicks': { en: 'Clicks', ar: 'النقرات' },
+  'affiliates.signups': { en: 'Signups', ar: 'التسجيلات' },
+  'affiliates.paidReferrals': { en: 'Paid Referrals', ar: 'الإحالات المدفوعة' },
+  'affiliates.referralDeposits': { en: 'Referral Deposits', ar: 'إيداعات الإحالة' },
+  'affiliates.earnings': { en: 'Total Earnings', ar: 'إجمالي الأرباح' },
+  'affiliates.commission': { en: 'Commission', ar: 'العمولة' },
+  'affiliates.referredUser': { en: 'Referred User', ar: 'المستخدم المُحوّل' },
+  'affiliates.payment': { en: 'Payment', ar: 'الدفع' },
+  'affiliates.noCommissions': { en: 'No commissions yet', ar: 'لا توجد عمولات بعد' },
+  'affiliates.noReferrals': { en: 'No referrals yet', ar: 'لا يوجد إحالات بعد' },
+  'affiliates.user': { en: 'User', ar: 'مستخدم' },
+  'affiliates.joined': { en: 'Joined', ar: 'انضم' },
 };
 
 function translate(lang: Lang, key: string, vars?: Record<string, string | number>): string {
@@ -699,3 +734,34 @@ export function LanguageSwitcher({ className = '' }: { className?: string }) {
     </button>
   );
 }
+
+// Theme toggle button with localStorage persistence
+export function ThemeToggle({ className = '' }: { className?: string }) {
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const stored = typeof window !== 'undefined' ? window.localStorage.getItem('theme') : null;
+    if (stored === 'light' || stored === 'dark') return stored;
+    const prefersDark = typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    return prefersDark ? 'dark' : 'light';
+  });
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+    try { window.localStorage.setItem('theme', theme); } catch { /* ignore storage errors */ }
+  }, [theme]);
+
+  return (
+    <button
+      onClick={() => setTheme(t => (t === 'dark' ? 'light' : 'dark'))}
+      title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+      className={`inline-flex items-center justify-center w-9 h-9 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors ${className}`}
+      aria-label="Toggle dark mode"
+    >
+      {theme === 'dark' ? (
+        <Sun className="w-4 h-4" />
+      ) : (
+        <Moon className="w-4 h-4" />
+      )}
+    </button>
+  );
+}
+

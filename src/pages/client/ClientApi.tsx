@@ -44,11 +44,11 @@ export default function ClientApi() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl">
-      <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><Code className="text-indigo-600"/> {t('api.title')}</h2>
-      <p className="text-sm text-gray-500 -mt-4">{t('api.subtitle')}</p>
+    <div className="space-y-6 max-w-4xl dark:text-gray-200">
+      <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2"><Code className="text-indigo-600"/> {t('api.title')}</h2>
+      <p className="text-sm text-gray-500 dark:text-gray-400 -mt-4">{t('api.subtitle')}</p>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
         <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><Key className="w-5 h-5"/> {t('api.yourKey')}</h3>
         {newApiKey ? (
           <div className="flex items-center gap-4">
@@ -56,7 +56,7 @@ export default function ClientApi() {
               type="text"
               readOnly
               value={newApiKey}
-              className="input-field w-full md:w-96 font-mono text-sm bg-gray-50"
+              className="input-field w-full md:w-96 font-mono text-sm bg-gray-50 dark:bg-gray-700 dark:text-gray-200"
             />
             <button
               onClick={() => { navigator.clipboard.writeText(newApiKey); notify.success(t('api.keyCopied')); }}
@@ -74,21 +74,21 @@ export default function ClientApi() {
         )}
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-4">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 space-y-4">
         <h3 className="font-bold text-lg">{t('api.usage')}</h3>
-        <p className="text-sm text-gray-600">{t('api.usageDesc')}</p>
+        <p className="text-sm text-gray-600 dark:text-gray-400">{t('api.usageDesc')}</p>
 
         <div className="mt-4">
-          <h4 className="font-semibold text-gray-900">{t('api.httpMethod')}</h4>
-          <code className="text-sm bg-gray-100 px-2 py-1 rounded">POST</code>
+          <h4 className="font-semibold text-gray-900 dark:text-gray-200">{t('api.httpMethod')}</h4>
+          <code className="text-sm bg-gray-50 dark:bg-gray-700 dark:text-gray-300 px-2 py-1 rounded">POST</code>
         </div>
         <div className="mt-4">
-          <h4 className="font-semibold text-gray-900">{t('api.apiUrl')}</h4>
-          <code className="text-sm bg-gray-100 px-2 py-1 rounded">{window.location.origin}/api/v2</code>
+          <h4 className="font-semibold text-gray-900 dark:text-gray-200">{t('api.apiUrl')}</h4>
+          <code className="text-sm bg-gray-50 dark:bg-gray-700 dark:text-gray-300 px-2 py-1 rounded">{window.location.origin}/api/v2</code>
         </div>
 
         <div className="mt-6 border-t pt-4">
-          <h4 className="font-semibold text-lg text-gray-900 mb-2">{t('api.placeOrderExample')}</h4>
+          <h4 className="font-semibold text-lg text-gray-900 dark:text-gray-200 mb-2">{t('api.placeOrderExample')}</h4>
           <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg text-xs overflow-x-auto">
 {`{
   "key": "YOUR_API_KEY",

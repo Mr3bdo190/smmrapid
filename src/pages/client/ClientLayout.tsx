@@ -89,7 +89,7 @@ export default function ClientLayout() {
       )}>
         <div className="rapid-sidebar-head h-[76px] flex items-center justify-between px-5">
           <Link to="/dashboard" className="flex items-center gap-3"><span className="brand-mark h-9 w-9 text-sm">R</span><span className="text-lg font-black tracking-tight text-slate-900">Rapid<span className="text-violet-600">SMM</span></span></Link>
-          <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden text-gray-400 hover:text-gray-900"><X className="w-6 h-6" /></button>
+          <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden text-gray-400 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"><X className="w-6 h-6" /></button>
         </div>
         <nav className="rapid-sidebar-nav flex-1 overflow-y-auto py-5">
           <div className="px-4 pb-3"><div className="rapid-nav-label">Workspace</div></div>
@@ -108,31 +108,31 @@ export default function ClientLayout() {
         <div className="rapid-sidebar-foot p-4 space-y-2">
           <LanguageSwitcher className="w-full justify-center border-gray-300 text-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700" />
           <ThemeToggle className="w-full justify-center border-gray-300 dark:border-gray-600" />
-          <button onClick={logOut} className="flex items-center gap-3 px-3 py-2 w-full rounded-md text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"><LogOut className="w-5 h-5" /> {t('common.signOut')}</button>
+          <button onClick={logOut} className="flex items-center gap-3 px-3 py-2 w-full rounded-md text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"><LogOut className="w-5 h-5" /> {t('common.signOut')}</button>
         </div>
       </aside>
       <main className="rapid-main flex-1 flex flex-col min-w-0 overflow-hidden w-full h-full relative">
         <header className="rapid-topbar h-[76px] flex items-center justify-between px-4 md:px-8 flex-shrink-0">
           <div className="flex items-center gap-4">
-            <button onClick={() => setIsMobileMenuOpen(true)} className="md:hidden text-gray-500 hover:text-gray-900"><Menu className="w-6 h-6" /></button>
-            <h2 className="text-xl font-semibold text-gray-800 truncate">{navItems.find(i => i.href === location.pathname) ? t(navItems.find(i => i.href === location.pathname)!.key) : t('nav.clientArea')}</h2>
+            <button onClick={() => setIsMobileMenuOpen(true)} className="md:hidden text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"><Menu className="w-6 h-6" /></button>
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 truncate">{navItems.find(i => i.href === location.pathname) ? t(navItems.find(i => i.href === location.pathname)!.key) : t('nav.clientArea')}</h2>
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={logOut} className="hidden md:inline-flex btn-ghost items-center gap-1.5"><LogOut className="h-4 w-4"/> {t('common.signOut')}</button>
+            <button onClick={logOut} className="hidden md:inline-flex btn-ghost items-center gap-1.5 dark:text-gray-300 dark:hover:bg-gray-700"><LogOut className="h-4 w-4"/> {t('common.signOut')}</button>
             <Link to="/dashboard/add-funds" className="hidden sm:flex btn-primary py-2"><Plus className="h-4 w-4"/> {t('nav.addFunds')}</Link>
             <div className="relative">
-              <button aria-label={t('notifications.title')} onClick={()=>setNotificationsOpen(v=>!v)} className="rounded-xl border border-slate-200 p-2 text-slate-500 hover:text-slate-900"><Bell className="h-4 w-4"/>{notificationData?.unread>0&&<span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-rose-500 text-white text-[10px] flex items-center justify-center">{notificationData.unread>9?'9+':notificationData.unread}</span>}</button>
-              {notificationsOpen&&<div className="absolute top-11 right-0 z-50 w-[min(360px,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white shadow-xl p-3">
-                <div className="flex items-center justify-between px-2 pb-2 border-b border-slate-100"><b className="text-sm text-slate-900">{t('notifications.title')}</b><button className="text-xs text-violet-600" onClick={async()=>{const token=await user?.getIdToken();await apiFetch('/api/client/notifications/read-all',user,{method:'PUT',headers:{Authorization:`Bearer ${token}`}});await refetchNotifications();}}>{t('notifications.markAll')}</button></div>
-                <div className="max-h-80 overflow-y-auto">{(notificationData?.notifications||[]).length===0?<p className="p-4 text-xs text-slate-500">{t('notifications.empty')}</p>:(notificationData.notifications||[]).map((n:any)=><button key={n.id} onClick={async()=>{const token=await user?.getIdToken();if(!n.readAt)await apiFetch(`/api/client/notifications/${n.id}/read`,user,{method:'PUT',headers:{Authorization:`Bearer ${token}`}});await refetchNotifications();if(n.link)window.location.href=n.link;}} className={`w-full text-left p-3 rounded-xl mt-1 ${n.readAt?'':'bg-violet-50'} hover:bg-slate-50`}><div className="text-xs font-bold text-slate-900">{n.title}</div><div className="text-xs text-slate-500 mt-1">{n.message}</div><div className="text-[10px] text-slate-400 mt-1">{n.createdAt?new Date(n.createdAt).toLocaleString():''}</div></button>)}</div>
+              <button aria-label={t('notifications.title')} onClick={()=>setNotificationsOpen(v=>!v)} className="rounded-xl border border-slate-200 dark:border-gray-600 p-2 text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white"><Bell className="h-4 w-4"/>{notificationData?.unread>0&&<span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-rose-500 text-white text-[10px] flex items-center justify-center">{notificationData.unread>9?'9+':notificationData.unread}</span>}</button>
+              {notificationsOpen&&<div className="absolute top-11 right-0 z-50 w-[min(360px,calc(100vw-2rem))] rounded-2xl border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-xl p-3">
+                <div className="flex items-center justify-between px-2 pb-2 border-b border-slate-100 dark:border-gray-700"><b className="text-sm text-slate-900 dark:text-gray-200">{t('notifications.title')}</b><button className="text-xs text-violet-600 dark:text-violet-400" onClick={async()=>{const token=await user?.getIdToken();await apiFetch('/api/client/notifications/read-all',user,{method:'PUT',headers:{Authorization:`Bearer ${token}`}});await refetchNotifications();}}>{t('notifications.markAll')}</button></div>
+                <div className="max-h-80 overflow-y-auto">{(notificationData?.notifications||[]).length===0?<p className="p-4 text-xs text-slate-500 dark:text-gray-400">{t('notifications.empty')}</p>:(notificationData.notifications||[]).map((n:any)=><button key={n.id} onClick={async()=>{const token=await user?.getIdToken();if(!n.readAt)await apiFetch(`/api/client/notifications/${n.id}/read`,user,{method:'PUT',headers:{Authorization:`Bearer ${token}`}});await refetchNotifications();if(n.link)window.location.href=n.link;}} className={`w-full text-left p-3 rounded-xl mt-1 ${n.readAt?'bg-gray-100 dark:bg-gray-700':'bg-violet-50 dark:bg-violet-900/20'} hover:bg-slate-50 dark:hover:bg-gray-700`}><div className="text-xs font-bold text-slate-900 dark:text-gray-200">{n.title}</div><div className="text-xs text-slate-500 dark:text-gray-400 mt-1">{n.message}</div><div className="text-[10px] text-slate-400 dark:text-gray-500 mt-1">{n.createdAt?new Date(n.createdAt).toLocaleString():''}</div></button>)}</div>
               </div>}
             </div>
             <div className={dir === 'rtl' ? "flex flex-col text-left" : "flex flex-col text-right"}>
-              <span className="text-sm font-black text-slate-900">{config?.currencySymbol || '$'}{Number((freshUser || dbUser).balance).toFixed(4)}</span>
-              <span className="text-xs text-slate-500 hidden sm:block">{t('common.currentBalance')}</span>
+              <span className="text-sm font-black text-slate-900 dark:text-gray-200">{config?.currencySymbol || '$'}{Number((freshUser || dbUser).balance).toFixed(4)}</span>
+              <span className="text-xs text-slate-500 dark:text-gray-400 hidden sm:block">{t('common.currentBalance')}</span>
             </div>
-            <Link to="/dashboard/profile" className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold border border-violet-200 transition-colors">{(freshUser || dbUser).email[0].toUpperCase()}</Link>
-            <ThemeToggle className="hidden md:inline-flex border-gray-300 dark:border-gray-600" />
+            <Link to="/dashboard/profile" className="w-10 h-10 rounded-full bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center text-violet-700 dark:text-violet-300 font-bold border border-violet-200 dark:border-violet-700 transition-colors">{(freshUser || dbUser).email[0].toUpperCase()}</Link>
+            <ThemeToggle className="border-gray-300 dark:border-gray-600" />
           </div>
         </header>
         <div className="rapid-content flex-1 overflow-y-auto p-4 md:p-8"><div className="mx-auto max-w-[1480px] client-page-frame">

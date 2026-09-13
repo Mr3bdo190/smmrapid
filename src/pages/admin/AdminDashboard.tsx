@@ -101,8 +101,8 @@ export default function AdminDashboard() {
     refetchOrders();
   };
 
-  if (isLoading) return <div className="p-6 text-gray-500 flex items-center gap-2"><RefreshCw className="w-4 h-4 animate-spin" />{t('admin.dashboard.loading')}</div>;
-  if (isError) return <div className="p-6 rounded-2xl bg-rose-50 text-rose-700 flex items-center justify-between"><span className="flex gap-2"><AlertCircle />{t('admin.dashboard.error')}</span><button onClick={() => refetch()} className="btn-primary">{t('admin.dashboard.retry')}</button></div>;
+  if (isLoading) return <div className="p-6 text-gray-500 dark:text-gray-400 flex items-center gap-2"><RefreshCw className="w-4 h-4 animate-spin" />{t('admin.dashboard.loading')}</div>;
+  if (isError) return <div className="p-6 rounded-2xl bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 flex items-center justify-between"><span className="flex gap-2"><AlertCircle />{t('admin.dashboard.error')}</span><button onClick={() => refetch()} className="btn-primary">{t('admin.dashboard.retry')}</button></div>;
 
   const trend = (current: number, previous: number) => {
     if (previous === 0) return 'noChange';
@@ -140,26 +140,26 @@ export default function AdminDashboard() {
         </div>
         <div className="flex items-center gap-3">
           {/* Period Selector */}
-          <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
-            <Calendar className="w-3 h-3 text-gray-500 ml-1" />
+          <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+            <Calendar className="w-3 h-3 text-gray-500 dark:text-gray-400 ml-1" />
             <button
               onClick={() => setPeriod('7')}
-              className={'px-2 py-1 text-xs font-medium rounded ' + (period === '7' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:text-gray-800')}
+              className={'px-2 py-1 text-xs font-medium rounded ' + (period === '7' ? 'bg-indigo-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-200')}
             >
               {t('admin.dashboard.days7')}
             </button>
             <button
               onClick={() => setPeriod('30')}
-              className={'px-2 py-1 text-xs font-medium rounded ' + (period === '30' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:text-gray-800')}
+              className={'px-2 py-1 text-xs font-medium rounded ' + (period === '30' ? 'bg-indigo-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-200')}
             >
               {t('admin.dashboard.days30')}
             </button>
           </div>
-          <button onClick={handleExport} className="btn-ghost flex items-center gap-2">
+          <button onClick={handleExport} className="btn-ghost flex items-center gap-2 dark:text-gray-300 dark:hover:bg-gray-700">
             <Download className="w-4 h-4" />
             {t('admin.dashboard.export')}
           </button>
-          <button onClick={handleRefresh} className="btn-ghost flex items-center gap-2">
+          <button onClick={handleRefresh} className="btn-ghost flex items-center gap-2 dark:text-gray-300 dark:hover:bg-gray-700">
             <RefreshCw className={'w-4 h-4' + (isFetching ? ' animate-spin' : '')} />
           {t('admin.dashboard.refresh')}
           </button>
@@ -295,14 +295,14 @@ function ArrowRightIcon() {
 
 function StatCard({ icon: Icon, title, value, subtitle }: { icon: any; title: string; value: any; subtitle?: string }) {
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4">
-      <div className="p-3 rounded-xl bg-indigo-50 text-indigo-600">
+    <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 flex items-center gap-4">
+      <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400">
         <Icon className="w-6 h-6" />
       </div>
       <div>
-        <p className="text-sm text-gray-500">{title}</p>
-        <h3 className="text-2xl font-black text-gray-900 mt-1">{value}</h3>
-        {subtitle && <p className="text-xs text-gray-400 mt-1">{subtitle}</p>}
+        <p className="text-sm text-gray-500 dark:text-gray-400">{title}</p>
+        <h3 className="text-2xl font-black text-gray-900 dark:text-gray-100 mt-1">{value}</h3>
+        {subtitle && <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{subtitle}</p>}
       </div>
     </div>
   );
@@ -310,33 +310,33 @@ function StatCard({ icon: Icon, title, value, subtitle }: { icon: any; title: st
 
 function SmallStat({ title, value, href }: { title: string; value: any; href: string }) {
   return (
-    <Link to={href} className="bg-white rounded-xl border border-gray-100 p-4 hover:border-indigo-200 transition-colors">
-      <p className="text-xs text-gray-500">{title}</p>
-      <b className="text-2xl mt-1 block text-gray-900">{value || 0}</b>
+    <Link to={href} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-4 hover:border-indigo-200 dark:hover:border-indigo-500 transition-colors">
+      <p className="text-xs text-gray-500 dark:text-gray-400">{title}</p>
+      <b className="text-2xl mt-1 block text-gray-900 dark:text-gray-100">{value || 0}</b>
     </Link>
   );
 }
 
 function Metric({ label, value, icon: Icon }: { label: string; value: any; icon: any }) {
   return (
-    <div className="rounded-xl bg-slate-50 p-4">
-      <div className="flex items-center gap-2 text-gray-500 mb-2">
-        <Icon className="w-4 h-4 text-indigo-600" />
-        <p className="text-xs text-gray-500">{label}</p>
+    <div className="rounded-xl bg-slate-50 dark:bg-gray-800 p-4">
+      <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 mb-2">
+        <Icon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+        <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
       </div>
-      <b className="text-2xl text-gray-900">{value}</b>
+      <b className="text-2xl text-gray-900 dark:text-gray-100">{value}</b>
     </div>
   );
 }
 
 function StatusLine({ icon: Icon, label, value }: { icon: any; label: string; value: any }) {
   return (
-    <div className="flex items-center justify-between rounded-xl bg-slate-50 p-3">
+    <div className="flex items-center justify-between rounded-xl bg-slate-50 dark:bg-gray-800 p-3">
       <span className="flex items-center gap-2 text-sm">
-        <Icon className="w-4 h-4 text-indigo-600" />
+        <Icon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
         {label}
       </span>
-      <b className="text-gray-900">{value || 0}</b>
+      <b className="text-gray-900 dark:text-gray-100">{value || 0}</b>
     </div>
   );
 }

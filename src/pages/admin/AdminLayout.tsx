@@ -58,7 +58,7 @@ export default function AdminLayout() {
           <ul className="space-y-1 px-3">
             {navItems.map((item) => (
               <li key={item.key}>
-                <Link to={item.href} onClick={() => setIsMobileMenuOpen(false)} className={cn("rapid-nav-item flex items-center gap-3 px-3 py-3 rounded-2xl text-sm font-bold transition-colors", location.pathname === item.href ? "is-active" : "text-slate-300 hover:bg-white/5 hover:text-white")}>
+                <Link to={item.href} onClick={() => setIsMobileMenuOpen(false)} className={cn("rapid-nav-item flex items-center gap-3 px-3 py-3 rounded-2xl text-sm font-bold transition-colors", location.pathname === item.href ? "is-active" : "text-slate-300 hover:bg-white hover:text-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white")}>
                   <item.icon className="w-5 h-5" /> {t(item.key)}
                 </Link>
               </li>
@@ -80,7 +80,8 @@ export default function AdminLayout() {
             <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 truncate">{navItems.find(i => i.href === location.pathname) ? t(navItems.find(i => i.href === location.pathname)!.key) : t('nav.admin.title')}</h2>
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={logOut} className="hidden md:inline-flex btn-ghost items-center gap-1.5"><LogOut className="h-4 w-4"/> {t('common.signOut')}</button>
+            <ThemeToggle />
+            <button onClick={logOut} className="hidden md:inline-flex btn-ghost items-center gap-1.5 dark:text-gray-300 dark:hover:bg-gray-700"><LogOut className="h-4 w-4"/> {t('common.signOut')}</button>
             <span className="hidden md:inline text-sm text-gray-500 dark:text-gray-400">{dbUser.email}</span>
             <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center text-indigo-700 dark:text-indigo-300 font-bold">{dbUser.email[0].toUpperCase()}</div>
           </div>

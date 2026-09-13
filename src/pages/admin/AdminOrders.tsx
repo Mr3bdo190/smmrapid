@@ -31,7 +31,7 @@ export default function AdminOrders() {
     queryFn: async () => {
       const token = await user!.getIdToken();
       const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE), status, ...(q ? { q } : {}) });
-      const r = await apiFetch(`/api/admin/orders?${params}`, user, { headers: { Authorization: 'Bearer ' + token } });
+      const r = await apiFetch('/api/admin/orders?' + params, user, { headers: { Authorization: 'Bearer ' + token } });
       if (!r.ok) throw new Error(await e(r, 'Failed to load orders'));
       return r.json();
     },
@@ -40,7 +40,7 @@ export default function AdminOrders() {
   const refresh = useMutation({
     mutationFn: async (id: string) => {
       const token = await user!.getIdToken();
-      const r = await apiFetch(`/api/admin/orders/${id}/refresh`, user, { method: 'POST', headers: { Authorization: 'Bearer ' + token } });
+      const r = await apiFetch('/api/admin/orders/' + id + '/refresh', user, { method: 'POST', headers: { Authorization: 'Bearer ' + token } });
       if (!r.ok) throw new Error(await e(r, 'Refresh failed'));
       return r.json();
     },
@@ -69,9 +69,9 @@ export default function AdminOrders() {
   };
 
   const handleExport = (scope: 'page' | 'all') => {
-    const params = new URLSearchParams({ status, ...(q ? { q } : {} });
+    const params = new URLSearchParams({ status, ...(q ? { q } : {}) });
     if (scope === 'page') params.set('page', String(page));
-    window.open(`/api/admin/orders/export?${params}`, '_blank');
+    window.open('/api/admin/orders/export?' + params, '_blank');
     notify.success(t('common.exportSuccess'));
   };
 
@@ -185,7 +185,7 @@ export default function AdminOrders() {
                       <td className="px-4 py-3 text-xs font-mono text-gray-500">{o.providerOrderId || '-'}</td>
                       <td className="px-4 py-3 text-right whitespace-nowrap">
                         <button onClick={() => refresh.mutate(o.id)} className="text-indigo-600 hover:text-indigo-900" title={t('common.refresh')}><RefreshCw className="w-4 h-4 inline" /></button>
-                        <button onClick={() => { const tr = confirm(t('admin.orders.cancelConfirm')); if (tr) { apiFetch(`/api/admin/orders/${o.id}/cancel`, user, { method: 'POST' }).then(() => { qc.invalidateQueries({ queryKey: ['admin-orders'] }); notify.success(t('admin.orders.cancelRequested')); }); } }} className="text-red-600 hover:text-red-900 ml-2" title={t('admin.orders.cancel')}><Trash2 className="w-4 h-4 inline" /></button>
+                        <button onClick={() => { const tr = confirm(t('admin.orders.cancelConfirm')); if (tr) { apiFetch('/api/admin/orders/' + o.id + '/cancel', user, { method: 'POST' }).then(() => { qc.invalidateQueries({ queryKey: ['admin-orders'] }); notify.success(t('admin.orders.cancelRequested')); }); } }} className="text-red-600 hover:text-red-900 ml-2" title={t('admin.orders.cancel')}><Trash2 className="w-4 h-4 inline" /></button>
                       </td>
                     </tr>
                   ))

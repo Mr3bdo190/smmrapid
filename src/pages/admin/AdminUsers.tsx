@@ -17,7 +17,7 @@ function UserDetailsModal({ userId, onClose }: { userId: string, onClose: () => 
     queryKey: ['admin-user-details', userId],
     queryFn: async () => {
       const token = await user?.getIdToken();
-      const res = await apiFetch(`/api/admin/users/${userId}`, user, { headers: { Authorization: 'Bearer ' + token } });
+      const res = await apiFetch('/api/admin/users/' + userId, user, { headers: { Authorization: 'Bearer ' + token } });
       if (!res.ok) throw new Error('Failed to load user details');
       return res.json();
     },
@@ -121,7 +121,7 @@ export default function AdminUsers() {
     queryFn: async () => {
       const token = await user?.getIdToken();
       const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE), status: statusFilter, ...(q ? { q } : {}) });
-      const res = await apiFetch(`/api/admin/users?${params}`, user, { headers: { Authorization: 'Bearer ' + token } });
+      const res = await apiFetch('/api/admin/users?' + params, user, { headers: { Authorization: 'Bearer ' + token } });
       if (!res.ok) throw new Error('Failed to load data');
       return res.json();
     },
@@ -154,14 +154,14 @@ export default function AdminUsers() {
   const handleExport = (scope: 'page' | 'all') => {
     const params = new URLSearchParams({ status: statusFilter, ...(q ? { q } : {}) });
     if (scope === 'page') params.set('page', String(page));
-    window.open(`/api/admin/users/export?${params}`, '_blank');
+    window.open('/api/admin/users/export?' + params, '_blank');
     notify.success(t('common.exportSuccess'));
   };
 
   const balanceMutation = useMutation({
     mutationFn: async ({ id, amount }: { id: string, amount: number }) => {
       const token = await user?.getIdToken();
-      const res = await apiFetch(`/api/admin/users/${id}/balance`, user, {
+      const res = await apiFetch('/api/admin/users/' + id + '/balance', user, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
         body: JSON.stringify({ amount })
@@ -179,7 +179,7 @@ export default function AdminUsers() {
   const statusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string, status: string }) => {
       const token = await user?.getIdToken();
-      const res = await apiFetch(`/api/admin/users/${id}/status`, user, {
+      const res = await apiFetch('/api/admin/users/' + id + '/status', user, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
         body: JSON.stringify({ status })

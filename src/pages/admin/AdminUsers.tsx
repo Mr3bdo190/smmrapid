@@ -17,7 +17,7 @@ function UserDetailsModal({ userId, onClose }: { userId: string, onClose: () => 
     queryKey: ['admin-user-details', userId],
     queryFn: async () => {
       const token = await user?.getIdToken();
-      const res = await apiFetch(`/api/admin/users/${userId}`, user, { headers: { Authorization: Bearer ${token}` } });
+      const res = await apiFetch(`/api/admin/users/${userId}`, user, { headers: { Authorization: 'Bearer ' + token } });
       if (!res.ok) throw new Error('Failed to load user details');
       return res.json();
     },
@@ -121,7 +121,7 @@ export default function AdminUsers() {
     queryFn: async () => {
       const token = await user?.getIdToken();
       const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE), status: statusFilter, ...(q ? { q } : {}) });
-      const res = await apiFetch(`/api/admin/users?${params}`, user, { headers: { Authorization: *** ${token}` } });
+      const res = await apiFetch(`/api/admin/users?${params}`, user, { headers: { Authorization: 'Bearer ' + token } });
       if (!res.ok) throw new Error('Failed to load data');
       return res.json();
     },
@@ -136,7 +136,7 @@ export default function AdminUsers() {
       const token = await user?.getIdToken();
       const res = await apiFetch('/api/admin/users/bulk-status', user, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: *** ${token}` },
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
         body: JSON.stringify({ userIds: ids, status: newStatus }),
       });
       if (!res.ok) throw new Error(await e(res, 'Bulk update failed'));
@@ -163,7 +163,7 @@ export default function AdminUsers() {
       const token = await user?.getIdToken();
       const res = await apiFetch(`/api/admin/users/${id}/balance`, user, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: *** ${token}` },
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
         body: JSON.stringify({ amount })
       });
       if (!res.ok) throw new Error('API Error');
@@ -181,7 +181,7 @@ export default function AdminUsers() {
       const token = await user?.getIdToken();
       const res = await apiFetch(`/api/admin/users/${id}/status`, user, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: *** ${token}` },
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
         body: JSON.stringify({ status })
       });
       if (!res.ok) throw new Error('API Error');

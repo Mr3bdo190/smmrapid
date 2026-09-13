@@ -31,7 +31,7 @@ export default function AdminOrders() {
     queryFn: async () => {
       const token = await user!.getIdToken();
       const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE), status, ...(q ? { q } : {}) });
-      const r = await apiFetch(`/api/admin/orders?${params}`, user, { headers: { Authorization: `Bearer ${token}` } });
+      const r = await apiFetch(`/api/admin/orders?${params}`, user, { headers: { Authorization: 'Bearer ' + token } });
       if (!r.ok) throw new Error(await e(r, 'Failed to load orders'));
       return r.json();
     },
@@ -40,7 +40,7 @@ export default function AdminOrders() {
   const refresh = useMutation({
     mutationFn: async (id: string) => {
       const token = await user!.getIdToken();
-      const r = await apiFetch(`/api/admin/orders/${id}/refresh`, user, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+      const r = await apiFetch(`/api/admin/orders/${id}/refresh`, user, { method: 'POST', headers: { Authorization: 'Bearer ' + token } });
       if (!r.ok) throw new Error(await e(r, 'Refresh failed'));
       return r.json();
     },
@@ -53,7 +53,7 @@ export default function AdminOrders() {
       const token = await user!.getIdToken();
       const r = await apiFetch('/api/admin/orders/bulk-status', user, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
         body: JSON.stringify({ orderIds: ids, status: newStatus }),
       });
       if (!r.ok) throw new Error(await e(r, 'Bulk update failed'));

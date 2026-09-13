@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ArrowRight, Check, ChevronDown, Headphones, Layers3, Menu, ShieldCheck, Sparkles, Wallet, X, Zap } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from '../lib/i18n';
+import SEO, { SITE } from '../components/SEO';
 import { useAuth } from '../contexts/AuthContext';
 import { notify } from '../lib/notify';
 
@@ -48,9 +49,52 @@ export default function LandingPage(){
  const handleReset=async()=>{try{if(!email.trim())throw new Error(ar?'اكتب بريدك الإلكتروني أولاً.':'Enter your email first.');await resetPassword(email.trim());notify.success(text.resetSent)}catch(err:any){notify.error(err?.message||'Unable to send reset link')}};
  const handleAuth=async(e:React.FormEvent)=>{e.preventDefault();try{if(auth==='register'){if(!name.trim()||password.length<8)throw new Error(ar?'اكتب اسمك وكلمة مرور 8 أحرف على الأقل.':'Enter your name and an 8+ character password.');if(!referralFromUrl&&referralCode)localStorage.setItem('ref',referralCode.trim().toUpperCase());await registerWithEmail(email.trim(),password,name.trim());notify.success(ar?'تم إنشاء الحساب. تحقق من بريدك الإلكتروني لتأكيد الحساب.':'Account created. Check your email to verify your account.')}else await loginWithEmail(email.trim(),password);setAuth(null);navigate('/dashboard',{replace:true})}catch(err:any){notify.error(err?.message||'Authentication failed')}};
  const scrollHow=(e:React.MouseEvent)=>{e.preventDefault();setMenu(false);document.getElementById('how')?.scrollIntoView({behavior:'smooth'})};
+ 
+ // Structured data for Organization and WebSite
+ const organizationSchema = {
+   "@context": "https://schema.org",
+   "@type": "Organization",
+   "name": "RapidSMM",
+   "url": SITE,
+   "logo": "https://smmrapid.store/favicon.svg",
+   "sameAs": [
+     "https://twitter.com/smmrapid",
+     "https://t.me/smmrapid",
+     "https://www.facebook.com/smmrapid"
+   ],
+   "contactPoint": [{
+     "@type": "ContactPoint",
+     "email": "support@smmrapid.store",
+     "contactType": "customer service",
+     "availableLanguage": ["English", "Arabic"]
+   }]
+ };
+
+ const websiteSchema = {
+   "@context": "https://schema.org",
+   "@type": "WebSite",
+   "name": "RapidSMM",
+   "url": SITE,
+   "potentialAction": {
+     "@type": "SearchAction",
+     "target": "https://smmrapid.store/services?q={search_term_string}",
+     "query-input": "required name=search_term_string"
+   }
+ };
+
  return <div className="landing-shell" dir={dir}>
+  <SEO
+    title="RapidSMM — Fast & Affordable Social Media Marketing Panel"
+    description="RapidSMM is a professional SMM panel offering affordable social media marketing services. Get real followers, likes, views & engagement on Instagram, TikTok, YouTube, Facebook, Telegram & more. Fast delivery, API access for resellers, 24/7 support."
+    path="/"
+    keywords={['SMM panel', 'social media marketing', 'buy followers', 'buy likes', 'buy views', 'Instagram followers', 'TikTok followers', 'YouTube subscribers', 'Facebook likes', 'Telegram members']}
+    locale={ar ? 'ar' : 'en'}
+    type="website"
+    jsonLd={[organizationSchema, websiteSchema]}
+    alternates={{ ar: '/ar', en: '/', xDefault: '/' }}
+  />
   <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl"><div className="mx-auto flex h-[72px] max-w-[1240px] items-center justify-between px-4 sm:px-6">
-   <Link to="/" className="flex items-center gap-3" onClick={()=>setMenu(false)}><span className="brand-mark">R</span><span className="text-xl font-black tracking-tight">Rapid<span className="text-violet-600">SMM</span></span></Link>
+    <Link to="/" className="flex items-center gap-3" onClick={()=>setMenu(false)}><span className="brand-mark">R</span><span className="text-xl font-black tracking-tight">Rapid<span className="text-violet-600">SMM</span></span></Link>
    <nav className="hidden items-center gap-7 text-sm font-bold text-slate-600 md:flex"><Link className="landing-nav-link" to="/services">{text.navServices}</Link><a className="landing-nav-link" href="#how" onClick={scrollHow}>{text.navHow}</a><Link className="landing-nav-link" to="/blog">{text.navBlog}</Link><Link className="landing-nav-link" to="/support">{text.navSupport}</Link></nav>
    <div className="hidden items-center gap-2 md:flex">{user?<Link to="/dashboard" className="btn-primary">{text.dashboard}<ArrowRight size={15}/></Link>:<><button className="btn-ghost" onClick={()=>setAuth('login')}>{text.login}</button><button className="btn-primary" onClick={()=>setAuth('register')}>{text.start}<ArrowRight size={15}/></button></>}</div>
    <button className="rounded-xl bg-slate-100 p-2 md:hidden" onClick={()=>setMenu(!menu)} aria-label="menu">{menu?<X/>:<Menu/>}</button>
@@ -69,6 +113,6 @@ export default function LandingPage(){
    <section className="landing-section"><div className="mx-auto max-w-3xl"><div className="text-center"><p className="mb-2 text-xs font-black tracking-[.16em] text-violet-600">FAQ</p><h2>{text.faqTitle}</h2><p className="landing-muted mt-3">{text.faqCopy}</p></div><div className="landing-faq mt-8 rounded-3xl border border-slate-200 bg-white px-6 shadow-sm">{faqs.map(([q,a],i)=><div key={q} className="border-b border-slate-100 last:border-0"><button onClick={()=>setFaq(faq===i?-1:i)}><span>{q}</span><ChevronDown size={18} className={`shrink-0 text-slate-400 transition ${faq===i?'rotate-180':''}`}/></button>{faq===i&&<p>{a}</p>}</div>)}</div></div></section>
    <section className="landing-section pt-0"><div className="landing-cta text-center"><ShieldCheck className="mx-auto"/><h2 className="mt-4 text-white">{text.ctaTitle}</h2><p className="mx-auto mt-3 max-w-xl text-violet-100">{text.ctaCopy}</p><button onClick={()=>setAuth('register')} className="btn-ghost mt-7 !border-0">{text.cta}<ArrowRight size={16}/></button></div></section>
   </main>
+  </div>
   {auth&&<div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm" onMouseDown={e=>{if(e.currentTarget===e.target)setAuth(null)}}><div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl sm:p-8" dir={dir}><div className="mb-6 flex items-start justify-between"><div><span className="brand-mark">R</span><h2 className="mt-4 text-2xl font-black">{auth==='register'?text.registerTitle:text.loginTitle}</h2></div><button className="rounded-xl bg-slate-100 p-2" onClick={()=>setAuth(null)} aria-label={text.close}><X size={18}/></button></div><form onSubmit={handleAuth} className="space-y-4">{auth==='register'&&<div><label className="label-primary">{text.name}</label><input className="input-primary" value={name} onChange={e=>setName(e.target.value)} required/></div>}<div><label className="label-primary">{text.email}</label><input className="input-primary" type="email" value={email} onChange={e=>setEmail(e.target.value)} required/></div><div><label className="label-primary">{text.password}</label><input className="input-primary" type="password" minLength={8} value={password} onChange={e=>setPassword(e.target.value)} required/></div>{auth==='login'&&<div className="text-right"><button type="button" onClick={handleReset} className="text-xs font-bold text-violet-600">{text.forgot}</button></div>}{auth==='register'&&<div><label className="label-primary">{text.ref} <span className="font-normal text-slate-400">({text.optional})</span></label><input className="input-primary" value={referralCode} disabled={!!referralFromUrl} onChange={e=>setReferralCode(e.target.value.toUpperCase())} placeholder="REF123"/><p className="mt-1 text-xs text-slate-500">{referralFromUrl?(ar?'الكود جاي من رابط الدعوة ومثبت.':'This code came from your invitation link and is locked.'):''}</p></div>}<button className="btn-primary w-full">{auth==='register'?text.submitRegister:text.submitLogin}</button></form><div className="mt-5 text-center text-sm text-slate-500">{auth==='register'?<>{text.already} <button className="font-bold text-violet-600" onClick={()=>setAuth('login')}>{text.login}</button></>:<>{text.newUser} <button className="font-bold text-violet-600" onClick={()=>setAuth('register')}>{text.start}</button></>}</div></div></div>}
- </div>
-}
+ </div>}

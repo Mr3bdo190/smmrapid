@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Search } from 'lucide-react';
 import PublicPageShell from './PublicPageShell';
 import { useTranslation } from '../lib/i18n';
+import SEO, { SITE } from '../components/SEO';
 
 interface SvcRow { id: string; name: string; description: string | null; rate: string; min: number; max: number; }
 interface CatRow { id: string; name: string; services: SvcRow[]; }
@@ -32,7 +33,35 @@ export default function PublicServices() {
   }, [data, q]);
 
   return (
-    <PublicPageShell title={t('publicServices.title')}>
+    <>
+      <SEO
+        title={t('publicServices.title')}
+        description={t('publicServices.subtitle')}
+        path="/services"
+        locale="en"
+        type="website"
+        jsonLd={[
+          {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": "RapidSMM",
+            "url": SITE,
+            "logo": "https://smmrapid.store/favicon.svg"
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            "name": "RapidSMM",
+            "url": SITE,
+            "potentialAction": {
+              "@type": "SearchAction",
+              "target": "https://smmrapid.store/services?q={search_term_string}",
+              "query-input": "required name=search_term_string"
+            }
+          }
+        ]}
+      />
+      <PublicPageShell title={t('publicServices.title')}>
       <p>{t('publicServices.subtitle')}</p>
 
       <div className="relative">
@@ -89,5 +118,6 @@ export default function PublicServices() {
         </Link>
       </div>
     </PublicPageShell>
+    </>
   );
 }

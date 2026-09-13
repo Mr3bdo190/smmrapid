@@ -1124,6 +1124,116 @@ app.get('/api/admin/stats',requireAuth,requireAdmin,async(_req,res)=>{
   res.json({ totalUsers:Number(u[0].count), totalOrders:Number(o[0].count), totalPayments:Number(p[0].count), activeUsers:Number(activeUsers[0].count), pendingOrders:Number(pendingOrders[0].count), pendingPayments:Number(pendingPayments[0].count), totalRevenue:money(num(revenue[0].total)).toFixed(2), activeProviders:Number(providersCount[0].count), activeServices:Number(servicesCount[0].count), openTickets:Number(openTickets[0].count), todayOrders:Number(todayOrders[0].count), todayRevenue:money(num(todayRevenue[0].total)).toFixed(2) });
 });
 
+// Analytics: orders count by day for last 30 days
+app.get('/api/admin/analytics/orders-over-time', requireAuth, requireAdmin, async(req,res)=> {
+  const result = await db.execute(sql`
+    SELECT 
+      date_trunc('day', ${orders.createdAt}) as day,
+      COUNT(*) as count,
+      SUM(${orders.cost}) as revenue,
+      AVG(${orders.cost}) as avg_order_value
+    FROM ${orders}
+    WHERE ${orders.createdAt} >= NOW() - INTERVAL '30 days'
+    GROUP BY date_trunc('day', ${orders.createdAt})
+    ORDER BY day ASC
+  `);
+  res.json(result.rows.map(r => ({
+    day: r.day.toISOString().split('T')[0],
+    count: Number(r.count),
+    revenue: Number(r.revenue || 0),
+    avg_order_value: Number(r.avg_order_value || 0)
+  })));
+});
+
+// Analytics: orders by status distribution
+app.get('/api/admin/analytics/orders-by-status', requireAuth, requireAdmin, async(req,res)=> {
+  const result = await db.execute(sql`
+    SELECT status, COUNT(*) as count
+    FROM ${orders}
+    WHERE ${orders.createdAt} >= NOW() - INTERVAL '30 days'
+    GROUP BY status
+  `);
+  res.json(result.rows.map(r => ({ status: r.status, count: Number(r.count) })));
+});
+
+// Analytics: top services by order volume
+app.get('/api/admin/analytics/top-services', requireAuth, requireAdmin, async(req,res)=> {
+  const result = await db.execute(sql`
+    SELECT s.name, COUNT(*) as order_count, SUM(o.cost) as revenue
+    FROM ${orders} o
+    JOIN ${services} s ON o.serviceId = s.id
+    WHERE o.createdAt >= NOW() - INTERVAL '30 days'
+    GROUP BY s.id, s.name
+    ORDER BY order_count DESC
+    LIMIT 10
+  `);
+  res.json(result.rows.map(r => ({
+    name: r.name,
+    order_count: Number(r.order_count),
+    revenue: Number(r.revenue || 0)
+  })));
+});
+
+// Analytics: export orders-over-time data as CSV
+app.get('/api/admin/analytics/export', requireAuth, requireAdmin, async(req,res)=> {
+  const days = Number(req.query.days) || 30;
+  const ordersResult = await db.execute(sql`
+    SELECT 
+      date_trunc('day', ${orders.createdAt}) as day,
+      COUNT(*) as count,
+      SUM(${orders.cost}) as revenue,
+      AVG(${orders.cost}) as avg_order_value
+    FROM ${orders}
+    WHERE ${orders.createdAt} >= NOW() - INTERVAL '${sql.raw(String(days) + " days")}'
+    GROUP BY date_trunc('day', ${orders.createdAt})
+    ORDER BY day ASC
+  `);
+
+  const ordersData = ordersResult.rows.map(r => ({
+    day: r.day.toISOString().split('T')[0],
+    count: Number(r.count),
+    revenue: Number(r.revenue || 0),
+    avg_order_value: Number(r.avg_order_value || 0)
+  }));
+
+  const statusResult = await db.execute(sql`
+    SELECT status, COUNT(*) as count
+    FROM ${orders}
+    WHERE ${orders.createdAt} >= NOW() - INTERVAL '${sql.raw(String(days) + " days")}'
+    GROUP BY status
+  `);
+
+  const servicesResult = await db.execute(sql`
+    SELECT s.name, COUNT(*) as order_count, SUM(o.cost) as revenue
+    FROM ${orders} o
+    JOIN ${services} s ON o.serviceId = s.id
+    WHERE o.createdAt >= NOW() - INTERVAL '${sql.raw(String(days) + " days")}'
+    GROUP BY s.id, s.name
+    ORDER BY order_count DESC
+    LIMIT 10
+  `);
+
+  const csvLines = ['Date,Orders,Revenue,Avg Order Value'];
+  ordersData.forEach(d => {
+    csvLines.push([d.day, d.count, d.revenue.toFixed(2), d.avg_order_value.toFixed(2)].join(','));
+  });
+  csvLines.push('');
+  csvLines.push('Status,Order Count');
+  statusResult.rows.forEach(r => {
+    csvLines.push([r.status, Number(r.count)].join(','));
+  });
+  csvLines.push('');
+  csvLines.push('Service,Order Count,Revenue');
+  servicesResult.rows.forEach(r => {
+    csvLines.push([r.name, Number(r.order_count), Number(r.revenue || 0).toFixed(2)].join(','));
+  });
+
+  const csv = csvLines.join('\n');
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename=analytics-export-' + new Date().toISOString().split('T')[0] + '.csv');
+  res.send(csv);
+});
+
 app.get('/api/admin/categories',requireAuth,requireAdmin,async(_req,res)=>res.json(await db.select().from(categories).orderBy(categories.sortOrder)));
 app.post('/api/admin/categories',requireAuth,requireAdmin,async(req:any,res)=>{const name=String(req.body?.name||'').trim();if(name.length<2||name.length>100)return apiError(res,400,'Invalid category name');const [c]=await db.insert(categories).values({name,sortOrder:Number(req.body?.sortOrder||0),status:req.body?.status==='inactive'?'inactive':'active'}).returning();await audit(req.dbUser.id,'CREATE_CATEGORY','CATEGORY',c.id);res.status(201).json(c);});
 app.put('/api/admin/categories/:id',requireAuth,requireAdmin,async(req:any,res)=>{const [c]=await db.update(categories).set({name:req.body.name,sortOrder:Number(req.body.sortOrder||0),status:req.body.status==='inactive'?'inactive':'active'}).where(eq(categories.id,req.params.id)).returning();if(!c)return apiError(res,404,'Category not found');await audit(req.dbUser.id,'UPDATE_CATEGORY','CATEGORY',c.id);res.json(c);});

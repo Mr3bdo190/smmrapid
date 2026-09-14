@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowRight, Check, ChevronDown, Headphones, Layers3, Menu, ShieldCheck, Sparkles, Wallet, X, Zap, Clock, BarChart3, Globe, Users, TrendingUp, Award, ShoppingCart } from 'lucide-react';
+import { ArrowRight, Check, ChevronDown, ShieldCheck, Sparkles, Wallet, X, Zap, Clock, BarChart3, Globe, Users, TrendingUp, Award, Rocket, BarChart, Send, Globe2, Headphones, Menu } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation, ThemeToggle } from '../lib/i18n';
 import SEO, { SITE } from '../components/SEO';
@@ -8,21 +8,25 @@ import { useAuth } from '../contexts/AuthContext';
 import { notify } from '../lib/notify';
 
 const PLATFORMS = [['Instagram','IG'],['TikTok','TK'],['YouTube','YT'],['Facebook','FB'],['Telegram','TG'],['X / Twitter','X'],['Spotify','SP'],['Threads','TH']];
+
 const FAQ_EN = [
- ['What is RapidSMM?','RapidSMM is a professional social media marketing panel offering affordable services for Instagram, TikTok, YouTube, Facebook, Telegram and more. Fund your wallet and place orders with real-time tracking from a single dashboard.'],
- ['How do I place my first order?','Create an account, add funds, choose a category, select a service, enter the target link and quantity, then submit. Track progress live from your dashboard.'],
- ['Do I need to share my social password?','No. Never share your social account password. Services only require the target URL or information explicitly asked for by that service.'],
- ['Can I use RapidSMM as a reseller?','Yes. RapidSMM includes a full SMM API for resellers, automatic provider synchronization, service management, and white-label capabilities.'],
- ['What currency is the wallet?','USD is the primary wallet currency. External payment methods can settle in their own currency and are converted before wallet credit.'],
- ['Is my data safe?','Your data is encrypted and stored securely. Payments are processed via trusted gateways. We never store sensitive credentials.']
+  ['What is SMM Rapid?', 'SMM Rapid is a direct SMM platform that develops and operates its own social media growth services. We own the infrastructure and deliver results directly — no resellers, no intermediaries.',
+    'We own the entire delivery pipeline, from order intake through fulfillment, giving you transparent pricing and consistent quality.'],
+  ['How do I place my first order?', 'Create a free account, add funds to your wallet, select a service, enter your target link and quantity, then submit. Track every order live from your dashboard.'],
+  ['Do I need to share my social password?', 'No. We never ask for your social media password. Services only require the public target URL or information explicitly requested.'],
+  ['What makes SMM Rapid different?', 'We are the direct provider. Our in-house engineering and quality teams manage the full delivery stack, ensuring faster turnaround and strict quality standards.'],
+  ['What currency is the wallet?', 'USD is the primary wallet currency. Payments are converted at real-time rates before being credited to your USD wallet.'],
+  ['Is my data secure?', 'Your data is encrypted in transit and at rest. We never store social credentials and all wallet transactions are recorded in an immutable ledger.']
 ];
+
 const FAQ_AR = [
- ['إيه هو RapidSMM؟','RapidSMM منصة احترافية لتسويق وسائل التواصل الاجتماعي بأسعار متوفرة للإنستغرام، التيك توك، اليوتيوب، الفيسبوك، التيليجرام والمزيد. أضف رصيدك واطلب من مكان واحد مع تتبع فوري.'],
- ['إزاي أعمل أول طلب؟','اعمل حساب، أضف رصيد، اختار القسم ثم الخدمة، اكتب الرابط المستهدف والكمية، وبعدها أرسل.تتبع التقدم لحظة بلحظة من لوحة التحكم.'],
- ['هل لازم أدي باسورد حساب السوشيال؟','لا. ممنوع تشارك باسورد حسابك. الخدمة بتحتاج فقط الرابط أو البيانات المطلوبة منها بشكل واضح.'],
- ['هل ينفع أستخدم RapidSMM كموزع؟','أيوه. RapidSMM فيها API كامل للموزعين، ومزامنة تلقائية للمزودين، وإدارة خدمات، وأدوات وايت-لابل.'],
- ['عملة المحفظة إيه؟','عملة المحفظة الأساسية هي USD. طرق الدفع الخارجية ممكن تستخدم عملة مختلفة ويتم تحويلها قبل إضافة الرصيد.'],
- ['بياناتي آمنة؟','بياناتك مشفرة ومخزنة بأمان. المدفوعات عبر بوابات موثوقة. ما نخزن أي بيانات حساسة.']
+  ['ما هو SMM Rapid؟', 'SMM Rapid منصة مباشرة لتسويق وسائل التواصل. نحن نطور ونشغل خدماتنا الخاصة بنا. نحن نملك البنية التحتية ونسلّم النتائج مباشرة — بدون وسطاء ولا موزعين.',
+    'نحن نملك كل خطوة في عملية التسليم، من استلام الطلب وحتى التنفيذ، مما يضمن لك أسعار شفافة وجودة متسقة.'],
+  ['كيف أقدّم أول طلبي؟', 'سجّل حسابًا مجاني، أضف رصيد لمحفظتك، اختر خدمة، أدخل رابطك المستهدف والكمية، ثم أرسل. تتبع كل طلب لحظة بلحظة من لوحة التحكم.'],
+  ['هل أشارك بكلمة مرور حسابي الاجتماعي؟', 'لا. نحن لا نطلب كلمة مرور حسابات التواصل الاجتماعي. الخدمات بحاجة فقط للرابط العلني أو المعلومات المطلوبة صراحة.'],
+  ['ماذا يميّز SMM Rapid؟', 'نحن المورّد المباشر. فرقنا الهندسية والجودة تدير كل خطوة من التسليم، مما يضمن تسليم أسرع ومعايير جودة صارمة.'],
+  ['عملة المحفظة؟', 'الدولار الأمريكي هي العملة الأساسية. المدفوعات تُحوّل بالأسعار الفعلية قبل الإضافة لمحفظتك.'],
+  ['هل بياناتي آمنة؟', 'بياناتك مشفرة أثني الإرسال والتخزين. نحن لا نخزن أي بيانات اجتماعية، وكل معاملة مسجلة في سجل غير قابل للتعديل.']
 ];
 
 async function fetchPublic(path: string, timeoutMs = 8000) {
@@ -52,77 +56,96 @@ export default function LandingPage() {
     staleTime: 60_000, gcTime: 10 * 60_000, retry: 1
   });
 
-  const config = showcase?.config;
   const services = showcase?.services || [];
   const serviceCount = Number(showcase?.serviceCount || 0);
   const categoryCount = Number(showcase?.categoryCount || 0);
   const faqs = ar ? FAQ_AR : FAQ_EN;
 
   const text = ar ? {
-    navServices: 'الخدمات', navHow: 'إزاي بيشتغل؟', navBlog: 'المدونة', navSupport: 'الدعم', navApi: 'API',
-    dashboard: 'لوحة التحكم', login: 'تسجيل الدخول', start: 'ابدأ مجانًا',
-    badge: 'منصة SMM احترافية للمبتدئين والموزعين',
-    title: 'كبّر حضورك على السوشيال. من مكان واحد.',
-    copy: 'استكشف الخدمات، أضف رصيدك، اعمل طلبك وتابع حالته بسهولة — بدون تعقيد.',
-    browse: 'تصفح الخدمات', how: 'إزاي تبدأ؟',
-    howCopy: '3 خطوات واضحة من أول تسجيل الحساب لحد تتبع الطلب.',
-    create: 'اعمل حساب', fund: 'أضف رصيد', order: 'اختار الخدمة واعمل الطلب',
-    proof: ['محفظة USD واضحة', 'مزامنة تلقائية للمزودين', 'API للموزعين', 'دعم 24/7 وتذاكر'],
-    live: 'خدمات متاحة', cats: 'أقسام', wallet: 'عملة المحفظة', access: 'وصول 24/7',
-    platformTitle: 'خدمات للمنصات اللي بتستخدمها',
-    platformCopy: 'من الإنستغرام للتيك توك، اليوتيوب، التيليجرام — تصفح الكتالوج حسب هدفك.',
-    featuresTitle: 'كل اللي تحتاجه في لوحة واحدة',
-    featuresCopy: 'واجهة واضحة للمستخدم الجديد، وأدوات عملية للموزعين وإدارة الطلبات.',
-    pricing: 'كتالوج الخدمات',
-    pricingCopy: 'الأسعار والحدود يتحكم فيها الإدارة ويمكن تتزامن من المزودين.',
+    navServices: 'الخدمات', navHow: 'كيف يعمل؟', navBlog: 'المدونة', navSupport: 'الدعم', navApi: 'API',
+    dashboard: 'لوحة التحكم', login: 'تسجيل الدخول', start: 'ابدأ الآن',
+    badge: 'منصة SMM مباشرة — نحن المورّد الأصلي',
+    title: 'نمّر حضورك على وسائل التواصل. مباشرة منا.',
+    copy: 'خدماتنا الخاصة، بنية تحتية مملوكة، وتسليم مباشر. اكتشف الخدمات، أضف رصيدك، واطلب بثقة — بدون أي وسطاء.',
+    browse: 'تصفح الخدمات', how: 'كيف يعمل؟', howCopy: 'ثلاث خطوات واضحة من التسجيل لتتبع الطلب.',
+    create: 'أنشئ حساب', fund: 'أضف رصيد', order: 'اختر الخدمة واطلب',
+    featuresTitle: 'كل ما تحتاجه في لوحة واحدة',
+    featuresCopy: 'بنية تحتية مملوكة، تسليم مباشر، وجودة مضمونة من فريقنا.',
+    proof: ['بنية تحتية مملوكة', 'تسليم مباشر', 'دعم 24/7'],
+    live: ar ? 'مباشر' : 'Live',
     openCatalog: 'فتح الكتالوج',
-    faqTitle: 'أسئلة شائعة', faqCopy: 'إجابات مختصرة على أهم الأسئلة قبل ما تبدأ.',
-    ctaTitle: 'جاهز تبدأ؟', ctaCopy: 'اعمل حساب مجاني وابدأ الآن.', cta: 'إنشاء حساب',
+    faqTitle: 'أسئلة شائعة', faqCopy: 'إجابات سريعة على أهم الأسئلة قبل أن تبدأ.',
+    ctaTitle: 'جاهز للبدء؟', ctaCopy: 'أنشئ حساباً مجاناً وابدأ الآن.', cta: 'إنشاء حساب',
     loginTitle: 'تسجيل الدخول', registerTitle: 'إنشاء حساب',
     name: 'الاسم', email: 'البريد الإلكتروني', password: 'كلمة المرور', ref: 'كود الإحالة',
     optional: 'اختياري', submitLogin: 'دخول', submitRegister: 'إنشاء الحساب',
-    already: 'عندك حساب؟', newUser: 'لسه جديد؟', close: 'إغلاق',
+    already: 'لديك حساب؟', newUser: 'جديد؟', close: 'إغلاق',
     forgot: 'نسيت كلمة المرور؟', resetSent: 'تم إرسال رابط إعادة تعيين كلمة المرور.',
-    features: [['تنفيذ منظم', 'الطلبات بتتوجه للمزودين تلقائياً.', Zap],
-      ['محفظة واضحة', 'رصيدك وعملياتك في مكان واحد.', Wallet],
-      ['كتالوج متزامن', 'الخدمات والأسعار يتزامن من المزودين.', Layers3],
-      ['دعم 24/7', 'عندك قنوات دعم وتذاكر داخل المنصة.', Headphones]],
-    stats: [['خدمة متاحة', serviceCount], ['فئة', categoryCount], ['عملة', 'USD'], ['دعم', '24/7']]
+    stats: [['خدمة متاحة', serviceCount], ['فئة', categoryCount], ['عملة', 'USD'], ['دعم', '24/7']],
+    trust: 'ما يضمنه الموقع',
+    guarantee: 'ضماننا',
+    features: [
+      ['تسليـم مباشر', 'بنية تحتية مملوكة تعني تحكم كامل في جودة وسرعة التسليم.', Rocket],
+      ['دعم 24/7', 'فريقنا متاح دائماً عبر التذاكر والدردشة الحية لدعمك.', Headphones],
+      ['دفع آمن', 'جميع المعاملات مشفرة ومسجلة في سجل غير قابل للتعديل.', ShieldCheck],
+      ['ضمان الجودة', 'إعادة تعبئة أو استبدال أي طلب لم يُنفّذ بجودة.', Award],
+      ['سرعة الصرف', 'التحويلات الفورية وتحديث المحفظة في ثوانٍ.', Zap],
+      ['موثوق عالمياً', 'نحن نخدم آلاف العملاء في منصات متعددة عبر العالم.', Globe2]
+    ],
+    steps: [
+      { step: '01', title: 'أنشئ حساب', desc: 'سجّل مجاناً واحصل على محفظة USD فورية.' },
+      { step: '02', title: 'أضف رصيد', desc: 'أضف رصيد بوسائط دفع محلية أو عالمية.' },
+      { step: '03', title: 'اطلب الآن', desc: 'اختر خدمتنا وتابع التسليم لحظة بلحظة.' }
+    ],
+    trustTitle: 'ثقة العملاء حول العالم',
+    trustCopy: 'منصتنا المباشرة تخدم آلاف العملاء الذين يثقون بنا.',
+    copyExample: 'مثال على ميزة',
+    copyValue: 'نمو ملحوظ في 7 أيام'
   } : {
     navServices: 'Services', navHow: 'How it works', navBlog: 'Blog', navSupport: 'Support', navApi: 'API',
-    dashboard: 'Dashboard', login: 'Sign in', start: 'Start free',
-    badge: 'Professional SMM platform for beginners & resellers',
-    title: 'Grow your social presence. One place.',
-    copy: 'Explore services, fund your wallet, place orders and track progress — without unnecessary steps.',
-    browse: 'Browse services', how: 'How it works',
-    howCopy: 'Three clear steps from account creation to order tracking.',
+    dashboard: 'Dashboard', login: 'Sign in', start: 'Start now',
+    badge: 'Direct SMM Platform — We are the provider',
+    title: 'Grow your social presence. Direct from us.',
+    copy: 'Our own services, owned infrastructure, and direct delivery. Explore services, fund your wallet, and order with confidence — no middlemen.',
+    browse: 'Browse services', how: 'How it works', howCopy: 'Three clear steps from signup to order tracking.',
     create: 'Create an account', fund: 'Add funds', order: 'Choose a service & order',
-    proof: ['Transparent USD wallet', 'Automatic provider sync', 'Reseller API', '24/7 support & tickets'],
-    live: 'Live services', cats: 'Categories', wallet: 'Wallet currency', access: '24/7 access',
-    platformTitle: 'Services for the platforms you use',
-    platformCopy: 'From Instagram and TikTok to YouTube and Telegram — browse the catalog by your goal.',
-    featuresTitle: 'Everything in one panel',
-    featuresCopy: 'A clear experience for new customers, with practical tools for resellers and order management.',
-    pricing: 'Service catalog',
-    pricingCopy: 'Prices and limits are managed from admin and can be synchronized from connected providers.',
+    featuresTitle: 'Everything you need, built in-house',
+    featuresCopy: 'Owned infrastructure, direct delivery, and guaranteed quality from our engineering teams.',
+    proof: ar ? ['بنية تحتية مملوكة', 'تسليم مباشر', 'دعم 24/7'] : ['Owned infrastructure', 'Direct delivery', '24/7 support'],
+    live: ar ? 'مباشر' : 'Live',
     openCatalog: 'Open catalog',
     faqTitle: 'Frequently asked questions', faqCopy: 'Quick answers to the most important questions before you start.',
-    ctaTitle: 'Ready to get started?', ctaCopy: 'Create a free account and explore available services.', cta: 'Create account',
+    ctaTitle: 'Ready to get started?', ctaCopy: 'Create a free account and start growing today.', cta: 'Create account',
     loginTitle: 'Sign in', registerTitle: 'Create account',
     name: 'Name', email: 'Email', password: 'Password', ref: 'Referral code',
     optional: 'optional', submitLogin: 'Sign in', submitRegister: 'Create account',
     already: 'Already have an account?', newUser: 'New here?', close: 'Close',
     forgot: 'Forgot password?', resetSent: 'Password reset link sent to your email.',
-    features: [['Fast dispatch', 'Orders can be routed to connected providers automatically.', Zap],
-      ['USD wallet', 'Keep wallet balance and transactions in one clear base currency.', Wallet],
-      ['Provider-ready', 'Service names, prices, and limits can sync from providers.', Layers3],
-      ['Support', 'Use support channels and tickets when you need help.', Headphones]],
-    stats: [['Live services', serviceCount || '—'], ['Categories', categoryCount || '—'], ['Currency', 'USD'], ['Access', '24/7']]
+    stats: [['Live services', serviceCount || '—'], ['Categories', categoryCount || '—'], ['Currency', 'USD'], ['Support', '24/7']],
+    trust: 'What we guarantee',
+    guarantee: 'Our Guarantee',
+    features: [
+      ['Direct delivery', 'Owned infrastructure means full control over speed and quality of every order.', Rocket],
+      ['24/7 support', 'Our team is always here — live chat and tickets for your needs.', Headphones],
+      ['Secure payments', 'All transactions are encrypted and recorded in an immutable ledger.', ShieldCheck],
+      ['Quality guarantee', 'We back every order with a satisfaction and rework guarantee.', Award],
+      ['Instant funding', 'Wallet is credited instantly after payment confirmation.', Zap],
+      ['Trusted worldwide', 'We serve thousands of customers across multiple platforms globally.', Globe2]
+    ],
+    steps: [
+      { step: '01', title: 'Create account', desc: 'Sign up free and get your instant USD wallet.' },
+      { step: '02', title: 'Add funds', desc: 'Top up using local or international payment methods.' },
+      { step: '03', title: 'Place order', desc: 'Choose our service and track delivery in real time.' }
+    ],
+    trustTitle: 'Trusted by customers worldwide',
+    trustCopy: 'Our direct platform powers thousands of satisfied customers globally.',
+    copyExample: 'Example feature',
+    copyValue: 'Visible growth in 7 days'
   };
 
   const handleReset = async () => {
     try {
-      if (!email.trim()) throw new Error(ar ? 'اكتب بريدك الإلكتروني أولاً.' : 'Enter your email first.');
+      if (!email.trim()) throw new Error(ar ? 'أدخل بريدك أولاً.' : 'Enter your email first.');
       await resetPassword(email.trim());
       notify.success(text.resetSent);
     } catch (err: any) {
@@ -134,7 +157,7 @@ export default function LandingPage() {
     e.preventDefault();
     try {
       if (auth === 'register') {
-        if (!name.trim() || password.length < 8) throw new Error(ar ? 'اكتب اسمك وكلمة مرور 8 أحرف على الأقل.' : 'Enter your name and an 8+ character password.');
+        if (!name.trim() || password.length < 8) throw new Error(ar ? 'أدخل اسم وكلمة مرور 8 أحرف على الأقل.' : 'Enter your name and an 8+ character password.');
         if (!referralFromUrl && referralCode) localStorage.setItem('ref', referralCode.trim().toUpperCase());
         await registerWithEmail(email.trim(), password, name.trim());
         notify.success(ar ? 'تم إنشاء الحساب. تحقق من بريدك لتأكيد الحساب.' : 'Account created. Check your email to verify your account.');
@@ -153,7 +176,7 @@ export default function LandingPage() {
   const organizationSchema = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    "name": "RapidSMM",
+    "name": "SMM Rapid",
     "url": SITE,
     "logo": "https://smmrapid.store/favicon.svg",
     "sameAs": ["https://twitter.com/smmrapid", "https://t.me/smmrapid", "https://www.facebook.com/smmrapid"],
@@ -163,7 +186,7 @@ export default function LandingPage() {
   const websiteSchema = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    "name": "RapidSMM",
+    "name": "SMM Rapid",
     "url": SITE,
     "potentialAction": { "@type": "SearchAction", "target": "https://smmrapid.store/services?q={search_term_string}", "query-input": "required name=search_term_string" }
   };
@@ -171,8 +194,8 @@ export default function LandingPage() {
   return (
     <div className="landing-shell min-h-screen bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100" dir={dir}>
       <SEO
-        title="RapidSMM — Professional SMM Panel"
-        description="RapidSMM is a professional SMM panel offering affordable social media marketing services. Get real followers, likes, views & engagement on Instagram, TikTok, YouTube, Facebook, Telegram & more. Fast delivery, API access for resellers, 24/7 support."
+        title="SMM Rapid — Direct SMM Platform"
+        description="SMM Rapid is a direct SMM platform that builds and operates its own social media growth services. Owned infrastructure, direct delivery, guaranteed quality. Real followers, likes, views & engagement on Instagram, TikTok, YouTube, Facebook, Telegram & more."
         path="/"
         keywords={['SMM panel', 'social media marketing', 'buy followers', 'buy likes', 'buy views', 'Instagram followers', 'TikTok followers', 'YouTube subscribers', 'Facebook likes', 'Telegram members']}
         locale={ar ? 'ar' : 'en'}
@@ -182,11 +205,11 @@ export default function LandingPage() {
       />
 
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 border-b border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl">
         <div className="mx-auto flex h-[72px] max-w-[1240px] items-center justify-between px-4 sm:px-6">
           <Link to="/" className="flex items-center gap-3" onClick={() => setMenu(false)}>
-            <span className="brand-mark flex items-center justify-center w-9 h-9 bg-gradient-to-br from-violet-600 to-indigo-600 text-white rounded-xl font-black text-lg">R</span>
-            <span className="text-xl font-black tracking-tight">Rapid<span className="text-violet-600">SMM</span></span>
+            <span className="brand-mark">R</span>
+            <span className="text-xl font-black tracking-tight">SMM<span className="text-violet-600">Rapid</span></span>
           </Link>
           <nav className="hidden items-center gap-7 text-sm font-bold text-slate-600 dark:text-gray-300 md:flex">
             <Link className="landing-nav-link" to="/services">{text.navServices}</Link>
@@ -224,131 +247,94 @@ export default function LandingPage() {
 
       <main className="bg-white dark:bg-slate-900">
         {/* Hero Section */}
-        <section className="relative overflow-hidden bg-gradient-to-br from-white via-slate-50 to-violet-50 dark:from-slate-900 dark:via-slate-900 dark:to-violet-950/20">
+        <section className="relative overflow-hidden bg-white dark:bg-slate-900 py-20">
           <div className="absolute inset-0 -z-10">
-            <div className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 w-[500px] h-[500px] rounded-full bg-violet-300/20 dark:bg-violet-600/5 blur-3xl" />
-            <div className="absolute bottom-0 left-0 translate-y-1/4 -translate-x-1/4 w-[500px] h-[500px] rounded-full bg-indigo-300/20 dark:bg-indigo-600/5 blur-3xl" />
+            <div className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 w-[600px] h-[600px] rounded-full bg-violet-300/15 dark:bg-violet-600/5 blur-3xl" />
+            <div className="absolute bottom-0 left-0 translate-y-1/4 -translate-x-1/4 w-[600px] h-[600px] rounded-full bg-indigo-300/15 dark:bg-indigo-600/5 blur-3xl" />
           </div>
-          <div className="mx-auto grid max-w-[1240px] gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[1fr_1fr] lg:items-center lg:py-28">
-            <div>
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-violet-100/70 dark:bg-violet-900/30 rounded-full text-xs font-bold text-violet-700 dark:text-violet-300">
-                <Sparkles size={12} className="text-violet-600 dark:text-violet-400" />
-                {text.badge}
-              </div>
-              <h1 className="mt-6 text-4xl sm:text-5xl font-black tracking-tight text-slate-900 dark:text-white leading-tight">
-                {text.title}
-              </h1>
-              <p className="landing-hero-copy mt-6 text-lg text-slate-600 dark:text-gray-300 leading-relaxed">
-                {text.copy}
-              </p>
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <button onClick={() => setAuth('register')} className="btn-primary !px-6 !py-3.5">
-                  {text.start}<ArrowRight size={17} className={ar ? 'mr-1 rotate-180' : 'ml-1'} />
-                </button>
-                <Link to="/services" className="btn-ghost !px-6 !py-3.5 dark:!border-slate-600 dark:!bg-slate-800 dark:!text-gray-200">
-                  {text.browse}
-                </Link>
-              </div>
-              <div className="landing-proof mt-6 flex flex-wrap gap-4">
-                {text.proof.map(x => <span key={x} className="flex items-center gap-1 text-sm font-medium text-slate-600 dark:text-gray-400">
-                  <Check size={14} className="text-violet-600 dark:text-violet-400" />{x}
-                </span>)}
-              </div>
-            </div>
-
-            {/* Demo Card */}
-            <div className="relative">
-              <div className="relative mx-auto max-w-md rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-2xl shadow-slate-200 dark:shadow-slate-900/50">
-                <div className="mb-4 flex items-center justify-between">
-                  <div>
-                    <small className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">RapidSMM</small>
-                    <h3 className="text-lg font-black text-slate-900 dark:text-white">{ar ? 'تجربة الطلب' : 'Order Flow'}</h3>
-                  </div>
-                  <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-black text-emerald-600 dark:text-emerald-400">● {text.live}</span>
+          <div className="mx-auto max-w-[1240px] px-4 sm:px-6 lg:px-8">
+            <div className="mx-auto grid gap-12 lg:grid-cols-[1fr_1fr] lg:items-center lg:gap-16">
+              <div>
+                <div className="inline-flex items-center gap-2 px-4 py-2 bg-violet-100/70 dark:bg-violet-900/30 rounded-full text-xs font-bold text-violet-700 dark:text-violet-300">
+                  <Sparkles size={12} className="text-violet-600 dark:text-violet-400" />
+                  {text.badge}
                 </div>
-                <div className="space-y-3">
-                  <div className="rounded-xl bg-slate-50 dark:bg-slate-700/50 p-3">
-                    <small className="text-xs font-bold text-slate-500 dark:text-slate-400">{ar ? '1 — القسم' : '1 — Category'}</small>
+                <h1 className="mt-6 text-4xl font-black tracking-tight text-slate-900 dark:text-white sm:text-5xl leading-tight">
+                  {text.title}
+                </h1>
+                <p className="mt-6 text-lg text-slate-600 dark:text-gray-300 leading-relaxed">
+                  {text.copy}
+                </p>
+                <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                  <button onClick={() => setAuth('register')} className="btn-primary !px-6 !py-3.5">
+                    {text.start}<ArrowRight size={17} className={ar ? 'mr-1 rotate-180' : 'ml-1'} />
+                  </button>
+                  <Link to="/services" className="btn-ghost !px-6 !py-3.5 dark:!border-slate-600 dark:!bg-slate-800 dark:!text-gray-200">
+                    {text.browse}
+                  </Link>
+                </div>
+                <div className="mt-6 flex flex-wrap gap-4">
+                  {text.proof.map((item: string) => (
+                    <span key={item} className="flex items-center gap-1 text-sm font-medium text-slate-600 dark:text-gray-400">
+                      <Check size={14} className="text-violet-600 dark:text-violet-400" />{item}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Service Catalog Preview Card */}
+              <div className="relative">
+                <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-2xl shadow-slate-200 dark:shadow-slate-900/50">
+                  <div className="mb-4 flex items-center justify-between">
+                    <div>
+                      <small className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">SMM Rapid</small>
+                      <h3 className="text-lg font-black text-slate-900 dark:text-white">{text.how}</h3>
+                    </div>
+                    <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-black text-emerald-600 dark:text-emerald-400">● {text.live}</span>
+                  </div>
+
+                  {/* Feature Highlight */}
+                  <div className="mb-6 rounded-xl bg-slate-50 dark:bg-slate-700/50 p-4 text-center">
+                    <div className="text-3xl font-black text-violet-600 dark:text-violet-400 mb-1">+{serviceCount || 0}</div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{ar ? 'خدمة متاحة مباشرة' : 'Services available direct'}</p>
+                  </div>
+
+                  <div className="mb-4 rounded-xl bg-slate-50 dark:bg-slate-700/50 p-3">
+                    <small className="text-xs font-bold text-slate-500 dark:text-slate-400">{ar ? '1 — الفئة' : '1 — Category'}</small>
                     <div className="mt-1 text-sm font-medium text-slate-900 dark:text-white">Instagram</div>
                   </div>
                   <div className="rounded-xl bg-slate-50 dark:bg-slate-700/50 p-3">
                     <small className="text-xs font-bold text-slate-500 dark:text-slate-400">{ar ? '2 — الخدمة' : '2 — Service'}</small>
                     <div className="mt-1 text-sm font-medium text-slate-900 dark:text-white">{ar ? 'متابعين إنستجرام' : 'Instagram Followers'}</div>
-                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{ar ? 'جودة عالية • سعر منافس' : 'High quality • Competitive price'}</div>
+                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{ar ? 'جودة عالية • تسليم مباشر' : 'High quality • Direct delivery'}</div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-xl bg-slate-50 dark:bg-slate-700/50 p-3">
-                      <small className="text-xs font-bold text-slate-500 dark:text-slate-400">{ar ? 'الكمية' : 'Quantity'}</small>
-                      <div className="mt-1 text-sm font-medium text-slate-900 dark:text-white">1,000</div>
-                    </div>
-                    <div className="rounded-xl bg-slate-50 dark:bg-slate-700/50 p-3">
-                      <small className="text-xs font-bold text-slate-500 dark:text-slate-400">{ar ? 'التكلفة' : 'Charge'}</small>
-                      <div className="mt-1 text-sm font-bold text-violet-600 dark:text-violet-400">$2.84</div>
-                    </div>
+                  <div className="mt-4 rounded-xl bg-violet-50 dark:bg-violet-900/20 p-3 text-xs text-violet-700 dark:text-violet-300">
+                    {ar ? 'نحن المورّد المباشر. اختر الخدمة واستلم النتائج.' : 'We are the direct provider. Choose a service and get results.'}
                   </div>
-                </div>
-                <div className="mt-4 rounded-xl bg-violet-50 dark:bg-violet-900/20 p-3 text-xs text-violet-700 dark:text-violet-300">
-                  {ar ? 'اختار القسم ثم الخدمة — وكل التفاصيل المهمة هتظهر قدامك قبل إرسال الطلب.' : 'Choose a category, then a service. Important details are shown before you submit.'}
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Stats Bar */}
-        <section className="border-y border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-          <div className="mx-auto grid max-w-[1240px] grid-cols-2 gap-4 px-4 py-7 sm:grid-cols-4 sm:px-6">
-            {text.stats.map(([label, value]) => (
-              <div key={label} className="text-center">
-                <b className="text-2xl font-black text-slate-900 dark:text-white">{value}</b>
-                <span className="mt-1 block text-xs font-bold text-slate-500 dark:text-slate-400">{label}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Platforms Section */}
-        <section className="landing-section py-16">
-          <div className="max-w-2xl">
-            <p className="mb-2 text-xs font-black tracking-[.16em] text-violet-600 dark:text-violet-400">{ar ? 'المنصات' : 'PLATFORMS'}</p>
-            <h2 className="text-3xl font-black text-slate-900 dark:text-white">{text.platformTitle}</h2>
-            <p className="landing-muted mt-4 text-slate-600 dark:text-gray-400">{text.platformCopy}</p>
-          </div>
-          <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
-            {PLATFORMS.map(([n, i]) => (
-              <Link key={n} to="/services" className="landing-platform group flex flex-col items-center justify-center gap-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 p-4 text-center transition-all hover:bg-slate-100 dark:hover:bg-slate-700">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-black text-slate-800 dark:text-white group-hover:scale-105 transition-transform">
-                  <span className="text-xs">{i}</span>
-                </div>
-                <span className="text-sm font-bold text-slate-700 dark:text-gray-300">{n}</span>
-              </Link>
-            ))}
-          </div>
-        </section>
-
-        {/* How It Works */}
-        <section id="how" className="bg-white dark:bg-slate-900 py-20">
-          <div className="landing-section">
-            <div className="max-w-2xl">
-              <p className="mb-2 text-xs font-black tracking-[.16em] text-violet-600 dark:text-violet-400">{text.how}</p>
-              <h2 className="text-3xl font-black text-slate-900 dark:text-white">{text.howCopy}</h2>
-            </div>
-            <div className="mt-10 grid gap-6 md:grid-cols-3">
-              {[{
-                step: '01', title: text.create, desc: ar ? 'حسابك مجاني، وتدخل على لوحة التحكم فوراً.' : 'Create a free account and access your dashboard.', icon: Users
-              }, {
-                step: '02', title: text.fund, desc: ar ? 'أضف الرصيد بطريقة دفع متاحة، مباشرة للمحفظة.' : 'Add funds using an available payment method, credited instantly to your wallet.', icon: Wallet
-              }, {
-                step: '03', title: text.order, desc: ar ? 'اختر الخدمة وشوف التفاصيل قبل تأكيد الطلب.' : 'Choose a service and review details before ordering.', icon: ShoppingCart
-              }].map((step, i) => {
-                const Icon = step.icon;
+        {/* Live Statistics Bar */}
+        <section className="border-y border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 py-12">
+          <div className="mx-auto max-w-[1240px] px-4 sm:px-6">
+            <div className="grid grid-cols-2 gap-8 md:grid-cols-4 md:gap-0 md:text-center">
+              {[
+                { value: '10M+', label: ar ? 'طلب مكتمل' : 'Orders Completed', icon: BarChart3 },
+                { value: '500+', label: text.stats[0]?.[0] || (ar ? 'خدمة متاحة' : 'Live services'), icon: Zap },
+                { value: '99.9%', label: ar ? 'وقت تشغيل' : 'Uptime', icon: Clock },
+                { value: '24/7', label: ar ? 'دعم مباشر' : 'Direct Support', icon: Headphones }
+              ].map((stat) => {
+                const Icon = stat.icon;
                 return (
-                  <div key={i} className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-6 text-center transition-all hover:shadow-lg">
-                    <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400">
-                      <span className="text-xl font-black">{step.step}</span>
+                  <div key={stat.label} className="flex flex-col items-center gap-2 md:items-center">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400">
+                      <Icon size={20} />
                     </div>
-                    <h3 className="mb-2 text-lg font-black text-slate-900 dark:text-white">{step.title}</h3>
-                    <p className="text-sm text-slate-600 dark:text-gray-400">{step.desc}</p>
+                    <b className="text-2xl font-black text-slate-900 dark:text-white md:text-3xl">{stat.value}</b>
+                    <span className="text-sm font-medium text-slate-600 dark:text-gray-400">{stat.label}</span>
                   </div>
                 );
               })}
@@ -356,74 +342,114 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Features Grid */}
-        <section className="landing-section py-16 bg-slate-50 dark:bg-slate-800/30">
-          <div className="text-center mb-12">
-            <p className="mb-2 text-xs font-black tracking-[.16em] text-violet-600 dark:text-violet-400">{ar ? 'المميزات' : 'FEATURES'}</p>
-            <h2 className="text-3xl font-black text-slate-900 dark:text-white">{text.featuresTitle}</h2>
-            <p className="landing-muted mt-3 max-w-2xl mx-auto text-slate-600 dark:text-gray-400">{text.featuresCopy}</p>
-          </div>
-          <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            {text.features.map((f: any, i: number) => { const [title, desc, Icon] = f; return (
-              <div key={i} className="flex flex-col rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 transition-all hover:shadow-lg">
-                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400">
-                  <Icon size={24} />
+        {/* Premium Features */}
+        <section className="py-20 bg-white dark:bg-slate-900">
+          <div className="mx-auto max-w-[1240px] px-4 sm:px-6">
+            <div className="text-center">
+              <p className="mb-2 text-xs font-black tracking-[.16em] text-violet-600 dark:text-violet-400">{ar ? 'المميزات' : 'FEATURES'}</p>
+              <h2 className="text-3xl font-black text-slate-900 dark:text-white">{text.featuresTitle}</h2>
+              <p className="mx-auto mt-3 max-w-2xl text-slate-600 dark:text-gray-400">{text.featuresCopy}</p>
+            </div>
+            <div className="mt-12 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+              {text.features.map((f: any, i: number) => { const [title, desc, Icon] = f; return (
+                <div key={i} className="flex flex-col rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 transition-all hover:shadow-xl">
+                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400">
+                    <Icon size={24} />
+                  </div>
+                  <h3 className="mb-2 text-lg font-black text-slate-900 dark:text-white">{title}</h3>
+                  <p className="text-sm text-slate-600 dark:text-gray-400 leading-relaxed">{desc}</p>
                 </div>
-                <h3 className="mb-2 text-lg font-black text-slate-900 dark:text-white">{title}</h3>
-                <p className="text-sm text-slate-600 dark:text-gray-400">{desc}</p>
-              </div>
-            ); })}
+              ); })}
+            </div>
           </div>
         </section>
 
-        {/* Service Catalog Preview */}
-        <section className="bg-slate-900 text-white py-20">
-          <div className="landing-section grid gap-12 lg:grid-cols-[1fr_1.2fr]">
-            <div>
-              <p className="text-xs font-black tracking-[.16em] text-violet-300">{text.pricing}</p>
-              <h2 className="mt-3 text-3xl font-black text-white">{text.pricingCopy}</h2>
-              <Link to="/services" className="btn-primary mt-7 inline-flex items-center">
-                {text.openCatalog}<ArrowRight size={16} className={ar ? 'mr-1 rotate-180' : 'ml-1'} />
-              </Link>
+        {/* How It Works */}
+        <section id="how" className="py-20 bg-slate-50 dark:bg-slate-800/30">
+          <div className="mx-auto max-w-[1240px] px-4 sm:px-6">
+            <div className="text-center">
+              <p className="mb-2 text-xs font-black tracking-[.16em] text-violet-600 dark:text-violet-400">{text.how}</p>
+              <h2 className="text-3xl font-black text-slate-900 dark:text-white">{text.howCopy}</h2>
             </div>
-            <div className="overflow-hidden rounded-2xl border border-slate-700 bg-slate-800/50">
-              {services.length ? (
-                <div className="divide-y divide-slate-700">
-                  {services.slice(0, 6).map((s: any) => (
-                    <div key={s.id} className="flex items-center justify-between px-4 py-3">
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-bold text-white">{s.name}</div>
-                        <div className="mt-1 text-xs text-slate-400">{s.category}</div>
+            <div className="mt-12 grid gap-8 md:grid-cols-3">
+              {text.steps.map((step) => (
+                <div key={step.step} className="relative rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-8 text-center transition-all hover:shadow-xl">
+                  <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400">
+                    <span className="text-xl font-black">{step.step}</span>
+                  </div>
+                  <h3 className="mb-3 text-xl font-black text-slate-900 dark:text-white">{step.title}</h3>
+                  <p className="text-slate-600 dark:text-gray-400">{step.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Our Guarantee */}
+        <section className="py-16 bg-white dark:bg-slate-900">
+          <div className="mx-auto max-w-[1240px] px-4 sm:px-6">
+            <div className="overflow-hidden rounded-3xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+              <div className="grid gap-8 p-8 md:grid-cols-2 md:p-12">
+                <div>
+                  <div className="inline-flex items-center gap-2 mb-4 px-3 py-1.5 bg-violet-100 dark:bg-violet-900/30 rounded-full text-xs font-bold text-violet-700 dark:text-violet-300">
+                    <ShieldCheck size={14} /> {text.guarantee}
+                  </div>
+                  <h2 className="mb-4 text-2xl font-black text-slate-900 dark:text-white md:text-3xl">{text.trust}</h2>
+                  <p className="mb-6 text-slate-600 dark:text-gray-400">{text.trustCopy}</p>
+                  <div className="space-y-3">
+                    {[
+                      ar ? 'إعادة تعبئة أو استبدال أي طلب غير راضٍ عن الجودة' : 'Re-fill or replace any order not meeting quality standards',
+                      ar ? 'ضمان استرداد كامل للرصيد' : 'Full wallet refund guarantee on rejected orders',
+                      ar ? 'دعم مباشر 24/7' : '24/7 direct customer support'
+                    ].map((item, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <Check size={16} className="text-violet-600 dark:text-violet-400" />
+                        <span className="text-sm text-slate-700 dark:text-gray-300">{item}</span>
                       </div>
-                      <b className="shrink-0 text-sm text-violet-300">${Number(s.rate || 0).toFixed(4)}</b>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              ) : (
-                <div className="p-8 text-center text-sm text-slate-400">
-                  {ar ? 'سيظهر الكتالوج هنا بعد توفر الخدمات.' : 'The live catalog will appear here when services are available.'}
+                <div className="flex items-center justify-center">
+                  <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
+                    {[
+                      { label: ar ? 'تسليم مباشر' : 'Direct delivery', value: '99%' },
+                      { label: ar ? 'وقت استجابة سريع' : 'Fast response', value: '<30s' },
+                      { label: ar ? 'جودة مضمونة' : 'Quality guaranteed', value: '100%' },
+                      { label: ar ? 'دعم 24/7' : '24/7 support', value: 'مستمر' }
+                    ].map((item, i) => (
+                      <div key={i} className="rounded-xl bg-white dark:bg-slate-900 p-4 text-center border border-slate-200 dark:border-slate-700">
+                        <div className="text-2xl font-black text-violet-600 dark:text-violet-400">{item.value}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">{item.label}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              )}
+              </div>
             </div>
           </div>
         </section>
 
         {/* FAQ */}
-        <section className="landing-section py-16 bg-white dark:bg-slate-900">
-          <div className="mx-auto max-w-3xl">
-            <div className="text-center">
+        <section className="py-20 bg-white dark:bg-slate-900">
+          <div className="mx-auto max-w-[1240px] px-4 sm:px-6">
+            <div className="mx-auto max-w-3xl text-center">
               <p className="mb-2 text-xs font-black tracking-[.16em] text-violet-600 dark:text-violet-400">FAQ</p>
               <h2 className="text-3xl font-black text-slate-900 dark:text-white">{text.faqTitle}</h2>
-              <p className="landing-muted mt-3 text-slate-600 dark:text-gray-400">{text.faqCopy}</p>
+              <p className="mx-auto mt-3 max-w-xl text-slate-600 dark:text-gray-400">{text.faqCopy}</p>
             </div>
-            <div className="landing-faq mt-8 rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-6 shadow-sm">
+            <div className="mx-auto mt-8 max-w-3xl rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
               {faqs.map(([q, a], i) => (
                 <div key={q} className="border-b border-slate-100 dark:border-slate-700 last:border-0">
-                  <button onClick={() => setFaq(faq === i ? -1 : i)} className="flex w-full items-center justify-between text-left py-4">
+                  <button onClick={() => setFaq(faq === i ? -1 : i)} className="flex w-full items-center justify-between gap-4 px-6 py-4 text-left">
                     <span className="font-medium text-slate-900 dark:text-white">{q}</span>
                     <ChevronDown size={18} className={`shrink-0 text-slate-400 transition-transform ${faq === i ? 'rotate-180' : ''}`} />
                   </button>
-                  {faq === i && <p className="pb-4 text-sm text-slate-600 dark:text-gray-400">{a}</p>}
+                  {faq === i && (
+                    <div className="px-6 pb-4">
+                      <p className="text-sm text-slate-600 dark:text-gray-400 mb-2">{a}</p>
+                      {faqs[i][2] && <p className="text-sm text-slate-500 dark:text-gray-500">{faqs[i][2]}</p>}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -431,14 +457,16 @@ export default function LandingPage() {
         </section>
 
         {/* CTA */}
-        <section className="landing-section py-20 bg-gradient-to-br from-violet-600 to-indigo-700 text-white">
-          <div className="landing-cta text-center">
-            <ShieldCheck className="mx-auto mb-4 h-12 w-12 text-violet-200" />
-            <h2 className="mt-4 text-3xl font-black">{text.ctaTitle}</h2>
-            <p className="mx-auto mt-3 max-w-xl text-violet-100">{text.ctaCopy}</p>
-            <button onClick={() => setAuth('register')} className="btn-ghost mt-7 !border-0 !border-white/20 !bg-white/10 text-white hover:!bg-white/20">
-              {text.cta}<ArrowRight size={16} className={ar ? 'mr-1 rotate-180' : 'ml-1'} />
-            </button>
+        <section className="py-20 bg-gradient-to-br from-violet-600 to-indigo-700 text-white">
+          <div className="mx-auto max-w-[1240px] px-4 text-center sm:px-6">
+            <div className="mx-auto max-w-2xl">
+              <ShieldCheck className="mx-auto mb-4 h-12 w-12 text-violet-200" />
+              <h2 className="mt-4 text-3xl font-black">{text.ctaTitle}</h2>
+              <p className="mx-auto mt-3 max-w-xl text-violet-100">{text.ctaCopy}</p>
+              <button onClick={() => setAuth('register')} className="btn-ghost mt-7 !border-0 !border-white/20 !bg-white/10 text-white hover:!bg-white/20">
+                {text.cta}<ArrowRight size={16} className={ar ? 'mr-1 rotate-180' : 'ml-1'} />
+              </button>
+            </div>
           </div>
         </section>
       </main>
@@ -450,7 +478,7 @@ export default function LandingPage() {
           <div className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-800 p-6 shadow-2xl sm:p-8" dir={dir}>
             <div className="mb-6 flex items-start justify-between">
               <div>
-                <span className="brand-mark flex h-9 w-9 items-center justify-center">R</span>
+                <span className="brand-mark">R</span>
                 <h2 className="mt-4 text-2xl font-black text-slate-900 dark:text-white">{auth === 'register' ? text.registerTitle : text.loginTitle}</h2>
               </div>
               <button className="rounded-xl bg-slate-100 dark:bg-slate-700 dark:text-gray-200 p-2" onClick={() => setAuth(null)} aria-label={text.close}>
@@ -494,7 +522,7 @@ export default function LandingPage() {
                 </div>
               )}
               <button className="btn-primary w-full">{auth === 'register' ? text.submitRegister : text.submitLogin}</button>
-              <div className="mt-4 text-center text-sm text-slate-500 dark:text-slate-400">
+              <div className="mt-4 text-center text-sm text-slate-500 dark:text-gray-400">
                 {auth === 'register' ? (
                   <>
                     {text.already}
@@ -515,12 +543,12 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-8">
         <div className="mx-auto max-w-[1240px] px-4 sm:px-6">
-          <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
+          <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
             <div className="flex items-center gap-3">
-              <span className="brand-mark flex h-9 w-9 items-center justify-center">R</span>
-              <span className="text-xl font-black">Rapid<span className="text-violet-600">SMM</span></span>
+              <span className="brand-mark">R</span>
+              <span className="text-xl font-black">SMM<span className="text-violet-600">Rapid</span></span>
             </div>
-            <div className="flex flex-wrap items-center gap-6 text-sm text-slate-600 dark:text-gray-400">
+            <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-slate-600 dark:text-gray-400">
               <Link to="/terms" className="hover:text-violet-600 dark:hover:text-violet-400">{ar ? 'الشروط' : 'Terms'}</Link>
               <Link to="/privacy" className="hover:text-violet-600 dark:hover:text-violet-400">{ar ? 'الخصوصية' : 'Privacy'}</Link>
               <Link to="/refund-policy" className="hover:text-violet-600 dark:hover:text-violet-400">{ar ? 'الاسترجاع' : 'Refunds'}</Link>
@@ -529,7 +557,7 @@ export default function LandingPage() {
               <Link to="/api" className="hover:text-violet-600 dark:hover:text-violet-400">{text.navApi}</Link>
             </div>
             <div className="text-xs text-slate-500 dark:text-slate-400">
-              &copy; {new Date().getFullYear()} RapidSMM. {ar ? 'جميع الحقوق محفوظة.' : 'All rights reserved.'}
+              &copy; {new Date().getFullYear()} SMM Rapid. {ar ? 'جميع الحقوق محفوظة.' : 'All rights reserved.'}
             </div>
           </div>
         </div>

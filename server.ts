@@ -15,7 +15,7 @@ import {
   users, orders, payments, tickets, ticketMessages, services, categories, settings,
   providers, shortlinks, shortlinkClaims, shortlinkTokens, raffles, raffleTickets,
   mysteryBoxTiers, walletLedger, referralClicks, affiliateCommissions, affiliateWithdrawals, coupons, couponUses, auditLogs,
-  systemReports, contactMessages, refillRequests, notifications, systemLogs, withdrawals
+  systemReports, contactMessages, refillRequests, notifications, systemLogs
 } from './src/db/schema';
 import { adminAuth } from './src/lib/firebase-admin';
 import { ProviderClient, placeOrderToProvider, startProviderWorker, checkOrderStatus, refundOrderOnce } from './src/lib/provider-engine';
@@ -1055,8 +1055,8 @@ app.put('/api/client/notifications/read-all', requireAuth, async (req:any,res:an
   res.json({ success: true });
 });
 
-app.get('/api/admin/affiliate-withdrawals',requireAuth,requireAdmin,async(_req,res)=>{const rows=await db.select().from(affiliateWithdrawals).orderBy(desc(affiliateWithdrawals.createdAt));res.json(rows);});
-app.put('/api/admin/affiliate-withdrawals/:id',adminLimiter,requireAuth,requireAdmin,async(req:any,res:any)=>{try{const status=req.body?.status==='Approved'?'Approved':req.body?.status==='Rejected'?'Rejected':null;if(!status)return apiError(res,400,'Invalid withdrawal status');let row:any;await db.transaction(async tx=>{const [w]=await tx.select().from(affiliateWithdrawals).where(eq(affiliateWithdrawals.id,req.params.id)).for('update');if(!w)throw new Error('Withdrawal not found');if(w.status!=='Pending')throw new Error('Withdrawal already resolved');const [x]=await tx.update(affiliateWithdrawals).set({status,adminNote:String(req.body?.adminNote||'').trim()||null,resolvedAt:new Date()}).where(eq(affiliateWithdrawals.id,w.id)).returning();row=x;});await createNotification(row.userId,'affiliate',`Withdrawal ${status}`,`Your affiliate withdrawal of $${num(row.amount).toFixed(4)} was ${status.toLowerCase()}.`,`/dashboard/affiliates`);await audit(req.dbUser.id,'RESOLVE_AFFILIATE_WITHDRAWAL','AFFILIATE_WITHDRAWAL',row.id);res.json(row);}catch(e:any){apiError(res,400,e.message||'Unable to resolve withdrawal');}});
+app.get('/api/admin/affiliate-withdrawals', adminLimiter, requireAuth, requireAdmin, async (req: any, res: any) => { try { const status = typeof req.query?.status === 'string' ? String(req.query.status) : ''; const where = status ? eq(affiliateWithdrawals.status, status) : undefined; const rows = await db.select({ id: affiliateWithdrawals.id, userId: affiliateWithdrawals.userId, amount: affiliateWithdrawals.amount, method: affiliateWithdrawals.method, destination: affiliateWithdrawals.destination, status: affiliateWithdrawals.status, adminNote: affiliateWithdrawals.adminNote, createdAt: affiliateWithdrawals.createdAt, resolvedAt: affiliateWithdrawals.resolvedAt, user_email: users.email, user_name: users.name }).from(affiliateWithdrawals).leftJoin(users, eq(users.id, affiliateWithdrawals.userId)).where(where).orderBy(desc(affiliateWithdrawals.createdAt)); res.json(rows); } catch (e: any) { logSystemError('error', 'Failed to load affiliate withdrawals', e?.message || String(e)); apiError(res, 500, 'Internal server error', 'INTERNAL_ERROR'); } });
+app.put('/api/admin/affiliate-withdrawals/:id', adminLimiter, requireAuth, requireAdmin, async (req: any, res: any) => { try { const status = req.body?.status === 'Approved' ? 'Approved' : req.body?.status === 'Rejected' ? 'Rejected' : null; if (!status) return apiError(res, 400, 'Invalid withdrawal status', 'INVALID_STATUS'); const adminNote = String(req.body?.adminNote || '').trim() || undefined; let row: any; await db.transaction(async tx => { const [w] = await tx.select().from(affiliateWithdrawals).where(eq(affiliateWithdrawals.id, req.params.id)).for('update'); if (!w) throw new Error('Withdrawal not found'); if (w.status !== 'Pending') throw new Error('Withdrawal already resolved'); const [x] = await tx.update(affiliateWithdrawals).set({ status, adminNote, resolvedAt: new Date() }).where(eq(affiliateWithdrawals.id, w.id)).returning(); row = x; }); await createNotification(row.userId, 'affiliate', `Withdrawal ${status}`, `Your affiliate withdrawal of $${num(row.amount).toFixed(4)} was ${status.toLowerCase()}.`, '/dashboard/affiliates'); await audit(req.dbUser.id, 'RESOLVE_AFFILIATE_WITHDRAWAL', 'AFFILIATE_WITHDRAWAL', row.id, adminNote); res.json(row); } catch (e: any) { if (e?.message?.includes('not found') || e?.message?.includes('already resolved') || e?.message?.includes('Invalid')) { return apiError(res, 400, e.message, 'AFFILIATE_WITHDRAWAL_FAILED'); } logSystemError('error', 'Failed to resolve affiliate withdrawal', e?.message || String(e)); apiError(res, 500, 'Internal server error', 'INTERNAL_ERROR'); } });
 
 app.get('/api/admin/coupons',requireAuth,requireAdmin,async(_req,res)=>res.json(await db.select().from(coupons).orderBy(desc(coupons.createdAt))));
 app.post('/api/admin/coupons',requireAuth,requireAdmin,async(req:any,res:any)=>{try{const code=String(req.body?.code||'').trim().toUpperCase().replace(/\s+/g,'');const type=req.body?.type==='fixed'?'fixed':'percent';const value=num(req.body?.value);if(!/^[A-Z0-9_-]{3,40}$/.test(code)||value<=0||(type==='percent'&&value>100))return apiError(res,400,'Invalid coupon data');const [c]=await db.insert(coupons).values({code,type,value:value.toFixed(4),minSpend:money(num(req.body?.minSpend||0)).toFixed(4),maxDiscount:req.body?.maxDiscount===''||req.body?.maxDiscount==null?null:money(num(req.body.maxDiscount)).toFixed(4),usageLimit:req.body?.usageLimit?Number(req.body.usageLimit):null,perUserLimit:Math.max(1,Number(req.body?.perUserLimit||1)),expiresAt:req.body?.expiresAt?new Date(req.body.expiresAt):null,status:'active'}).returning();await audit(req.dbUser.id,'CREATE_COUPON','COUPON',c.id);res.status(201).json(c);}catch(e:any){apiError(res,400,e.message||'Unable to create coupon','COUPON_CREATE_FAILED');}});
@@ -1447,9 +1447,7 @@ app.get('/api/admin/reports',requireAuth,requireAdmin,async(req:any,res)=>{
 app.put('/api/admin/reports/:id/status',adminLimiter,requireAuth,requireAdmin,async(req:any,res)=>{if(!['Unresolved','Resolved'].includes(req.body?.status))return apiError(res,400,'Invalid report status');const [r]=await db.update(systemReports).set({status:req.body.status}).where(eq(systemReports.id,req.params.id)).returning();if(!r)return apiError(res,404,'Report not found');await audit(req.dbUser.id,'UPDATE_REPORT_STATUS','REPORT',r.id,undefined,undefined,r.status);res.json(r);});
 app.get('/api/admin/system-logs',adminLimiter,requireAuth,requireAdmin,async(req:any,res)=>{try{const page=Math.max(1,parseInt(req.query.page)||1);const pageSize=Math.min(500,Math.max(1,parseInt(req.query.pageSize)||100));const level=typeof req.query.level==='string'?req.query.level:'';const where=level?eq(systemLogs.level,level):undefined;const [data,[{count}]]=await Promise.all([(where?db.select().from(systemLogs).where(where):db.select().from(systemLogs)).orderBy(desc(systemLogs.createdAt)).limit(pageSize).offset((page-1)*pageSize),where?db.select({count:sql<number>`count(*)`}).from(systemLogs).where(where):db.select({count:sql<number>`count(*)`}).from(systemLogs)]);res.json({data,total:Number(count),page,pageSize});}catch(e:any){logSystemError('error', 'Failed to fetch logs', e?.message || String(e)); apiError(res, 500, 'Internal server error', 'INTERNAL_ERROR');}});
 app.delete('/api/admin/system-logs',adminLimiter,requireAuth,requireAdmin,async(req:any,res)=>{try{const cutoff=new Date(Date.now()-30*24*60*60*1000);await db.delete(systemLogs).where(sql`${systemLogs.createdAt} < ${cutoff}`);res.json({success:true,deleted:true});}catch(e:any){logSystemError('error', 'Failed to clear logs', e?.message || String(e)); apiError(res, 500, 'Internal server error', 'INTERNAL_ERROR');}});
-// Admin Wallet Withdrawal Management
-app.get('/api/admin/withdrawals',adminLimiter,requireAuth,requireAdmin,async(_req:any,res:any)=>{try{const status=typeof req.query?.status==='string'?String(req.query.status):'';const where=status?eq(withdrawals.status,status):undefined;const rows=await db.select({id:withdrawals.id,userId:withdrawals.userId,amount:withdrawals.amount,method:withdrawals.method,destination:withdrawals.destination,details:withdrawals.details,status:withdrawals.status,adminNote:withdrawals.adminNote,createdAt:withdrawals.createdAt,resolvedAt:withdrawals.resolvedAt,user_email:users.email,user_name:users.name}).from(withdrawals).leftJoin(users,eq(users.id,withdrawals.userId)).orderBy(desc(withdrawals.createdAt));const sorted=rows.sort((a:any,b:any)=>new Date(b.createdAt).getTime()-new Date(a.createdAt).getTime());res.json(sorted);}catch(e:any){logSystemError('error', 'Failed to load withdrawals', e?.message || String(e)); apiError(res, 500, 'Internal server error', 'INTERNAL_ERROR');}});
-app.put('/api/admin/withdrawals/:id',adminLimiter,requireAuth,requireAdmin,async(req:any,res:any)=>{try{const status=req.body?.status==='approved'?'Approved':req.body?.status==='rejected'?'Rejected':'';if(!['Approved','Rejected'].includes(status))return apiError(res,400,'Invalid withdrawal status','INVALID_STATUS');const adminNote=String(req.body?.adminNote||'').trim()||null;let updated:any;await db.transaction(async tx=>{const [w]=await tx.select().from(withdrawals).where(eq(withdrawals.id,req.params.id)).for('update');if(!w)throw new Error('Withdrawal not found');if(w.status!=='Pending')throw new Error('Withdrawal already resolved');if(status==='Approved'){await tx.update(withdrawals).set({status:'Approved',adminNote,resolvedAt:new Date()}).where(eq(withdrawals.id,w.id));}else{await tx.update(users).set({balance:sql`${users.balance} + ${w.amount}`}).where(eq(users.id,w.userId));await tx.update(withdrawals).set({status:'Rejected',adminNote,resolvedAt:new Date()}).where(eq(withdrawals.id,w.id));}await audit(req.dbUser.id,'RESOLVE_WITHDRAWAL','WITHDRAWAL',w.id,adminNote);});updated=await db.select().from(withdrawals).where(eq(withdrawals.id,req.params.id));await createNotification(updated[0].userId,'finance',`Withdrawal ${status}`,`Your withdrawal of $${num(updated[0].amount).toFixed(2)} was ${status.toLowerCase()}.`,`/dashboard/profile`);res.json(updated[0]);}catch(e:any){apiError(res,e.status||400,e?.message||'Unable to resolve withdrawal','WITHDRAWAL_FAILED');}});
+// Admin Affiliate Withdrawal Management
 
 app.get('/api/admin/shortlinks',requireAuth,requireAdmin,async(_req,res)=>res.json(await db.select().from(shortlinks).orderBy(desc(shortlinks.createdAt))));
 app.post('/api/admin/shortlinks',adminLimiter,requireAuth,requireAdmin,async(req:any,res)=>{const reward=num(req.body?.rewardAmount);if(!req.body?.name||!validUrl(req.body?.url)||!positiveMoney(reward))return apiError(res,400,'Invalid shortlink');const [s]=await db.insert(shortlinks).values({name:String(req.body.name).trim(),url:req.body.url,rewardAmount:money(reward).toFixed(4),status:'active'}).returning();res.status(201).json(s);});
@@ -1560,55 +1558,6 @@ app.post('/api/client/affiliates/withdrawals', requireAuth, async(req:any,res:an
     if (e?.message?.includes('Invalid request') || e?.message?.includes('disabled') || e?.message?.includes('affiliate') || e?.message?.includes('balance')) return apiError(res,400,e.message,'AFFILIATE_WITHDRAWAL_FAILED');
     logSystemError('error','Affiliate withdrawal failed',e?.message||String(e)); apiError(res,500,'Internal server error','INTERNAL_ERROR');
   }});
-
-// --- Wallet Withdrawal System ---
-app.get('/api/client/withdrawals', requireAuth, async (req: any, res) => {
-  try {
-    const rows = await db.select().from(withdrawals).where(eq(withdrawals.userId, req.dbUser.id)).orderBy(desc(withdrawals.createdAt));
-    res.json(rows);
-  } catch (e: any) {
-    logSystemError('error', 'Failed to load withdrawals', e?.message || String(e)); apiError(res, 500, 'Internal server error', 'INTERNAL_ERROR');
-  }
-});
-
-app.post('/api/client/withdrawals', paymentLimiter, requireAuth, async (req: any, res) => {
-  try {
-    const amount = money(num(req.body?.amount));
-    const method = String(req.body?.method || '').trim();
-    const destination = String(req.body?.destination || '').trim();
-    if (amount <= 0 || !method || destination.length < 3 || destination.length > 255) {
-      return apiError(res, 400, 'Invalid withdrawal request', 'INVALID_WITHDRAWAL');
-    }
-    let w: any;
-    let u: any;
-    await db.transaction(async tx => {
-      const rows = await tx.select().from(settings);
-      const globalMin = money(num(rows.find(s => s.key === 'min_withdrawal_amount')?.value ?? 5));
-      if (amount < globalMin) throw new Error(`Minimum withdrawal is $${globalMin.toFixed(2)}`);
-      [u] = await tx.select().from(users).where(eq(users.id, req.dbUser.id)).for('update');
-      if (!u) throw new Error('User not found');
-      const userBalance = num(u.balance);
-      if (userBalance < amount) throw new Error('Insufficient balance');
-      await tx.update(users).set({ balance: num(userBalance - amount).toFixed(4) }).where(eq(users.id, u.id));
-      await tx.insert(walletLedger).values({ id: crypto.randomUUID(), userId: u.id, amount: (-amount).toFixed(4), type: 'debit', description: `Withdrawal request (${method})`, referenceId: null, createdAt: new Date() });
-      [w] = await tx.insert(withdrawals).values({ userId: u.id, amount: amount.toFixed(4), method, destination, status: 'Pending' }).returning();
-    });
-    // Notification and audit must run AFTER the transaction commits —
-    // calling db queries inside db.transaction causes a connection-pool deadlock.
-    await createNotification(w.userId, 'finance', 'Withdrawal requested', `Your withdrawal of $${amount.toFixed(2)} is pending review.`, '/dashboard/profile');
-    await audit(u.id, 'REQUEST_WITHDRAWAL', 'WITHDRAWAL', w.id);
-    res.status(201).json(w);
-  } catch (e: any) {
-    if (e?.message?.includes('Minimum withdrawal')) {
-      return apiError(res, 400, e.message, 'MIN_AMOUNT_ERROR');
-    }
-    if (e?.message?.includes('Insufficient')) {
-      return apiError(res, 400, e.message, 'INSUFFICIENT_BALANCE');
-    }
-    logSystemError('error', 'Withdrawal request failed', e?.message || String(e));
-    apiError(res, 500, 'Internal server error', 'INTERNAL_ERROR');
-  }
-});
 app.get('/api/client/affiliates/stats', requireAuth, async(req:any,res:any)=>{
   try { let u=req.dbUser; if(!u.referralCode){const code=crypto.randomBytes(6).toString('hex').toUpperCase();const [x]=await db.update(users).set({referralCode:code}).where(and(eq(users.id,u.id),isNull(users.referralCode))).returning();u=x||u;} const referred=await db.select({id:users.id,email:users.email,status:users.status,createdAt:users.createdAt}).from(users).where(eq(users.referredBy,u.id)).orderBy(desc(users.createdAt)); const clickRows=await db.select({count:sql<number>`count(*)`}).from(referralClicks).where(eq(referralClicks.referralCode,u.referralCode!)); let paidUsers:any[]=[]; let depositTotal=0; if(referred.length){const ids=referred.map(x=>x.id); paidUsers=await db.select({userId:payments.userId}).from(payments).where(and(eq(payments.status,'Approved'),inArray(payments.userId,ids))); const [d]=await db.select({total:sql<string>`coalesce(sum(${payments.amount}),0)`}).from(payments).where(and(eq(payments.status,'Approved'),inArray(payments.userId,ids))); depositTotal=num(d?.total||0);} const commissions=await db.select({id:affiliateCommissions.id,paymentId:affiliateCommissions.paymentId,amount:affiliateCommissions.amount,createdAt:affiliateCommissions.createdAt,referredEmail:users.email}).from(affiliateCommissions).leftJoin(users,eq(users.id,affiliateCommissions.referredUserId)).where(eq(affiliateCommissions.affiliateId,u.id)).orderBy(desc(affiliateCommissions.createdAt)); res.json({referralCode:u.referralCode,referralLink:`${req.protocol}://${req.get('host')}/?ref=${u.referralCode}`,clicks:Number(clickRows[0]?.count||0),signups:referred.length,paidReferrals:new Set(paidUsers.map(x=>x.userId)).size,referralDeposits:money(depositTotal),totalCommission:money(commissions.reduce((a,c)=>a+num(c.amount),0)),referred,commissions}); }
   catch(e:any){logSystemError('error', 'Failed to load affiliate data', e?.message || String(e)); apiError(res, 500, 'Internal server error', 'INTERNAL_ERROR');}

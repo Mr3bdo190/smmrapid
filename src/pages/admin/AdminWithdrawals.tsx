@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Wallet, CheckCircle2, Trash2, RefreshCw, XCircle, Clock, User as UserIcon, Calendar, FileText, ExternalLink } from 'lucide-react';
+import { Wallet, CheckCircle2, XCircle, RefreshCw, Clock, User as UserIcon, Calendar } from 'lucide-react';
 import { notify } from '../../lib/notify';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
@@ -27,12 +27,12 @@ export default function AdminWithdrawals() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
   const { data: withdrawalsData = [], refetch } = useQuery({
-    queryKey: ['admin-withdrawals'],
+    queryKey: ['admin-affiliate-withdrawals'],
     enabled: !!user,
     queryFn: async () => {
       const token = await user!.getIdToken();
-      const r = await apiFetch('/api/admin/withdrawals', user, { headers: { Authorization: `Bearer ${token}` } });
-      if (!r.ok) throw new Error('Failed to load withdrawals');
+      const r = await apiFetch('/api/admin/affiliate-withdrawals', user, { headers: { Authorization: `Bearer ${token}` } });
+      if (!r.ok) throw new Error('Failed to load affiliate withdrawals');
       return r.json() as Promise<any[]>;
     },
   });
@@ -42,22 +42,29 @@ export default function AdminWithdrawals() {
   const resolveMutation = useMutation({
     mutationFn: async ({ id, status, adminNote }: { id: string; status: 'Approved' | 'Rejected'; adminNote?: string }) => {
       const token = await user!.getIdToken();
-      const r = await apiFetch(`/api/admin/withdrawals/${id}`, user, {
+      const r = await apiFetch(`/api/admin/affiliate-withdrawals/${id}`, user, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status: status.toLowerCase(), adminNote }),
       });
-      if (!r.ok) throw new Error('Failed to update withdrawal');
+      if (!r.ok) {
+        const b = await r.json().catch(() => ({}));
+        throw new Error(b.error || 'Failed to update withdrawal');
+      }
       return r.json();
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin-withdrawals'] });
+      qc.invalidateQueries({ queryKey: ['admin-affiliate-withdrawals'] });
+    },
+    onError: (e: any) => {
+      const errMsg = e?.errorKey || e?.code || e?.message;
+      notify.error(typeof errMsg === 'string' ? errMsg : 'Action failed');
     },
   });
 
   const handleApprove = (id: string) => {
     const note = window.prompt(
-      t('admin.withdrawals.approveConfirm') || 'Approve this withdrawal? Add an admin note (optional):',
+      t('admin.withdrawals.approvePrompt') || 'Approve this affiliate withdrawal? Add an admin note (optional):',
       ''
     );
     if (note !== null) {
@@ -67,7 +74,7 @@ export default function AdminWithdrawals() {
 
   const handleReject = (id: string) => {
     const note = window.prompt(
-      t('admin.withdrawals.rejectConfirm') || 'Reject this withdrawal? Add an admin note (optional):',
+      t('admin.withdrawals.rejectPrompt') || 'Reject this affiliate withdrawal? Add an admin note (optional):',
       ''
     );
     if (note !== null) {
@@ -75,11 +82,8 @@ export default function AdminWithdrawals() {
     }
   };
 
-  if (resolveMutation.isError) {
-    notify.error(resolveMutation.error?.message || 'Action failed');
-  }
   if (resolveMutation.isSuccess) {
-    notify.success(t('admin.withdrawals.approvedSuccess') || 'Withdrawal updated successfully');
+    notify.success(t('admin.withdrawals.resolvedSuccess') || 'Withdrawal updated successfully');
   }
 
   return (
@@ -87,15 +91,15 @@ export default function AdminWithdrawals() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('admin.withdrawals.title') || 'Withdrawal Requests'}</h1>
-            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Manage client withdrawal requests</p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('admin.withdrawals.title') || 'Affiliate Withdrawals (سحوبات الأرباح/الإحالات)'}</h1>
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{t('admin.withdrawals.subtitle') || 'Manage affiliate commission withdrawal requests. These are strictly for referral/affiliate earnings.'}</p>
           </div>
           <button
             onClick={() => refetch()}
             className="mt-4 sm:mt-0 inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
           >
             <RefreshCw className="w-4 h-4" />
-            {t('client.withdraw.history') === 'Withdrawal History' ? t('common.refresh') : 'Refresh'}
+            {t('common.refresh')}
           </button>
         </div>
 
@@ -137,7 +141,7 @@ export default function AdminWithdrawals() {
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">{t('admin.withdrawals.method') || 'Method'}</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">{t('admin.withdrawals.destination') || 'Destination'}</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">{t('admin.withdrawals.status') || 'Status'}</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">{t('admin.withdrawals.created') || 'Created'}</th>
+                    <th	className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">{t('admin.withdrawals.created') || 'Created'}</th>
                     <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Actions</th>
                   </tr>
                 </thead>
@@ -149,7 +153,10 @@ export default function AdminWithdrawals() {
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
                             <UserIcon className="w-4 h-4 text-gray-400" />
-                            <span className="text-sm text-gray-900 dark:text-gray-200">{w.user_name || w.user_email || w.userId || '-'}{w.user_email && w.user_email !== (w.user_name || w.userId) ? ` (${w.user_email})` : ''}</span>
+                            <span className="text-sm text-gray-900 dark:text-gray-200">
+                              {w.user_name || w.user_email || w.userId || '-'}
+                              {w.user_email && w.user_email !== (w.user_name || w.userId) ? ` (${w.user_email})` : ''}
+                            </span>
                           </div>
                         </td>
                         <td className="px-4 py-3">
@@ -188,16 +195,16 @@ export default function AdminWithdrawals() {
                                 className="p-1.5 text-red-600 hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-900/30 rounded transition-colors"
                                 title="Reject"
                               >
-                                <Trash2 className="w-4 h-4" />
+                                <XCircle className="w-4 h-4" />
                               </button>
                             </div>
                           ) : w.adminNote ? (
                             <span className="text-xs text-gray-400 dark:text-gray-500" title={w.adminNote}>
                               {w.adminNote.length > 20 ? w.adminNote.substring(0, 20) + '...' : w.adminNote}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-gray-400 dark:text-gray-500">—</span>
-                      )}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-400 dark:text-gray-500">—</span>
+                          )}
                         </td>
                       </tr>
                     );

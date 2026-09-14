@@ -23,7 +23,6 @@ const navItems = [
   { key: 'nav.lottery', href: '/dashboard/lottery', icon: Ticket, group: 'extras' },
   { key: 'nav.mysteryBoxes', href: '/dashboard/mystery-boxes', icon: Gift, group: 'extras' },
   { key: 'nav.game', href: '/dashboard/game', icon: Gamepad2, group: 'extras' },
-  { key: 'nav.withdraw', href: '/dashboard/withdraw', icon: LogOut, group: 'wallet' },
 ];
 
 export default function ClientLayout() {

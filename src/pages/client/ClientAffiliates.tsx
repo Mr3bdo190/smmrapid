@@ -12,6 +12,7 @@ export default function ClientAffiliates() {
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState('');
   const [destination, setDestination] = useState('');
+  const [isRequesting, setIsRequesting] = useState(false);
 
   const { data: config = { minWithdrawalAmount: 5 } } = useQuery({
     queryKey: ['client-config'],
@@ -34,14 +35,17 @@ export default function ClientAffiliates() {
   });
 
   const requestWithdrawal = async () => {
+    setIsRequesting(true);
     try {
       const amt = parseFloat(amount);
       if (isNaN(amt) || amt <= 0) {
         notify.info(t('affiliates.withdrawAmount') || 'Please enter a valid amount.');
+        setIsRequesting(false);
         return;
       }
       if (amt < minWithdrawal) {
         notify.info(t('errors.minWithdrawal', { min: minWithdrawal.toFixed(2) }) || `Minimum withdrawal amount is $${minWithdrawal.toFixed(2)}.`);
+        setIsRequesting(false);
         return;
       }
       const token = await user!.getIdToken();
@@ -53,12 +57,15 @@ export default function ClientAffiliates() {
       const b = await r.json().catch(() => ({}));
       if (!r.ok) {
         const errMsg = b.error || b.message || 'Withdrawal failed';
+        setIsRequesting(false);
         if (b.code === 'MIN_AMOUNT_ERROR' || b.errorKey === 'MIN_AMOUNT_ERROR' || errMsg?.includes('Minimum withdrawal')) {
           const minMatch = errMsg?.match(/\$\s*(\d+(?:\.\d+)?)/) || errMsg?.match(/(\d+(?:\.\d+)?)/);
           const min = minMatch ? parseFloat(minMatch[1]) : minWithdrawal;
           notify.info(t('errors.minWithdrawal', { min: min.toFixed(2) }) || `Minimum withdrawal amount is $${min}.`);
         } else if (errMsg?.includes('Insufficient') || b.code === 'INSUFFICIENT_BALANCE' || b.errorKey === 'INSUFFICIENT_BALANCE') {
-          notify.error(t('affiliates.insufficientBalance') || 'Insufficient balance for this withdrawal.');
+          notify.error(t('affiliates.insufficientBalance') || 'Insufficient affiliate balance for this withdrawal.');
+        } else if (b.code === 'AFFILIATE_WITHDRAWAL_FAILED' || b.errorKey === 'AFFILIATE_WITHDRAWAL_FAILED') {
+          notify.error(t('affiliates.withdrawFailed') || errMsg);
         } else if (errMsg) {
           notify.error(errMsg);
         } else {
@@ -67,13 +74,15 @@ export default function ClientAffiliates() {
         return;
       }
       notify.success(t('affiliates.withdrawalRequested'));
+      setIsRequesting(false);
       setAmount('');
+      setMethod('');
       setDestination('');
       await withdrawals.refetch();
     } catch (e: any) {
       const errMsg = e?.message || e?.error || 'Withdrawal failed';
       if (errMsg?.includes('Insufficient') || e?.code === 'INSUFFICIENT_BALANCE' || e?.errorKey === 'INSUFFICIENT_BALANCE') {
-        notify.error(t('affiliates.insufficientBalance') || 'Insufficient balance for this withdrawal.');
+        notify.error(t('affiliates.insufficientBalance') || 'Insufficient affiliate balance for this withdrawal.');
       } else if (errMsg?.includes('Minimum') || e?.code === 'MIN_AMOUNT_ERROR' || e?.errorKey === 'MIN_AMOUNT_ERROR') {
         notify.info(t('errors.minWithdrawal', { min: minWithdrawal.toFixed(2) }) || `Minimum withdrawal amount is $${minWithdrawal.toFixed(2)}.`);
       } else if (errMsg) {
@@ -81,6 +90,7 @@ export default function ClientAffiliates() {
       } else {
         notify.error(t('affiliates.withdrawFailed') || 'Withdrawal failed. Please try again.');
       }
+      setIsRequesting(false);
     }
   };
 
@@ -101,6 +111,11 @@ export default function ClientAffiliates() {
 
   const stats = query.data;
   const refLink = stats?.referralLink || (stats?.referralCode ? `${window.location.origin}/?ref=${stats.referralCode}` : '');
+
+  // Compute available affiliate balance: total commission minus approved (paid) withdrawals
+  const paidWithdrawals = (withdrawals.data || []).filter((w: any) => w.status === 'Approved');
+  const totalPaid = paidWithdrawals.reduce((sum: number, w: any) => sum + Number(w.amount), 0);
+  const availableBalance = Number(stats?.totalCommission || 0) - totalPaid;
 
   const copy = async () => {
     if (!refLink) return notify.error(t('affiliates.linkNotReady'));
@@ -165,10 +180,38 @@ export default function ClientAffiliates() {
         ))}
       </div>
 
+      {/* Available Affiliate Balance */}
+      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 border border-indigo-200 dark:border-indigo-800 rounded-xl p-6">
+        <h3 className="font-bold text-gray-900 dark:text-white mb-1">{t('affiliates.availableBalance')}</h3>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">{t('affiliates.availableBalanceHint')}</p>
+        <div className="flex items-baseline gap-3">
+          <span className="text-4xl font-black text-indigo-700 dark:text-indigo-300">${availableBalance.toFixed(4)}</span>
+          <span className="text-sm text-gray-500 dark:text-gray-400">{config?.currencyCode || 'USD'}</span>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-4 text-center">
+          <div>
+            <span className="text-xs text-gray-500 dark:text-gray-400">{t('affiliates.totalEarnings')}</span>
+            <div className="text-lg font-bold text-gray-900 dark:text-white">${Number(stats?.totalCommission || 0).toFixed(4)}</div>
+          </div>
+          <div>
+            <span className="text-xs text-gray-500 dark:text-gray-400">{t('affiliates.totalPaidOut')}</span>
+            <div className="text-lg font-bold text-gray-900 dark:text-white">${totalPaid.toFixed(4)}</div>
+          </div>
+        </div>
+      </div>
+
       {/* Withdrawals Section */}
       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5">
         <h3 className="font-bold text-gray-900 dark:text-white mb-2">{t('affiliates.withdraw')}</h3>
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">{t('affiliates.withdrawDesc')}</p>
+
+        {/* Min withdrawal hint */}
+        {availableBalance < minWithdrawal && (
+          <p className="text-xs text-amber-600 dark:text-amber-400 mb-3">
+            {t('affiliates.insufficientBalance') || 'Your available affiliate balance is below the minimum withdrawal amount.'}
+          </p>
+        )}
+
         <div className="grid md:grid-cols-3 gap-3">
           <input
             className="input-primary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
@@ -196,8 +239,8 @@ export default function ClientAffiliates() {
             onChange={e => setDestination(e.target.value)}
           />
         </div>
-        <button className="btn-primary mt-3" onClick={requestWithdrawal}>
-          {t('affiliates.withdrawRequest')}
+        <button className="btn-primary mt-3" onClick={requestWithdrawal} disabled={isRequesting}>
+          {isRequesting ? (t('common.loading') || 'Requesting...') : t('affiliates.withdrawRequest')}
         </button>
 
         {/* Withdrawals History */}
@@ -213,14 +256,22 @@ export default function ClientAffiliates() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {(withdrawals.data || []).map((w: any) => (
-                <tr key={w.id}>
-                  <td className="px-3 py-2 text-gray-900 dark:text-white">${Number(w.amount).toFixed(4)}</td>
-                  <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{w.method}</td>
-                  <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{w.status}</td>
-                  <td className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400">{new Date(w.createdAt).toLocaleString()}</td>
+              {(withdrawals.data || []).length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="p-4 text-center text-xs text-gray-500 dark:text-gray-400">
+                    {t('affiliates.noWithdrawals') || 'No withdrawal requests yet.'}
+                  </td>
                 </tr>
-              ))}
+              ) : (
+                (withdrawals.data || []).map((w: any) => (
+                  <tr key={w.id}>
+                    <td className="px-3 py-2 text-gray-900 dark:text-white">${Number(w.amount).toFixed(4)}</td>
+                    <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{w.method}</td>
+                    <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{w.status}</td>
+                    <td className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400">{new Date(w.createdAt).toLocaleString()}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

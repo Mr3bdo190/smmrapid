@@ -48,7 +48,6 @@ const ClientApi = lazy(() => import('./pages/client/ClientApi'));
 const ClientAffiliates = lazy(() => import('./pages/client/ClientAffiliates'));
 const ClientMysteryBoxes = lazy(() => import('./pages/client/ClientMysteryBoxes'));
 const ClientGame = lazy(() => import('./pages/client/ClientGame'));
-const ClientWithdraw = lazy(() => import('./pages/client/ClientWithdraw'));
 
 const Fallback = () => <div className="flex h-screen w-full items-center justify-center bg-gray-50"><div className="h-12 w-12 animate-spin rounded-full border-b-2 border-t-2 border-indigo-500"></div></div>;
 
@@ -105,7 +104,6 @@ export default function App() {
             <Route path="affiliates" element={<ClientAffiliates />} />
             <Route path="mystery-boxes" element={<ClientMysteryBoxes />} />
             <Route path="game" element={<ClientGame />} />
-            <Route path="withdraw" element={<ClientWithdraw />} />
           </Route>
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />

@@ -259,7 +259,7 @@ app.get('/api/client/config', publicReadLimiter, async (_req, res) => {
   if (publicConfigCache && publicConfigCache.expires > Date.now()) return res.json(publicConfigCache.value);
   const rows = await db.select().from(settings);
   const s = Object.fromEntries(rows.map(x => [x.key, x.value]));
-  const value = { siteName: s.site_name || 'RapidSMM', currencySymbol: '$', currencyCode: 'USD', shahnawyEnabled: s.shahnawy_enabled === 'true', shahnawyMinAmount: num(s.shahnawy_min_amount || '5'), shahnawyMaxAmount: num(s.shahnawy_max_amount || '10000'), siteDescription: s.site_description || '', supportEmail: s.support_email || process.env.SUPPORT_EMAIL || 'support@smmrapid.store', siteLogo: s.site_logo || '', usdExchangeRate: num(s.usd_exchange_rate || '50'), heleketCurrency: process.env.HELEKET_CURRENCY || 'USD', heleketEnabled: Boolean(process.env.HELEKET_MERCHANT_ID && process.env.HELEKET_PAYMENT_API_KEY), addFunds: { walletIntro: { en: s.add_funds_wallet_intro_en || 'Enter your personal wallet number. A payment request will be sent to that wallet.', ar: s.add_funds_wallet_intro_ar || 'أدخل رقم محفظتك الشخصية. سيتم إرسال طلب الدفع إلى هذه المحفظة.' }, walletVerification: { en: s.add_funds_wallet_verification_en || 'The payment is verified automatically before the balance is added.', ar: s.add_funds_wallet_verification_ar || 'يتم التحقق من عملية الدفع تلقائياً قبل إضافة الرصيد.' }, methods: { vf_cash: { en: s.add_funds_vf_instruction_en || 'After creating the payment request, confirm it from Vodafone Cash.', ar: s.add_funds_vf_instruction_ar || 'بعد إنشاء طلب الدفع، قم بتأكيد العملية من محفظة Vodafone Cash.' }, or_cash: { en: s.add_funds_or_instruction_en || 'After creating the payment request, approve it from Orange Cash.', ar: s.add_funds_or_instruction_ar || 'بعد إنشاء طلب الدفع، وافق على العملية من محفظة Orange Cash.' }, et_cash: { en: s.add_funds_et_instruction_en || 'After creating the payment request, approve it from e& Money / Etisalat Cash.', ar: s.add_funds_et_instruction_ar || 'بعد إنشاء طلب الدفع، وافق على العملية من e& Money / Etisalat Cash.' } }, cryptoIntro: { en: s.add_funds_crypto_intro_en || 'Pay in USD using the available crypto payment gateway.', ar: s.add_funds_crypto_intro_ar || 'ادفع بالدولار باستخدام بوابة الدفع بالعملات الرقمية المتاحة.' }, cryptoInvoiceInstruction: { en: s.add_funds_crypto_invoice_en || 'Open the invoice and complete the payment. Your balance is credited after the gateway confirms it.', ar: s.add_funds_crypto_invoice_ar || 'افتح الفاتورة وأكمل الدفع. تتم إضافة الرصيد بعد تأكيد العملية من بوابة الدفع.' } } };
+  const value = { siteName: s.site_name || 'RapidSMM', currencySymbol: '$', currencyCode: 'USD', shahnawyEnabled: s.shahnawy_enabled === 'true', shahnawyMinAmount: num(s.shahnawy_min_amount || '5'), shahnawyMaxAmount: num(s.shahnawy_max_amount || '10000'), minWithdrawalAmount: num(s.min_withdrawal_amount || '5'), minDepositAmount: num(s.min_deposit_amount || '1'), siteDescription: s.site_description || '', supportEmail: s.support_email || process.env.SUPPORT_EMAIL || 'support@smmrapid.store', siteLogo: s.site_logo || '', usdExchangeRate: num(s.usd_exchange_rate || '50'), heleketCurrency: process.env.HELEKET_CURRENCY || 'USD', heleketEnabled: Boolean(process.env.HELEKET_MERCHANT_ID && process.env.HELEKET_PAYMENT_API_KEY), addFunds: { walletIntro: { en: s.add_funds_wallet_intro_en || 'Enter your personal wallet number. A payment request will be sent to that wallet.', ar: s.add_funds_wallet_intro_ar || 'أدخل رقم محفظتك الشخصية. سيتم إرسال طلب الدفع إلى هذه المحفظة.' }, walletVerification: { en: s.add_funds_wallet_verification_en || 'The payment is verified automatically before the balance is added.', ar: s.add_funds_wallet_verification_ar || 'يتم التحقق من عملية الدفع تلقائياً قبل إضافة الرصيد.' }, methods: { vf_cash: { en: s.add_funds_vf_instruction_en || 'After creating the payment request, confirm it from Vodafone Cash.', ar: s.add_funds_vf_instruction_ar || 'بعد إنشاء طلب الدفع، قم بتأكيد العملية من محفظة Vodafone Cash.' }, or_cash: { en: s.add_funds_or_instruction_en || 'After creating the payment request, approve it from Orange Cash.', ar: s.add_funds_or_instruction_ar || 'بعد إنشاء طلب الدفع، وافق على العملية من محفظة Orange Cash.' }, et_cash: { en: s.add_funds_et_instruction_en || 'After creating the payment request, approve it from e& Money / Etisalat Cash.', ar: s.add_funds_et_instruction_ar || 'بعد إنشاء طلب الدفع، وافق على العملية من e& Money / Etisalat Cash.' } }, cryptoIntro: { en: s.add_funds_crypto_intro_en || 'Pay in USD using the available crypto payment gateway.', ar: s.add_funds_crypto_intro_ar || 'ادفع بالدولار باستخدام بوابة الدفع بالعملات الرقمية المتاحة.' }, cryptoInvoiceInstruction: { en: s.add_funds_crypto_invoice_en || 'Open the invoice and complete the payment. Your balance is credited after the gateway confirms it.', ar: s.add_funds_crypto_invoice_ar || 'افتح الفاتورة وأكمل الدفع. تتم إضافة الرصيد بعد تأكيد العملية من بوابة الدفع.' } } };
   publicConfigCache = { expires: Date.now() + PUBLIC_CACHE_MS, value };
   res.json(value);
 });
@@ -1554,8 +1554,12 @@ app.post('/api/client/affiliates/withdrawals', requireAuth, async(req:any,res:an
     const available=money(num(earned?.total||0)-num(paid?.total||0)-num(pending?.total||0)); if(amount>available)throw new Error(`Insufficient affiliate balance. Available ${available.toFixed(4)}`);
     const [w]=await db.insert(affiliateWithdrawals).values({userId:req.dbUser.id,amount:amount.toFixed(4),method,destination,status:'Pending'}).returning();
     await createNotification(req.dbUser.id,'affiliate','Withdrawal requested',`Your affiliate withdrawal of $${amount.toFixed(4)} is pending review.`,`/dashboard/affiliates`); res.status(201).json(w);
-  }catch(e:any){apiError(res,400,e.message||'Withdrawal failed','AFFILIATE_WITHDRAWAL_FAILED');}
-});
+  }catch(e:any){
+    if (e?.message?.includes('Minimum withdrawal')) return apiError(res,400,e.message,'MIN_AMOUNT_ERROR');
+    if (e?.message?.includes('Insufficient')) return apiError(res,400,e.message,'INSUFFICIENT_BALANCE');
+    if (e?.message?.includes('Invalid request') || e?.message?.includes('disabled') || e?.message?.includes('affiliate') || e?.message?.includes('balance')) return apiError(res,400,e.message,'AFFILIATE_WITHDRAWAL_FAILED');
+    logSystemError('error','Affiliate withdrawal failed',e?.message||String(e)); apiError(res,500,'Internal server error','INTERNAL_ERROR');
+  }});
 
 // --- Wallet Withdrawal System ---
 app.get('/api/client/withdrawals', requireAuth, async (req: any, res) => {
@@ -1575,23 +1579,34 @@ app.post('/api/client/withdrawals', paymentLimiter, requireAuth, async (req: any
     if (amount <= 0 || !method || destination.length < 3 || destination.length > 255) {
       return apiError(res, 400, 'Invalid withdrawal request', 'INVALID_WITHDRAWAL');
     }
+    let w: any;
+    let u: any;
     await db.transaction(async tx => {
       const rows = await tx.select().from(settings);
       const globalMin = money(num(rows.find(s => s.key === 'min_withdrawal_amount')?.value ?? 5));
       if (amount < globalMin) throw new Error(`Minimum withdrawal is $${globalMin.toFixed(2)}`);
-      const [u] = await tx.select().from(users).where(eq(users.id, req.dbUser.id)).for('update');
+      [u] = await tx.select().from(users).where(eq(users.id, req.dbUser.id)).for('update');
       if (!u) throw new Error('User not found');
       const userBalance = num(u.balance);
       if (userBalance < amount) throw new Error('Insufficient balance');
       await tx.update(users).set({ balance: num(userBalance - amount).toFixed(4) }).where(eq(users.id, u.id));
       await tx.insert(walletLedger).values({ id: crypto.randomUUID(), userId: u.id, amount: (-amount).toFixed(4), type: 'debit', description: `Withdrawal request (${method})`, referenceId: null, createdAt: new Date() });
-      const [w] = await tx.insert(withdrawals).values({ userId: u.id, amount: amount.toFixed(4), method, destination, status: 'Pending' }).returning();
-      await createNotification(u.id, 'finance', 'Withdrawal requested', `Your withdrawal of $${amount.toFixed(2)} is pending review.`, '/dashboard/profile');
-      await audit(u.id, 'REQUEST_WITHDRAWAL', 'WITHDRAWAL', w.id);
-      res.status(201).json(w);
+      [w] = await tx.insert(withdrawals).values({ userId: u.id, amount: amount.toFixed(4), method, destination, status: 'Pending' }).returning();
     });
+    // Notification and audit must run AFTER the transaction commits —
+    // calling db queries inside db.transaction causes a connection-pool deadlock.
+    await createNotification(w.userId, 'finance', 'Withdrawal requested', `Your withdrawal of $${amount.toFixed(2)} is pending review.`, '/dashboard/profile');
+    await audit(u.id, 'REQUEST_WITHDRAWAL', 'WITHDRAWAL', w.id);
+    res.status(201).json(w);
   } catch (e: any) {
-    apiError(res, 400, e?.message || 'Withdrawal failed', e?.message?.includes('Minimum withdrawal') ? 'MIN_AMOUNT_ERROR' : 'WITHDRAWAL_FAILED');
+    if (e?.message?.includes('Minimum withdrawal')) {
+      return apiError(res, 400, e.message, 'MIN_AMOUNT_ERROR');
+    }
+    if (e?.message?.includes('Insufficient')) {
+      return apiError(res, 400, e.message, 'INSUFFICIENT_BALANCE');
+    }
+    logSystemError('error', 'Withdrawal request failed', e?.message || String(e));
+    apiError(res, 500, 'Internal server error', 'INTERNAL_ERROR');
   }
 });
 app.get('/api/client/affiliates/stats', requireAuth, async(req:any,res:any)=>{

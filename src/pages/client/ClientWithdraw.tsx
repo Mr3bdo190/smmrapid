@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Wallet, RefreshCw, Trash2 } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { notify } from '../../lib/notify';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
@@ -25,7 +25,7 @@ export default function ClientWithdraw() {
   const [method, setMethod] = useState<WithdrawMethod>('vodafone_cash');
   const [destination, setDestination] = useState('');
 
-  const { data: balance = 0, refetch: refetchBalance } = useQuery({
+  const { data: balance = 0 } = useQuery({
     queryKey: ['client-balance'],
     enabled: !!user,
     queryFn: async () => {
@@ -37,6 +37,17 @@ export default function ClientWithdraw() {
     },
   });
 
+  const { data: config = { minWithdrawalAmount: 5 } } = useQuery({
+    queryKey: ['client-config'],
+    queryFn: async () => {
+      const r = await apiFetch('/api/client/config');
+      if (!r.ok) return { minWithdrawalAmount: 5 };
+      return r.json();
+    },
+  });
+
+  const minWithdrawal = config?.minWithdrawalAmount || 5;
+
   const withdrawMutation = useMutation({
     mutationFn: async () => {
       const token = await user!.getIdToken();
@@ -46,9 +57,9 @@ export default function ClientWithdraw() {
         body: JSON.stringify({ amount: parseFloat(amount), method, destination }),
       });
       let body: any = {};
-      try { body = await r.json(); } catch { /* ignore */ }
+      try { body = await r.json(); } catch { /* ignore non-JSON */ }
       if (!r.ok) {
-        const error = new Error(body?.error || 'Withdrawal failed') as any;
+        const error: any = new Error(body?.error || body?.message || 'Withdrawal failed');
         error.status = r.status;
         error.code = body?.code;
         error.errorKey = body?.errorKey;
@@ -65,13 +76,16 @@ export default function ClientWithdraw() {
       setDestination('');
     },
     onError: (e: any) => {
-      if (e?.errorKey === 'MIN_AMOUNT_ERROR' || e?.details?.min) {
-        const min = e.details?.min || '5';
+      const backendError = e?.errorKey || e?.message || e?.message;
+      if (e?.errorKey === 'MIN_AMOUNT_ERROR' || e?.message?.includes('Minimum withdrawal')) {
+        const min = e.details?.min || minWithdrawal;
         notify.info(t('client.withdraw.minAmount', { min }) || `Minimum withdrawal amount is $${min}.`);
-      } else if (e?.message?.includes('Insufficient')) {
+      } else if (e?.message?.includes('Insufficient') || e?.errorKey === 'INSUFFICIENT_BALANCE') {
         notify.error(t('client.withdraw.insufficientBalance'));
+      } else if (backendError) {
+        notify.error(backendError);
       } else {
-        notify.error(e?.message || t('client.withdraw.error'));
+        notify.error(t('client.withdraw.error'));
       }
     },
   });
@@ -81,6 +95,10 @@ export default function ClientWithdraw() {
     const amt = parseFloat(amount);
     if (isNaN(amt) || amt <= 0) {
       notify.info(t('client.withdraw.invalidAmount'));
+      return;
+    }
+    if (amt < minWithdrawal) {
+      notify.info(t('client.withdraw.minAmount', { min: minWithdrawal }) || `Minimum withdrawal amount is $${minWithdrawal}.`);
       return;
     }
     if (amt > balance) {
@@ -129,13 +147,13 @@ export default function ClientWithdraw() {
                     min="0"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    placeholder="0.00"
+                    placeholder={`0.00 (min $${minWithdrawal.toFixed(2)})`}
                     className="w-full pl-8 pr-3 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
                     required
                   />
                 </div>
-                {amount && parseFloat(amount) < 5 && (
-                  <p className="mt-1 text-xs text-red-500 dark:text-red-400">{t('client.withdraw.minAmount', { min: '5' })}</p>
+                {amount && parseFloat(amount) < minWithdrawal && (
+                  <p className="mt-1 text-xs text-red-500 dark:text-red-400">{t('client.withdraw.minAmount', { min: minWithdrawal.toFixed(2) })}</p>
                 )}
               </div>
 

@@ -13,6 +13,16 @@ export default function ClientAffiliates() {
   const [method, setMethod] = useState('');
   const [destination, setDestination] = useState('');
 
+  const { data: config = { minWithdrawalAmount: 5 } } = useQuery({
+    queryKey: ['client-config'],
+    queryFn: async () => {
+      const r = await apiFetch('/api/client/config');
+      if (!r.ok) return { minWithdrawalAmount: 5 };
+      return r.json();
+    },
+  });
+  const minWithdrawal = config?.minWithdrawalAmount || 5;
+
   const withdrawals = useQuery({
     queryKey: ['affiliate-withdrawals'],
     enabled: !!user,
@@ -25,21 +35,34 @@ export default function ClientAffiliates() {
 
   const requestWithdrawal = async () => {
     try {
+      const amt = parseFloat(amount);
+      if (isNaN(amt) || amt <= 0) {
+        notify.info(t('affiliates.withdrawAmount') || 'Please enter a valid amount.');
+        return;
+      }
+      if (amt < minWithdrawal) {
+        notify.info(t('errors.minWithdrawal', { min: minWithdrawal.toFixed(2) }) || `Minimum withdrawal amount is $${minWithdrawal.toFixed(2)}.`);
+        return;
+      }
       const token = await user!.getIdToken();
       const r = await apiFetch('/api/client/affiliates/withdrawals', user, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ amount, method, destination }),
+        body: JSON.stringify({ amount: amt, method, destination }),
       });
-      const b = await r.json();
+      const b = await r.json().catch(() => ({}));
       if (!r.ok) {
-        // Check for minimum withdrawal error and translate
-        const minMatch = b.error?.match(/\$(\d+(?:\.\d+)?)/);
-        if (minMatch) {
-          const min = parseFloat(minMatch[1]);
-          notify.error(t('errors.minWithdrawal', { min: min.toFixed(2) }));
+        const errMsg = b.error || b.message || 'Withdrawal failed';
+        if (b.code === 'MIN_AMOUNT_ERROR' || b.errorKey === 'MIN_AMOUNT_ERROR' || errMsg?.includes('Minimum withdrawal')) {
+          const minMatch = errMsg?.match(/\$\s*(\d+(?:\.\d+)?)/) || errMsg?.match(/(\d+(?:\.\d+)?)/);
+          const min = minMatch ? parseFloat(minMatch[1]) : minWithdrawal;
+          notify.info(t('errors.minWithdrawal', { min: min.toFixed(2) }) || `Minimum withdrawal amount is $${min}.`);
+        } else if (errMsg?.includes('Insufficient') || b.code === 'INSUFFICIENT_BALANCE' || b.errorKey === 'INSUFFICIENT_BALANCE') {
+          notify.error(t('affiliates.insufficientBalance') || 'Insufficient balance for this withdrawal.');
+        } else if (errMsg) {
+          notify.error(errMsg);
         } else {
-          throw new Error(b.error || 'Withdrawal failed');
+          notify.error(t('affiliates.withdrawFailed') || 'Withdrawal failed. Please try again.');
         }
         return;
       }
@@ -48,7 +71,16 @@ export default function ClientAffiliates() {
       setDestination('');
       await withdrawals.refetch();
     } catch (e: any) {
-      notify.error(e.message);
+      const errMsg = e?.message || e?.error || 'Withdrawal failed';
+      if (errMsg?.includes('Insufficient') || e?.code === 'INSUFFICIENT_BALANCE' || e?.errorKey === 'INSUFFICIENT_BALANCE') {
+        notify.error(t('affiliates.insufficientBalance') || 'Insufficient balance for this withdrawal.');
+      } else if (errMsg?.includes('Minimum') || e?.code === 'MIN_AMOUNT_ERROR' || e?.errorKey === 'MIN_AMOUNT_ERROR') {
+        notify.info(t('errors.minWithdrawal', { min: minWithdrawal.toFixed(2) }) || `Minimum withdrawal amount is $${minWithdrawal.toFixed(2)}.`);
+      } else if (errMsg) {
+        notify.error(errMsg);
+      } else {
+        notify.error(t('affiliates.withdrawFailed') || 'Withdrawal failed. Please try again.');
+      }
     }
   };
 

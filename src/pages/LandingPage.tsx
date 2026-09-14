@@ -372,7 +372,7 @@ export default function LandingPage() {
                 <h3 className="mb-2 text-lg font-black text-slate-900 dark:text-white">{title}</h3>
                 <p className="text-sm text-slate-600 dark:text-gray-400">{desc}</p>
               </div>
-            ))}
+            ); })}
           </div>
         </section>
 

@@ -662,11 +662,10 @@ export const translations: Dict = {
   'api.paramDesc': { en: 'Description', ar: 'الوصف' },
   'api.paramType': { en: 'Type', ar: 'النوع' },
   'api.response': { en: 'Response', ar: 'الاستجابة' },
-  'api.example': { en: 'Example', ar: 'مثال' },
+  'api.copyCode': { en: 'Copy code', ar: 'نسخ الكود' },
   'api.curl': { en: 'cURL', ar: 'cURL' },
   'api.php': { en: 'PHP', ar: 'PHP' },
   'api.python': { en: 'Python', ar: 'Python' },
-  'api.copyCode': { en: 'Copy code', ar: 'نسخ الكود' },
   'api.viewClientApi': { en: 'View Your API Dashboard', ar: 'عرض لوحة تحكم API الخاصة بك' },
 
   // Game / Rewards hub

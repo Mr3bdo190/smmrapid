@@ -184,6 +184,22 @@ export const systemLogs = pgTable('system_logs', {
   createdAtIdx: index('system_logs_created_at_idx').on(t.createdAt),
 }));
 
+export const withdrawals = pgTable('withdrawals', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  amount: decimal('amount', { precision: 12, scale: 4 }).notNull(),
+  method: text('method').notNull(),
+  destination: text('destination').notNull(),
+  status: text('status').default('Pending').notNull(),
+  adminNote: text('admin_note'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  resolvedAt: timestamp('resolved_at'),
+}, (t) => ({
+  userIdx: index('withdrawals_user_idx').on(t.userId),
+  statusIdx: index('withdrawals_status_idx').on(t.status),
+  createdAtIdx: index('withdrawals_created_at_idx').on(t.createdAt),
+}));
+
 export const auditLogs = pgTable('audit_logs', {
   id: uuid('id').defaultRandom().primaryKey(),
   adminId: uuid('admin_id').references(() => users.id).notNull(),

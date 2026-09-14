@@ -30,6 +30,7 @@ const AdminAffiliates = lazy(() => import('./pages/admin/AdminAffiliates'));
 const AdminCategories = lazy(() => import('./pages/admin/AdminCategories'));
 const AdminServices = lazy(() => import('./pages/admin/AdminServices'));
 const AdminContactMessages = lazy(() => import('./pages/admin/AdminContactMessages'));
+const AdminWithdrawals = lazy(() => import('./pages/admin/AdminWithdrawals'));
 
 const ClientDashboard = lazy(() => import('./pages/client/ClientDashboard'));
 const ClientNewOrder = lazy(() => import('./pages/client/ClientNewOrder'));
@@ -47,6 +48,7 @@ const ClientApi = lazy(() => import('./pages/client/ClientApi'));
 const ClientAffiliates = lazy(() => import('./pages/client/ClientAffiliates'));
 const ClientMysteryBoxes = lazy(() => import('./pages/client/ClientMysteryBoxes'));
 const ClientGame = lazy(() => import('./pages/client/ClientGame'));
+const ClientWithdraw = lazy(() => import('./pages/client/ClientWithdraw'));
 
 const Fallback = () => <div className="flex h-screen w-full items-center justify-center bg-gray-50"><div className="h-12 w-12 animate-spin rounded-full border-b-2 border-t-2 border-indigo-500"></div></div>;
 
@@ -103,6 +105,7 @@ export default function App() {
             <Route path="affiliates" element={<ClientAffiliates />} />
             <Route path="mystery-boxes" element={<ClientMysteryBoxes />} />
             <Route path="game" element={<ClientGame />} />
+            <Route path="withdraw" element={<ClientWithdraw />} />
           </Route>
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
@@ -122,6 +125,7 @@ export default function App() {
             <Route path="audit" element={<AdminAuditLogs />} />
             <Route path="affiliates" element={<AdminAffiliates />} />
             <Route path="contact-messages" element={<AdminContactMessages />} />
+            <Route path="withdrawals" element={<AdminWithdrawals />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

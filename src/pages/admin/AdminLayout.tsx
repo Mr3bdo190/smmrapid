@@ -23,6 +23,7 @@ const navItems = [
   { key: 'nav.admin.reports', href: '/admin/reports', icon: ShieldAlert },
   { key: 'nav.admin.audit', href: '/admin/audit', icon: History },
   { key: 'nav.admin.affiliates', href: '/admin/affiliates', icon: Handshake },
+  { key: 'nav.admin.withdrawals', href: '/admin/withdrawals', icon: Wallet },
   { key: 'nav.admin.settings', href: '/admin/settings', icon: Settings },
 ];
 

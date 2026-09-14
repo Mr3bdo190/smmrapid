@@ -15,7 +15,7 @@ import {
   users, orders, payments, tickets, ticketMessages, services, categories, settings,
   providers, shortlinks, shortlinkClaims, shortlinkTokens, raffles, raffleTickets,
   mysteryBoxTiers, walletLedger, referralClicks, affiliateCommissions, affiliateWithdrawals, coupons, couponUses, auditLogs,
-  systemReports, contactMessages, refillRequests, notifications, systemLogs
+  systemReports, contactMessages, refillRequests, notifications, systemLogs, withdrawals
 } from './src/db/schema';
 import { adminAuth } from './src/lib/firebase-admin';
 import { ProviderClient, placeOrderToProvider, startProviderWorker, checkOrderStatus, refundOrderOnce } from './src/lib/provider-engine';
@@ -68,14 +68,14 @@ app.use(compression({
 
 app.use(express.json({ limit: '256kb' }));
 app.use(express.urlencoded({ extended: true, limit: '64kb' }));
-const globalLimiter = rateLimit({ windowMs: 60_000, limit: 200, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many requests, please try again later.', code: 'RATE_LIMITED' } });
-const authLimiter = rateLimit({ windowMs: 15 * 60_000, limit: 5, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many authentication attempts. Please wait 15 minutes before trying again.', code: 'RATE_LIMITED' } });
-const apiLimiter = rateLimit({ windowMs: 60_000, limit: 60, standardHeaders: true, legacyHeaders: false, message: { error: 'API rate limit exceeded. Please try again later.', code: 'RATE_LIMITED' } });
-const contactLimiter = rateLimit({ windowMs: 60 * 60_000, limit: 3, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many contact messages sent — please try again later.', code: 'RATE_LIMITED' } });
-const paymentLimiter = rateLimit({ windowMs: 60 * 60_000, limit: 10, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many payment attempts. Please try again later.', code: 'RATE_LIMITED' } });
-const orderLimiter = rateLimit({ windowMs: 60_000, limit: 30, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many order requests. Please try again later.', code: 'RATE_LIMITED' } });
-const publicReadLimiter = rateLimit({ windowMs: 60_000, limit: 120, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many requests. Please try again later.', code: 'RATE_LIMITED' } });
-const adminLimiter = rateLimit({ windowMs: 60_000, limit: 100, standardHeaders: true, legacyHeaders: false, message: { error: 'Admin rate limit exceeded.', code: 'RATE_LIMITED' } });
+const globalLimiter = rateLimit({ windowMs: 60_000, limit: 500, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many requests, please try again later.', code: 'RATE_LIMITED' } });
+const authLimiter = rateLimit({ windowMs: 15 * 60_000, limit: 20, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many authentication attempts. Please wait 15 minutes before trying again.', code: 'RATE_LIMITED' } });
+const apiLimiter = rateLimit({ windowMs: 60_000, limit: 120, standardHeaders: true, legacyHeaders: false, message: { error: 'API rate limit exceeded. Please try again later.', code: 'RATE_LIMITED' } });
+const contactLimiter = rateLimit({ windowMs: 60 * 60_000, limit: 10, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many contact messages sent — please try again later.', code: 'RATE_LIMITED' } });
+const paymentLimiter = rateLimit({ windowMs: 60 * 60_000, limit: 50, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many payment attempts. Please try again later.', code: 'RATE_LIMITED' } });
+const orderLimiter = rateLimit({ windowMs: 60_000, limit: 60, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many order requests. Please try again later.', code: 'RATE_LIMITED' } });
+const publicReadLimiter = rateLimit({ windowMs: 60_000, limit: 300, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many requests. Please try again later.', code: 'RATE_LIMITED' } });
+const adminLimiter = rateLimit({ windowMs: 60_000, limit: 1000, standardHeaders: true, legacyHeaders: false, message: { error: 'Admin rate limit exceeded.', code: 'RATE_LIMITED' } });
 app.use(globalLimiter);
 
 const apiError = (res: express.Response, status: number, message: string, code = 'ERROR') =>
@@ -1447,6 +1447,9 @@ app.get('/api/admin/reports',requireAuth,requireAdmin,async(req:any,res)=>{
 app.put('/api/admin/reports/:id/status',adminLimiter,requireAuth,requireAdmin,async(req:any,res)=>{if(!['Unresolved','Resolved'].includes(req.body?.status))return apiError(res,400,'Invalid report status');const [r]=await db.update(systemReports).set({status:req.body.status}).where(eq(systemReports.id,req.params.id)).returning();if(!r)return apiError(res,404,'Report not found');await audit(req.dbUser.id,'UPDATE_REPORT_STATUS','REPORT',r.id,undefined,undefined,r.status);res.json(r);});
 app.get('/api/admin/system-logs',adminLimiter,requireAuth,requireAdmin,async(req:any,res)=>{try{const page=Math.max(1,parseInt(req.query.page)||1);const pageSize=Math.min(500,Math.max(1,parseInt(req.query.pageSize)||100));const level=typeof req.query.level==='string'?req.query.level:'';const where=level?eq(systemLogs.level,level):undefined;const [data,[{count}]]=await Promise.all([(where?db.select().from(systemLogs).where(where):db.select().from(systemLogs)).orderBy(desc(systemLogs.createdAt)).limit(pageSize).offset((page-1)*pageSize),where?db.select({count:sql<number>`count(*)`}).from(systemLogs).where(where):db.select({count:sql<number>`count(*)`}).from(systemLogs)]);res.json({data,total:Number(count),page,pageSize});}catch(e:any){apiError(res,500,'Failed to fetch logs',e?.message||String(e));}});
 app.delete('/api/admin/system-logs',adminLimiter,requireAuth,requireAdmin,async(req:any,res)=>{try{const cutoff=new Date(Date.now()-30*24*60*60*1000);await db.delete(systemLogs).where(sql`${systemLogs.createdAt} < ${cutoff}`);res.json({success:true,deleted:true});}catch(e:any){apiError(res,500,'Failed to clear logs',e?.message||String(e));}});
+// Admin Wallet Withdrawal Management
+app.get('/api/admin/withdrawals',adminLimiter,requireAuth,requireAdmin,async(_req:any,res:any)=>{try{const status=typeof req.query?.status==='string'?String(req.query.status):'';const where=status?eq(withdrawals.status,status):undefined;const rows=where?await db.select().from(withdrawals).where(where):await db.select().from(withdrawals);const sorted=rows.sort((a:any,b:any)=>new Date(b.createdAt).getTime()-new Date(a.createdAt).getTime());res.json(sorted);}catch(e:any){apiError(res,500,'Failed to load withdrawals',e?.message||String(e));}});
+app.put('/api/admin/withdrawals/:id',adminLimiter,requireAuth,requireAdmin,async(req:any,res:any)=>{try{const status=req.body?.status==='approved'?'Approved':req.body?.status==='rejected'?'Rejected':'';if(!['Approved','Rejected'].includes(status))return apiError(res,400,'Invalid withdrawal status','INVALID_STATUS');const adminNote=String(req.body?.adminNote||'').trim()||null;let updated:any;await db.transaction(async tx=>{const [w]=await tx.select().from(withdrawals).where(eq(withdrawals.id,req.params.id)).for('update');if(!w)throw new Error('Withdrawal not found');if(w.status!=='Pending')throw new Error('Withdrawal already resolved');if(status==='Approved'){await tx.update(withdrawals).set({status:'Approved',adminNote,resolvedAt:new Date()}).where(eq(withdrawals.id,w.id));}else{await tx.update(users).set({balance:sql`${users.balance} + ${w.amount}`}).where(eq(users.id,w.userId));await tx.update(withdrawals).set({status:'Rejected',adminNote,resolvedAt:new Date()}).where(eq(withdrawals.id,w.id));}await audit(req.dbUser.id,'RESOLVE_WITHDRAWAL','WITHDRAWAL',w.id,adminNote);});updated=await db.select().from(withdrawals).where(eq(withdrawals.id,req.params.id));await createNotification(updated[0].userId,'finance',`Withdrawal ${status}`,`Your withdrawal of $${num(updated[0].amount).toFixed(2)} was ${status.toLowerCase()}.`,`/dashboard/profile`);res.json(updated[0]);}catch(e:any){apiError(res,e.status||400,e?.message||'Unable to resolve withdrawal','WITHDRAWAL_FAILED');}});
 
 app.get('/api/admin/shortlinks',requireAuth,requireAdmin,async(_req,res)=>res.json(await db.select().from(shortlinks).orderBy(desc(shortlinks.createdAt))));
 app.post('/api/admin/shortlinks',adminLimiter,requireAuth,requireAdmin,async(req:any,res)=>{const reward=num(req.body?.rewardAmount);if(!req.body?.name||!validUrl(req.body?.url)||!positiveMoney(reward))return apiError(res,400,'Invalid shortlink');const [s]=await db.insert(shortlinks).values({name:String(req.body.name).trim(),url:req.body.url,rewardAmount:money(reward).toFixed(4),status:'active'}).returning();res.status(201).json(s);});
@@ -1554,6 +1557,43 @@ app.post('/api/client/affiliates/withdrawals', requireAuth, async(req:any,res:an
   }catch(e:any){apiError(res,400,e.message||'Withdrawal failed','AFFILIATE_WITHDRAWAL_FAILED');}
 });
 
+// --- Wallet Withdrawal System ---
+app.get('/api/client/withdrawals', requireAuth, async (req: any, res) => {
+  try {
+    const rows = await db.select().from(withdrawals).where(eq(withdrawals.userId, req.dbUser.id)).orderBy(desc(withdrawals.createdAt));
+    res.json(rows);
+  } catch (e: any) {
+    apiError(res, 500, 'Failed to load withdrawals', e?.message || String(e));
+  }
+});
+
+app.post('/api/client/withdrawals', paymentLimiter, requireAuth, async (req: any, res) => {
+  try {
+    const amount = money(num(req.body?.amount));
+    const method = String(req.body?.method || '').trim();
+    const destination = String(req.body?.destination || '').trim();
+    if (amount <= 0 || !method || destination.length < 3 || destination.length > 255) {
+      return apiError(res, 400, 'Invalid withdrawal request', 'INVALID_WITHDRAWAL');
+    }
+    await db.transaction(async tx => {
+      const rows = await tx.select().from(settings);
+      const globalMin = money(num(rows.find(s => s.key === 'min_withdrawal_amount')?.value ?? 5));
+      if (amount < globalMin) throw new Error(`Minimum withdrawal is $${globalMin.toFixed(2)}`);
+      const [u] = await tx.select().from(users).where(eq(users.id, req.dbUser.id)).for('update');
+      if (!u) throw new Error('User not found');
+      const userBalance = num(u.balance);
+      if (userBalance < amount) throw new Error('Insufficient balance');
+      await tx.update(users).set({ balance: num(userBalance - amount).toFixed(4) }).where(eq(users.id, u.id));
+      await tx.insert(walletLedger).values({ id: crypto.randomUUID(), userId: u.id, amount: (-amount).toFixed(4), type: 'debit', description: `Withdrawal request (${method})`, referenceId: null, createdAt: new Date() });
+      const [w] = await tx.insert(withdrawals).values({ userId: u.id, amount: amount.toFixed(4), method, destination, status: 'Pending' }).returning();
+      await createNotification(u.id, 'finance', 'Withdrawal requested', `Your withdrawal of $${amount.toFixed(2)} is pending review.`, '/dashboard/profile');
+      await audit(u.id, 'REQUEST_WITHDRAWAL', 'WITHDRAWAL', w.id);
+      res.status(201).json(w);
+    });
+  } catch (e: any) {
+    apiError(res, 400, e?.message || 'Withdrawal failed', e?.message?.includes('Minimum withdrawal') ? 'MIN_AMOUNT_ERROR' : 'WITHDRAWAL_FAILED');
+  }
+});
 app.get('/api/client/affiliates/stats', requireAuth, async(req:any,res:any)=>{
   try { let u=req.dbUser; if(!u.referralCode){const code=crypto.randomBytes(6).toString('hex').toUpperCase();const [x]=await db.update(users).set({referralCode:code}).where(and(eq(users.id,u.id),isNull(users.referralCode))).returning();u=x||u;} const referred=await db.select({id:users.id,email:users.email,status:users.status,createdAt:users.createdAt}).from(users).where(eq(users.referredBy,u.id)).orderBy(desc(users.createdAt)); const clickRows=await db.select({count:sql<number>`count(*)`}).from(referralClicks).where(eq(referralClicks.referralCode,u.referralCode!)); let paidUsers:any[]=[]; let depositTotal=0; if(referred.length){const ids=referred.map(x=>x.id); paidUsers=await db.select({userId:payments.userId}).from(payments).where(and(eq(payments.status,'Approved'),inArray(payments.userId,ids))); const [d]=await db.select({total:sql<string>`coalesce(sum(${payments.amount}),0)`}).from(payments).where(and(eq(payments.status,'Approved'),inArray(payments.userId,ids))); depositTotal=num(d?.total||0);} const commissions=await db.select({id:affiliateCommissions.id,paymentId:affiliateCommissions.paymentId,amount:affiliateCommissions.amount,createdAt:affiliateCommissions.createdAt,referredEmail:users.email}).from(affiliateCommissions).leftJoin(users,eq(users.id,affiliateCommissions.referredUserId)).where(eq(affiliateCommissions.affiliateId,u.id)).orderBy(desc(affiliateCommissions.createdAt)); res.json({referralCode:u.referralCode,referralLink:`${req.protocol}://${req.get('host')}/?ref=${u.referralCode}`,clicks:Number(clickRows[0]?.count||0),signups:referred.length,paidReferrals:new Set(paidUsers.map(x=>x.userId)).size,referralDeposits:money(depositTotal),totalCommission:money(commissions.reduce((a,c)=>a+num(c.amount),0)),referred,commissions}); }
   catch(e:any){apiError(res,500,e.message||'Failed to load affiliate data','AFFILIATE_STATS_FAILED');}
@@ -1696,6 +1736,7 @@ async function ensureApplicationSchema(){
     'drizzle/0010_order_refund_counters.sql',
     'drizzle/0011_phase9_security_hardening.sql',
     'drizzle/0012_system_logs_and_limits.sql',
+    'drizzle/0013_wallet_withdrawals.sql',
   ];
   await db.execute(sql`CREATE TABLE IF NOT EXISTS rapid_schema_migrations (name text PRIMARY KEY, applied_at timestamp NOT NULL DEFAULT now())`);
   for (const relative of migrationFiles) {

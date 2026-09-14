@@ -56,12 +56,22 @@ export default function AdminWithdrawals() {
   });
 
   const handleApprove = (id: string) => {
-    resolveMutation.mutate({ id, status: 'Approved' });
+    const note = window.prompt(
+      t('admin.withdrawals.approveConfirm') || 'Approve this withdrawal? Add an admin note (optional):',
+      ''
+    );
+    if (note !== null) {
+      resolveMutation.mutate({ id, status: 'Approved', adminNote: note.trim() || undefined });
+    }
   };
 
   const handleReject = (id: string) => {
-    if (window.confirm(t('admin.withdrawals.rejectConfirm') || 'Reject this withdrawal?')) {
-      resolveMutation.mutate({ id, status: 'Rejected' });
+    const note = window.prompt(
+      t('admin.withdrawals.rejectConfirm') || 'Reject this withdrawal? Add an admin note (optional):',
+      ''
+    );
+    if (note !== null) {
+      resolveMutation.mutate({ id, status: 'Rejected', adminNote: note.trim() || undefined });
     }
   };
 
@@ -139,7 +149,7 @@ export default function AdminWithdrawals() {
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
                             <UserIcon className="w-4 h-4 text-gray-400" />
-                            <span className="text-sm text-gray-900 dark:text-gray-200">{w.user_email || w.userId || '-'}</span>
+                            <span className="text-sm text-gray-900 dark:text-gray-200">{w.user_name || w.user_email || w.userId || '-'}{w.user_email && w.user_email !== (w.user_name || w.userId) ? ` (${w.user_email})` : ''}</span>
                           </div>
                         </td>
                         <td className="px-4 py-3">

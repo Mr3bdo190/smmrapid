@@ -30,7 +30,7 @@ export default function ClientWithdraw() {
     enabled: !!user,
     queryFn: async () => {
       const token = await user!.getIdToken();
-      const r = await apiFetch('/api/client/profile', user, { headers: { Authorization: `Bearer ${token}` } });
+      const r = await apiFetch('/api/client/me', user, { headers: { Authorization: `Bearer ${token}` } });
       if (!r.ok) return 0;
       const data = await r.json();
       return Number(data?.balance || 0);
@@ -65,7 +65,7 @@ export default function ClientWithdraw() {
       setDestination('');
     },
     onError: (e: any) => {
-      if (e?.code === 'MIN_AMOUNT_ERROR' || e?.details?.min) {
+      if (e?.errorKey === 'MIN_AMOUNT_ERROR' || e?.details?.min) {
         const min = e.details?.min || '5';
         notify.info(t('client.withdraw.minAmount', { min }) || `Minimum withdrawal amount is $${min}.`);
       } else if (e?.message?.includes('Insufficient')) {

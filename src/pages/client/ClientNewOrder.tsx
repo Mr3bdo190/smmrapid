@@ -96,7 +96,7 @@ export default function ClientNewOrder() {
     </section>
 
     <section className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm p-5">
-      <div className="flex items-center justify-between gap-3 mb-5"><div><h2 className="font-black text-lg text-gray-900 dark:text-gray-100 dark:text-gray-100">Choose your service</h2><p className="text-sm text-gray-500 dark:text-gray-400">Two simple steps: category → service.</p></div><button type="button" onClick={() => servicesQ.refetch()} className="btn-secondary"><RefreshCw className="w-4 h-4" /> {t('common.refresh')}</button></div>
+      <div className="flex items-center justify-between gap-3 mb-5"><div><h2 className="font-black text-lg text-gray-900 dark:text-gray-100">Choose your service</h2><p className="text-sm text-gray-500 dark:text-gray-400">Two simple steps: category → service.</p></div><button type="button" onClick={() => servicesQ.refetch()} className="btn-secondary"><RefreshCw className="w-4 h-4" /> {t('common.refresh')}</button></div>
       {servicesQ.isLoading ? <div className="py-12 text-center text-gray-500 dark:text-gray-400">{t('common.loading')}</div> : servicesQ.isError ? <div className="py-10 text-center"><p className="text-red-600 font-semibold mb-3">Failed to load services.</p><button className="btn-primary" onClick={() => servicesQ.refetch()}>{t('common.refresh')}</button></div> : <>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div><label className="label-primary dark:text-gray-300">1. {t('newOrder.chooseCategory')} / القسم</label><select className="input-primary h-12 dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200" value={categoryId} onChange={e => { setCategoryId(e.target.value); setServiceId(''); setQuantity(''); setSearch(''); }}><option value="">Select category</option>{categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
@@ -111,7 +111,7 @@ export default function ClientNewOrder() {
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
           <div>
             <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">{t('newOrder.serviceDetails')}</span>
-            <h3 className="text-2xl font-black text-gray-900 dark:text-gray-100 dark:text-gray-100 mt-1 break-words">{selectedService.name}</h3>
+            <h3 className="text-2xl font-black text-gray-900 dark:text-gray-100 mt-1 break-words">{selectedService.name}</h3>
             <span className="sr-only">{t('newOrder.selectedService')}</span>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{selectedService.category?.name}</p>
           </div>
@@ -129,11 +129,11 @@ export default function ClientNewOrder() {
           </div>
           <div className="p-4 rounded-xl bg-gray-50 dark:bg-slate-700">
             <span className="text-xs text-gray-500 dark:text-gray-400">{t('newOrder.minimum')}</span>
-            <b className="block text-gray-900 dark:text-gray-100 dark:text-gray-200">{Number(selectedService.minQuantity).toLocaleString()}</b>
+            <b className="block text-gray-900 dark:text-gray-200">{Number(selectedService.minQuantity).toLocaleString()}</b>
           </div>
           <div className="p-4 rounded-xl bg-gray-50 dark:bg-slate-700">
             <span className="text-xs text-gray-500 dark:text-gray-400">{t('newOrder.maximum')}</span>
-            <b className="block text-gray-900 dark:text-gray-100 dark:text-gray-200">{Number(selectedService.maxQuantity).toLocaleString()}</b>
+            <b className="block text-gray-900 dark:text-gray-200">{Number(selectedService.maxQuantity).toLocaleString()}</b>
           </div>
           <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/20">
             <span className="text-xs text-gray-500 dark:text-gray-400">Refill</span>
@@ -145,26 +145,26 @@ export default function ClientNewOrder() {
           </div>
           <div className="p-4 rounded-xl bg-gray-50 dark:bg-slate-700">
             <span className="text-xs text-gray-500 dark:text-gray-400">Cashback</span>
-            <b className="block text-gray-900 dark:text-gray-100 dark:text-gray-200">{selectedService.cashbackPercentage || 0}%</b>
+            <b className="block text-gray-900 dark:text-gray-200">{selectedService.cashbackPercentage || 0}%</b>
           </div>
         </div>
         <div className="rounded-2xl border border-indigo-100 dark:border-indigo-900 bg-indigo-50/40 dark:bg-indigo-900/10 p-5">
-          <div className="flex gap-2 items-center font-bold text-gray-900 dark:text-gray-100 dark:text-gray-100">
+          <div className="flex gap-2 items-center font-bold text-gray-900 dark:text-gray-100">
             <Info className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> Service information
           </div>
-          <p className="text-sm text-gray-700 dark:text-gray-300 dark:text-gray-300 mt-3 whitespace-pre-wrap leading-7">{serviceDetails(selectedService)}</p>
+          <p className="text-sm text-gray-700 dark:text-gray-300 mt-3 whitespace-pre-wrap leading-7">{serviceDetails(selectedService)}</p>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-4 text-xs">
             <div className="rounded-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 p-3">
               <span className="text-gray-500 dark:text-gray-400">Refill</span>
-              <b className="block mt-1 text-gray-900 dark:text-gray-100 dark:text-gray-200">{selectedService.refillable ? 'Available' : 'Not available'}</b>
+              <b className="block mt-1 text-gray-900 dark:text-gray-200">{selectedService.refillable ? 'Available' : 'Not available'}</b>
             </div>
             <div className="rounded-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 p-3">
               <span className="text-gray-500 dark:text-gray-400">Cancellation</span>
-              <b className="block mt-1 text-gray-900 dark:text-gray-100 dark:text-gray-200">{selectedService.cancelable ? 'Available' : 'Not available'}</b>
+              <b className="block mt-1 text-gray-900 dark:text-gray-200">{selectedService.cancelable ? 'Available' : 'Not available'}</b>
             </div>
             <div className="rounded-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 p-3">
               <span className="text-gray-500 dark:text-gray-400">Limits</span>
-              <b className="block mt-1 text-gray-900 dark:text-gray-100 dark:text-gray-200">{Number(selectedService.minQuantity).toLocaleString()} – {Number(selectedService.maxQuantity).toLocaleString()}</b>
+              <b className="block mt-1 text-gray-900 dark:text-gray-200">{Number(selectedService.minQuantity).toLocaleString()} – {Number(selectedService.maxQuantity).toLocaleString()}</b>
             </div>
           </div>
         </div>
@@ -181,7 +181,7 @@ export default function ClientNewOrder() {
             <label className="label-primary dark:text-gray-300">Quantity</label>
             <input required type="number" value={quantity} min={selectedService.minQuantity} max={selectedService.maxQuantity} onChange={e => setQuantity(e.target.value === '' ? '' : Number(e.target.value))} className="input-primary dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200" placeholder={`${selectedService.minQuantity} - ${selectedService.maxQuantity}`} />
             <div className="flex flex-wrap gap-2 mt-2">
-              {[selectedService.minQuantity, Math.min(selectedService.maxQuantity, selectedService.minQuantity * 2), Math.min(selectedService.maxQuantity, 1000), Math.min(selectedService.maxQuantity, 10000)].filter((v: number, i: number, a: number[]) => v > 0 && a.indexOf(v) === i).map((v: number) => <button type="button" key={v} onClick={() => setQuantity(v)} className="text-xs px-2 py-1 rounded border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300 dark:text-gray-300 hover:border-indigo-400">{v.toLocaleString()}</button>)}
+              {[selectedService.minQuantity, Math.min(selectedService.maxQuantity, selectedService.minQuantity * 2), Math.min(selectedService.maxQuantity, 1000), Math.min(selectedService.maxQuantity, 10000)].filter((v: number, i: number, a: number[]) => v > 0 && a.indexOf(v) === i).map((v: number) => <button type="button" key={v} onClick={() => setQuantity(v)} className="text-xs px-2 py-1 rounded border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300 hover:border-indigo-400">{v.toLocaleString()}</button>)}
             </div>
           </div>}
           <div className="rounded-xl bg-gray-950 text-white p-4">

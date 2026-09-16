@@ -58,11 +58,11 @@ export default function ClientShortlinks() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 dark:text-gray-100 flex items-center gap-2"><Link2 className="text-indigo-600 dark:text-indigo-400"/> {t('shortlinks.title')}</h2>
+      <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2"><Link2 className="text-indigo-600 dark:text-indigo-400"/> {t('shortlinks.title')}</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {shortlinks.map((sl: any) => (
-          <div key={sl.id} className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6 flex flex-col items-center text-center">
-            <h3 className="font-bold text-lg text-gray-900 dark:text-gray-100 dark:text-gray-200 mb-2">{sl.name}</h3>
+          <div key={sl.id} className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-6 flex flex-col items-center text-center">
+            <h3 className="font-bold text-lg text-gray-900 dark:text-gray-100 mb-2">{sl.name}</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{t('shortlinks.reward', { amount: Number(sl.rewardAmount).toFixed(4) })}</p>
             <div className="flex gap-2 w-full">
               <button onClick={() => startMutation.mutate(sl.id)} disabled={startMutation.isPending || sl.claimed} className="flex-1 btn-secondary text-center disabled:opacity-50 dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200">{sl.claimed ? t('shortlinks.claimed') : t('shortlinks.visit')}</button>

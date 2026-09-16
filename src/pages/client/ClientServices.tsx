@@ -21,11 +21,11 @@ export default function ClientServices() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 dark:text-gray-100 flex items-center gap-2"><Tags className="text-indigo-600 dark:text-indigo-400"/> {t('services.title')}</h2>
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">
+      <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2"><Tags className="text-indigo-600 dark:text-indigo-400"/> {t('services.title')}</h2>
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
         <div className="overflow-x-auto w-full">
-        <table className="min-w-full divide-y divide-gray-100 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-slate-700">
+        <table className="min-w-full divide-y divide-gray-100 dark:divide-slate-700">
+          <thead className="bg-gray-50 dark:bg-slate-700/50">
             <tr>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">{t('services.category')}</th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">{t('newOrder.service')}</th>
@@ -35,11 +35,11 @@ export default function ClientServices() {
           </thead>
           <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-100 dark:divide-gray-700">
             {services.map((s: any) => (
-              <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/50 dark:hover:bg-slate-700/50">
-                <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 dark:text-gray-400">{s.category?.name || 'N/A'}</td>
-                <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100 dark:text-gray-200">{s.name}</td>
+              <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/50">
+                <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{s.category?.name || 'N/A'}</td>
+                <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{s.name}</td>
                 <td className="px-6 py-4 text-sm text-right text-emerald-600 dark:text-emerald-400 font-semibold">${Number(s.pricePer1k).toFixed(4)} <span className="text-[11px] text-gray-400 dark:text-gray-500 font-normal">{Number(s.minQuantity)===1&&Number(s.maxQuantity)===1?' / item':' / 1K'}</span></td>
-                <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{s.minQuantity} / {s.maxQuantity}</td><td className="px-6 py-4 text-sm text-right">{s.refillable?'Refill available':'-'}{s.cancelable?' · Cancel available':''}</td>
+                <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{s.minQuantity} / {s.maxQuantity}</td><td className="px-6 py-4 text-sm text-right text-gray-600 dark:text-gray-400">{s.refillable?'Refill available':'-'}{s.cancelable?' · Cancel available':''}</td>
               </tr>
             ))}
           </tbody>

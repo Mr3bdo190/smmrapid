@@ -92,8 +92,8 @@ export default function AdminOrders() {
     <div className="space-y-5" dir={dir}>
       <div className="flex justify-between flex-wrap gap-3">
         <div>
-          <h3 className="text-xl font-bold">{t('admin.orders.title')}</h3>
-          <p className="text-sm text-gray-500">{t('admin.orders.subtitle')}</p>
+          <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">{t('admin.orders.title')}</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{t('admin.orders.subtitle')}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button className="btn-secondary" onClick={() => oq.refetch()}><RefreshCw className="w-4 h-4 inline mr-1" /> {t('common.refresh')}</button>
@@ -121,17 +121,17 @@ export default function AdminOrders() {
         </div>
       )}
 
-      <div className="bg-white border rounded-xl p-4 flex flex-wrap gap-3">
+      <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-4 flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[220px]">
-          <Search className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
+          <Search className="absolute left-3 top-3 w-4 h-4 text-slate-400 dark:text-gray-500" />
           <input
-            className="input-primary pl-9"
+            className="input-primary pl-9 dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200"
             placeholder={t('admin.orders.searchPlaceholder')}
             value={qInput}
             onChange={x => setQInput(x.target.value)}
           />
         </div>
-        <select className="input-primary w-auto" value={status} onChange={x => setStatus(x.target.value)}>
+        <select className="input-primary w-auto dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200" value={status} onChange={x => setStatus(x.target.value)}>
           <option value="all">{t('common.allStatuses')}</option>
           {['Pending', 'Processing', 'In Progress', 'Completed', 'Partial', 'Canceled', 'Refunded'].map(s => (
             <option key={s} value={s}>{s}</option>
@@ -139,11 +139,11 @@ export default function AdminOrders() {
         </select>
       </div>
 
-      <div className="bg-white border rounded-xl overflow-x-auto">
+      <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl overflow-x-auto">
         <table className="min-w-[1100px] w-full">
-          <thead className="bg-gray-50">
+          <thead className="bg-gray-50 dark:bg-slate-700/50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase">
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
                 <input
                   type="checkbox"
                   checked={allSelected}
@@ -154,16 +154,16 @@ export default function AdminOrders() {
                 />
               </th>
               {['ID', 'User', 'Service', 'Mode', 'Qty', 'Start', 'Remains', 'Charge', 'Status', 'Provider ID', 'Actions'].map(h => (
-                <th key={h} className="px-4 py-3 text-left text-xs text-gray-500 uppercase">{t(`admin.orders.headers.${h}`, h)}</th>
+                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">{t(`admin.orders.headers.${h}`, h)}</th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y">
+          <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
             {oq.isLoading
-              ? <tr><td colSpan={12} className="p-8 text-center">{t('common.loading')}</td></tr>
+              ? <tr><td colSpan={12} className="p-8 text-center text-gray-500 dark:text-gray-400">{t('common.loading')}</td></tr>
               : rows.length
                 ? rows.map((o: any) => (
-                    <tr key={o.id} className="hover:bg-gray-50/50">
+                    <tr key={o.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/50">
                       <td className="px-4 py-3">
                         <input
                           type="checkbox"
@@ -176,29 +176,29 @@ export default function AdminOrders() {
                           }}
                         />
                       </td>
-                      <td className="px-4 py-3 font-mono text-xs">{o.id.slice(0, 8)}</td>
-                      <td className="px-4 py-3 text-sm">{o.user?.email || '-'}</td>
-                      <td className="px-4 py-3 text-sm font-medium">{o.service?.name || '-'}</td>
-                      <td className="px-4 py-3 text-xs">{o.service?.executionMode === 'manual' ? t('admin.orders.manual') : t('admin.orders.provider')}</td>
-                      <td className="px-4 py-3 text-sm">{o.quantity}</td>
-                      <td className="px-4 py-3 text-sm text-gray-500">{o.startCount ?? '-'}</td>
-                      <td className="px-4 py-3 text-sm text-gray-500">{o.remains ?? '-'}</td>
-                      <td className="px-4 py-3 text-sm font-bold">${Number(o.charge).toFixed(4)}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-gray-900 dark:text-gray-200">{o.id.slice(0, 8)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-200">{o.user?.email || '-'}</td>
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-200">{o.service?.name || '-'}</td>
+                      <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400">{o.service?.executionMode === 'manual' ? t('admin.orders.manual') : t('admin.orders.provider')}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-200">{o.quantity}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{o.startCount ?? '-'}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{o.remains ?? '-'}</td>
+                      <td className="px-4 py-3 text-sm font-bold text-gray-900 dark:text-gray-200">${Number(o.charge).toFixed(4)}</td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium
-                          ${o.status === 'Completed' ? 'bg-emerald-100 text-emerald-800' : ''}
-                          ${o.status === 'Canceled' || o.status === 'Refunded' ? 'bg-red-100 text-red-800' : ''}
-                          ${['Pending', 'Processing', 'In Progress', 'Partial'].includes(o.status) ? 'bg-amber-100 text-amber-800' : ''}
+                          ${o.status === 'Completed' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200' : ''}
+                          ${o.status === 'Canceled' || o.status === 'Refunded' ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200' : ''}
+                          ${['Pending', 'Processing', 'In Progress', 'Partial'].includes(o.status) ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200' : ''}
                         `}>{o.status}</span>
                       </td>
-                      <td className="px-4 py-3 text-xs font-mono text-gray-500">{o.providerOrderId || '-'}</td>
+                      <td className="px-4 py-3 text-xs font-mono text-gray-600 dark:text-gray-400">{o.providerOrderId || '-'}</td>
                       <td className="px-4 py-3 text-right whitespace-nowrap">
                         <button onClick={() => refresh.mutate(o.id)} className="text-indigo-600 hover:text-indigo-900" title={t('common.refresh')}><RefreshCw className="w-4 h-4 inline" /></button>
                         <button onClick={() => { const tr = confirm(t('admin.orders.cancelConfirm')); if (tr) { apiFetch('/api/admin/orders/' + o.id + '/cancel', user, { method: 'POST' }).then(() => { qc.invalidateQueries({ queryKey: ['admin-orders'] }); notify.success(t('admin.orders.cancelRequested')); }); } }} className="text-red-600 hover:text-red-900 ml-2" title={t('admin.orders.cancel')}><Trash2 className="w-4 h-4 inline" /></button>
                       </td>
                     </tr>
                   ))
-                : <tr><td colSpan={12} className="p-8 text-center text-gray-500">{t('orders.noMatching')}</td></tr>
+                : <tr><td colSpan={12} className="p-8 text-center text-gray-500 dark:text-gray-400">{t('orders.noMatching')}</td></tr>
             }
           </tbody>
         </table>

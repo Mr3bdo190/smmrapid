@@ -41,8 +41,8 @@ export default function ClientMysteryBoxes() {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto flex flex-col items-center py-10">
-      <h2 className="text-3xl font-bold text-gray-900 flex items-center gap-3"><Gift className="text-indigo-600 w-8 h-8"/> {t('mysteryBoxes.title')}</h2>
-      <p className="text-gray-600 text-center max-w-md">
+      <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-3"><Gift className="text-indigo-600 dark:text-indigo-400 w-8 h-8"/> {t('mysteryBoxes.title')}</h2>
+      <p className="text-gray-600 dark:text-gray-400 text-center max-w-md">
         {t('mysteryBoxes.subtitle', { keys: userInfo?.keys || 0 })}
       </p>
 
@@ -59,7 +59,7 @@ export default function ClientMysteryBoxes() {
         {openMutation.isPending ? t('mysteryBoxes.opening') : t('mysteryBoxes.openBox')}
       </button>
 
-      {!userInfo?.keys && <p className="text-sm text-red-500 mt-2 font-medium">{t('mysteryBoxes.needKey')}</p>}
+      {!userInfo?.keys && <p className="text-sm text-red-500 dark:text-red-400 mt-2 font-medium">{t('mysteryBoxes.needKey')}</p>}
     </div>
   );
 }

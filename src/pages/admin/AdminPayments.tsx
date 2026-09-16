@@ -58,35 +58,57 @@ export default function AdminPayments() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between gap-3 flex-wrap"><h3 className="text-xl font-bold text-gray-900 tracking-tight">Transactions & Payments</h3><button className="btn-secondary" onClick={()=>queryClient.invalidateQueries({queryKey:['admin-payments']})}><RefreshCw className="w-4 h-4 inline mr-1"/>Refresh</button></div><div className="bg-white border rounded-xl p-4 flex flex-wrap gap-3"><div className="relative flex-1 min-w-[220px]"><Search className="absolute left-3 top-3 w-4 h-4 text-gray-400"/><input className="input-primary pl-9" placeholder="Search this page: email, method or transaction ID" value={q} onChange={e=>setQ(e.target.value)}/></div><select className="input-primary w-auto" value={status} onChange={e=>setStatus(e.target.value)}><option value="all">All statuses</option><option>Pending</option><option>Approved</option><option>Rejected</option></select></div>
+      <div className="flex justify-between gap-3 flex-wrap">
+        <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">Transactions & Payments</h3>
+        <button className="btn-secondary" onClick={()=>queryClient.invalidateQueries({queryKey:['admin-payments']})}><RefreshCw className="w-4 h-4 inline mr-1"/>Refresh</button>
+      </div>
+      <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-4 flex flex-wrap gap-3">
+        <div className="relative flex-1 min-w-[220px]">
+          <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400 dark:text-gray-500"/>
+          <input className="input-primary pl-9 dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200" placeholder="Search this page: email, method or transaction ID" value={q} onChange={e=>setQ(e.target.value)}/>
+        </div>
+        <select className="input-primary w-auto dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200" value={status} onChange={e=>setStatus(e.target.value)}>
+          <option value="all">All statuses</option><option>Pending</option><option>Approved</option><option>Rejected</option>
+        </select>
+      </div>
       {isError && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{(error as Error)?.message || 'Failed to load payments'}</div>}
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 border-gray-100 overflow-hidden w-full">
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden w-full">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-100">
-            <thead className="bg-gray-50"><tr>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">User</th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Method / Tx ID</th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Amount</th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Status & Time</th>
-              <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase">Actions</th>
-            </tr></thead>
-            <tbody className="bg-white divide-y divide-gray-100">
-              {isLoading && <tr><td colSpan={5} className="px-6 py-10 text-center text-gray-500">Loading payments...</td></tr>}
-              {!isLoading && rows.length === 0 && <tr><td colSpan={5} className="px-6 py-10 text-center text-gray-500">No payments found.</td></tr>}
+          <table className="min-w-full divide-y divide-gray-100 dark:divide-slate-700">
+            <thead className="bg-gray-50 dark:bg-slate-700/50">
+              <tr>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">User</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Method / Tx ID</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Amount</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Status & Time</th>
+                <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-100 dark:divide-slate-700">
+              {isLoading && <tr><td colSpan={5} className="px-6 py-10 text-center text-gray-500 dark:text-gray-400">Loading payments...</td></tr>}
+              {!isLoading && rows.length === 0 && <tr><td colSpan={5} className="px-6 py-10 text-center text-gray-500 dark:text-gray-400">No payments found.</td></tr>}
               {rows.map((p: any) => {
                 const pending = p.status === 'Pending';
                 const gatewayVerified = p.method === 'Heleket' || p.method === 'المحفظة الإلكترونية';
                 const egpAmount = p.transactionDetails?.egpAmount;
-                return <tr key={p.id} className="hover:bg-gray-50/50">
-                  <td className="px-6 py-4 text-sm text-gray-900">{p.user?.email || p.userId}</td>
-                  <td className="px-6 py-4 text-sm text-gray-900"><div>{p.method}</div><div className="text-xs text-gray-400 break-all">{p.transactionId || 'No Tx ID'}</div></td>
-                  <td className="px-6 py-4 text-sm font-bold text-emerald-600">${Number(p.amount).toFixed(4)}{egpAmount && <div className="text-xs font-normal text-gray-400">({Number(egpAmount).toFixed(2)} EGP @ {p.transactionDetails?.rate})</div>}</td>
-                  <td className="px-6 py-4 text-sm"><div><span className={`px-2 py-1 rounded text-xs ${p.status === 'Approved' ? 'bg-emerald-100 text-emerald-800' : p.status === 'Rejected' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>{p.status}</span></div><span className="text-xs text-gray-500 mt-1 block">{p.createdAt ? new Date(p.createdAt).toLocaleString() : '-'}</span></td>
+                return <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/50">
+                  <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">{p.user?.email || p.userId}</td>
+                  <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-200">
+                    <div>{p.method}</div>
+                    <div className="text-xs text-gray-400 dark:text-gray-500 break-all">{p.transactionId || 'No Tx ID'}</div>
+                  </td>
+                  <td className="px-6 py-4 text-sm font-bold text-emerald-600">${Number(p.amount).toFixed(4)}{egpAmount && <div className="text-xs font-normal text-gray-400 dark:text-gray-500">({Number(egpAmount).toFixed(2)} EGP @ {p.transactionDetails?.rate})</div>}</td>
+                  <td className="px-6 py-4 text-sm">
+                    <div>
+                      <span className={`px-2 py-1 rounded text-xs ${p.status === 'Approved' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200' : p.status === 'Rejected' ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200'}`}>{p.status}</span>
+                    </div>
+                    <span className="text-xs text-gray-500 dark:text-gray-400 mt-1 block">{p.createdAt ? new Date(p.createdAt).toLocaleString() : '-'}</span>
+                  </td>
                   <td className="px-6 py-4 text-right text-sm">
-                    {pending && gatewayVerified && <span className="text-xs text-gray-400 italic">Awaiting gateway confirmation</span>}
+                    {pending && gatewayVerified && <span className="text-xs text-gray-400 dark:text-gray-500 italic">Awaiting gateway confirmation</span>}
                     {pending && !gatewayVerified && <div className="flex justify-end gap-2">
-                      <button type="button" disabled={resolveMutation.isPending} onClick={() => resolveMutation.mutate({ id: p.id, action: 'approve' })} className="text-emerald-600 bg-emerald-50 p-2 rounded hover:bg-emerald-100 disabled:opacity-50" title="Approve"><Check className="w-4 h-4" /></button>
-                      <button type="button" disabled={resolveMutation.isPending} onClick={() => resolveMutation.mutate({ id: p.id, action: 'reject' })} className="text-red-600 bg-red-50 p-2 rounded hover:bg-red-100 disabled:opacity-50" title="Reject"><X className="w-4 h-4" /></button>
+                      <button type="button" disabled={resolveMutation.isPending} onClick={() => resolveMutation.mutate({ id: p.id, action: 'approve' })} className="text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 p-2 rounded hover:bg-emerald-100 dark:hover:bg-emerald-900 disabled:opacity-50" title="Approve"><Check className="w-4 h-4" /></button>
+                      <button type="button" disabled={resolveMutation.isPending} onClick={() => resolveMutation.mutate({ id: p.id, action: 'reject' })} className="text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 p-2 rounded hover:bg-red-100 dark:hover:bg-red-900 disabled:opacity-50" title="Reject"><X className="w-4 h-4" /></button>
                     </div>}
                   </td>
                 </tr>;

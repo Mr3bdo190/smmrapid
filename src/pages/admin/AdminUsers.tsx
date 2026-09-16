@@ -39,8 +39,8 @@ function UserDetailsModal({ userId, onClose }: { userId: string, onClose: () => 
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
       <div className="bg-white dark:bg-slate-800 rounded-lg max-w-5xl dark:border-slate-600 w-full shadow-xl my-8 flex flex-col max-h-[90vh]">
         <div className="flex justify-between items-center p-6 border-b border-gray-100 dark:border-slate-700">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 dark:text-gray-100">{t('admin.users.details')}: {u.email}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:text-gray-400 dark:text-gray-400"><X className="w-6 h-6"/></button>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{t('admin.users.details')}: {u.email}</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-200"><X className="w-6 h-6"/></button>
         </div>
         
         <div className="p-6 overflow-y-auto flex-1 space-y-8">
@@ -64,7 +64,7 @@ function UserDetailsModal({ userId, onClose }: { userId: string, onClose: () => 
           </div>
 
           <div className="space-y-4">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 border-b pb-2">{t('admin.users.recentOrders')}</h3>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 border-b dark:border-slate-600 pb-2">{t('admin.users.recentOrders')}</h3>
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead><tr><th className="text-left py-2 text-gray-500">{t('orders.service')}</th><th className="text-left py-2 text-gray-500">{t('newOrder.quantity')}</th><th className="text-left py-2 text-gray-500">{t('orders.charge')}</th><th className="text-left py-2 text-gray-500">{t('common.status')}</th></tr></thead>
@@ -79,7 +79,7 @@ function UserDetailsModal({ userId, onClose }: { userId: string, onClose: () => 
           </div>
 
           <div className="space-y-4">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 border-b pb-2">{t('admin.users.recentPayments')}</h3>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 border-b dark:border-slate-600 pb-2">{t('admin.users.recentPayments')}</h3>
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead><tr><th className="text-left py-2 text-gray-500">{t('common.date')}</th><th className="text-left py-2 text-gray-500">{t('common.type')}</th><th className="text-left py-2 text-gray-500">{t('common.amount')}</th><th className="text-left py-2 text-gray-500">{t('common.status')}</th></tr></thead>
@@ -273,10 +273,10 @@ export default function AdminUsers() {
         </select>
       </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden w-full">
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden w-full">
         <div className="overflow-x-auto w-full">
           <table className="min-w-full divide-y divide-gray-100">
-            <thead className="bg-gray-50 dark:bg-slate-700 dark:bg-slate-700">
+            <thead className="bg-gray-50 dark:bg-slate-700">
               <tr>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   <input
@@ -313,9 +313,9 @@ export default function AdminUsers() {
                     />
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 font-medium">{u.email}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 dark:text-gray-300 dark:text-gray-300">{u.name || '-'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">{u.name || '-'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">{u.role}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-gray-100 dark:text-gray-100">${Number(u.balance).toFixed(4)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-gray-100">${Number(u.balance).toFixed(4)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium
                       ${u.status === 'active' ? 'bg-emerald-100 text-emerald-800' : ''}
@@ -344,7 +344,7 @@ export default function AdminUsers() {
       
       {balanceModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-slate-800 rounded-lg p-6 max-w-sm dark:border-slate-600 w-full shadow-xl">
+          <div className="bg-white dark:bg-slate-800 dark:border-slate-600 border border-gray-200 rounded-lg p-6 max-w-sm w-full shadow-xl">
             <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">{t('admin.users.editBalanceFor', { name: balanceModal.email })}</h3>
             <form onSubmit={handleAddBalanceSubmit}>
               <div className="mb-4">
@@ -353,7 +353,7 @@ export default function AdminUsers() {
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{t('admin.users.balanceHint')}</p>
               </div>
               <div className="flex justify-end gap-3">
-                <button type="button" onClick={() => setBalanceModal(null)} className="px-4 py-2 border rounded-md">{t('common.cancel')}</button>
+                <button type="button" onClick={() => setBalanceModal(null)} className="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-md text-gray-700 dark:text-gray-300">{t('common.cancel')}</button>
                 <button type="submit" className="btn-primary">{t('admin.users.saveBalance')}</button>
               </div>
             </form>

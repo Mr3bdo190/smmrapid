@@ -127,7 +127,7 @@ export default function ClientAddFunds() {
   return (
     <div className="max-w-5xl mx-auto space-y-7">
       <div dir={dir}>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 dark:text-gray-100">{t('addFunds.title')}</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{t('addFunds.title')}</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('addFunds.chooseMethod')}</p>
       </div>
 
@@ -141,7 +141,7 @@ export default function ClientAddFunds() {
           }`}
         >
           <Wallet className="w-6 h-6 text-indigo-600 mb-2" />
-          <b className="text-gray-900 dark:text-gray-100 dark:text-gray-100">{t('addFunds.eWallet')}</b>
+          <b className="text-gray-900 dark:text-gray-100">{t('addFunds.eWallet')}</b>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('addFunds.walletMethods')}</p>
         </button>
 
@@ -154,7 +154,7 @@ export default function ClientAddFunds() {
           }`}
         >
           <Bitcoin className="w-6 h-6 text-emerald-600 mb-2" />
-          <b className="text-gray-900 dark:text-gray-100 dark:text-gray-100">{t('addFunds.crypto')}</b>
+          <b className="text-gray-900 dark:text-gray-100">{t('addFunds.crypto')}</b>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('addFunds.cryptoDesc')}</p>
         </button>
       </div>
@@ -169,13 +169,13 @@ export default function ClientAddFunds() {
           ) : (
             <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 p-6 space-y-6">
               <div className="rounded-xl bg-indigo-50 dark:bg-indigo-900/20 p-4">
-                <b className="text-gray-900 dark:text-gray-100 dark:text-gray-100">{t('addFunds.eWallet')}</b>
+                <b className="text-gray-900 dark:text-gray-100">{t('addFunds.eWallet')}</b>
                 <p className="text-sm mt-1 text-indigo-700 dark:text-indigo-300">{walletIntro}</p>
                 <p className="text-xs text-indigo-700 dark:text-indigo-300 mt-1">{walletVerification}</p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   {t('addFunds.chooseWallet')}
                 </label>
                 <div className="grid md:grid-cols-3 gap-3">
@@ -192,7 +192,7 @@ export default function ClientAddFunds() {
                             : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800'
                         }`}
                       >
-                        <b className="text-gray-900 dark:text-gray-100 dark:text-gray-100">{m.label}</b>
+                        <b className="text-gray-900 dark:text-gray-100">{m.label}</b>
                         <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{instruction}</div>
                       </button>
                     );
@@ -202,7 +202,7 @@ export default function ClientAddFunds() {
 
               <div className="grid md:grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     {t('addFunds.amountEgp')}
                   </label>
                   <input
@@ -221,7 +221,7 @@ export default function ClientAddFunds() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     {t('addFunds.paymentWallet')}
                   </label>
                   <input
@@ -236,7 +236,7 @@ export default function ClientAddFunds() {
                 </div>
               </div>
 
-              <div className="rounded-xl bg-gray-50 dark:bg-slate-700 p-4 text-sm text-gray-700 dark:text-gray-300 dark:text-gray-300">
+              <div className="rounded-xl bg-gray-50 dark:bg-slate-700 p-4 text-sm text-gray-700 dark:text-gray-300">
                 {methodInstruction}
               </div>
 
@@ -272,12 +272,12 @@ export default function ClientAddFunds() {
       {gateway === 'crypto' && (
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 p-6 space-y-5">
           <div className="rounded-xl bg-emerald-50 dark:bg-emerald-900/20 p-4">
-            <b className="text-gray-900 dark:text-gray-100 dark:text-gray-100">{t('addFunds.crypto')}</b>
-            <p className="text-sm text-gray-600 dark:text-gray-400 dark:text-gray-400 mt-1">{cryptoIntro}</p>
+            <b className="text-gray-900 dark:text-gray-100">{t('addFunds.crypto')}</b>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{cryptoIntro}</p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               {t('addFunds.amountUsd')}
             </label>
             <input

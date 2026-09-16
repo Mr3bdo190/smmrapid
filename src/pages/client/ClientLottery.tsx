@@ -61,12 +61,12 @@ export default function ClientLottery() {
           const canBuy = isOpen && !isMaxedOut;
 
           return (
-            <div key={r.id} className={`relative overflow-hidden rounded-2xl shadow-sm border p-6 ${r.status === 'Drawn' ? 'bg-indigo-50 border-indigo-100' : 'bg-white border-gray-100'}`}>
+            <div key={r.id} className={`relative overflow-hidden rounded-2xl shadow-sm border p-6 ${r.status === 'Drawn' ? 'bg-indigo-50 border-indigo-100' : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700'}`}>
               <div className="absolute top-4 right-4 flex flex-col items-end gap-2">
                 <span className={`px-3 py-1 text-xs font-bold rounded-full uppercase tracking-wide
                   ${r.status === 'Open' && !isEnded ? 'bg-emerald-100 text-emerald-800' :
                     r.status === 'Drawn' ? 'bg-indigo-100 text-indigo-800' :
-                    'bg-gray-100 dark:bg-slate-700 text-gray-800'}`}>
+                    'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300'}`}>
                   {r.status === 'Open' && isEnded ? t('lottery.endedWaitingDraw') : r.status}
                 </span>
                 {r.userTicketsCount > 0 && (
@@ -84,21 +84,21 @@ export default function ClientLottery() {
               </div>
 
               <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 dark:text-gray-400">
-                  <Tag className="w-4 h-4 text-gray-400" />
+                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                  <Tag className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                   <span className="text-sm font-medium">${Number(r.ticketPrice).toFixed(2)} {t('lottery.perTicket')}</span>
                 </div>
-                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 dark:text-gray-400">
-                  <Clock className="w-4 h-4 text-gray-400" />
+                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                  <Clock className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                   <span className="text-sm font-medium">{new Date(r.endDate).toLocaleDateString()} {new Date(r.endDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                 </div>
-                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 dark:text-gray-400">
-                  <Users className="w-4 h-4 text-gray-400" />
+                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                  <Users className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                   <span className="text-sm font-medium">{r.ticketsCount} {r.maxTickets ? `/ ${r.maxTickets}` : ''} {t('lottery.sold')}</span>
                 </div>
                 {r.maxTicketsPerUser && (
-                  <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 dark:text-gray-400">
-                    <Ticket className="w-4 h-4 text-gray-400" />
+                  <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                    <Ticket className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                     <span className="text-sm font-medium">{t('lottery.maxPerUser', { count: r.maxTicketsPerUser })}</span>
                   </div>
                 )}
@@ -118,7 +118,7 @@ export default function ClientLottery() {
                     value={qty}
                     onChange={e => setQuantities({...quantities, [r.id]: parseInt(e.target.value)})}
                     disabled={!canBuy || buyMutation.isPending}
-                    className="input-primary w-24 text-center disabled:opacity-50 disabled:bg-gray-50 dark:bg-slate-700 cursor-pointer bg-gray-50 dark:bg-slate-700 dark:bg-slate-700"
+                    className="input-primary w-24 text-center disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer bg-gray-50 dark:bg-slate-700 dark:text-gray-200"
                   >
                     {[1, 2, 3, 5, 10].map(n => (
                       <option key={n} value={n}>{n} {t('lottery.tix')}</option>
@@ -141,9 +141,9 @@ export default function ClientLottery() {
           );
         })}
         {raffles.length === 0 && (
-          <div className="col-span-2 text-center p-12 bg-white rounded-xl border border-gray-100 shadow-sm">
-            <Ticket className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 dark:text-gray-100">{t('lottery.noActiveRaffles')}</h3>
+          <div className="col-span-2 text-center p-12 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm">
+            <Ticket className="w-12 h-12 text-gray-300 dark:text-gray-500 mx-auto mb-4" />
+            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">{t('lottery.noActiveRaffles')}</h3>
             <p className="text-gray-500 dark:text-gray-400 mt-2">{t('lottery.checkBackLater')}</p>
           </div>
         )}

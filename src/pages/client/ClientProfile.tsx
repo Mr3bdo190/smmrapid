@@ -26,30 +26,30 @@ export default function ClientProfile() {
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
-      <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 dark:text-gray-100 flex items-center gap-2">
+      <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
         <User className="w-6 h-6 text-indigo-600 dark:text-indigo-400" /> {t('nav.profile')}
       </h2>
       <p className="text-sm text-gray-500 dark:text-gray-400 -mt-6">{t('profile.subtitle')}</p>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-5">
           <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-semibold">{t('profile.accountId')}</p>
-          <p className="text-gray-900 dark:text-gray-100 dark:text-gray-200 font-medium truncate">{dbUser.id.substring(0,8)}</p>
+          <p className="text-gray-900 dark:text-gray-200 font-medium truncate">{dbUser.id.substring(0,8)}</p>
         </div>
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-5">
           <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-semibold">{t('common.status')}</p>
-          <p className="text-gray-900 dark:text-gray-100 dark:text-gray-200 font-medium capitalize">{dbUser.status}</p>
+          <p className="text-gray-900 dark:text-gray-200 font-medium capitalize">{dbUser.status}</p>
         </div>
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-5">
           <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-semibold">{t('profile.memberSince')}</p>
-          <p className="text-gray-900 dark:text-gray-100 dark:text-gray-200 font-medium">{new Date(dbUser.createdAt).toLocaleDateString()}</p>
+          <p className="text-gray-900 dark:text-gray-200 font-medium">{new Date(dbUser.createdAt).toLocaleDateString()}</p>
         </div>
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-5">
           <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-semibold">{t('common.balance')}</p>
-          <p className="text-gray-900 dark:text-gray-100 dark:text-gray-200 font-medium">${Number(dbUser.balance).toFixed(4)}</p>
+          <p className="text-gray-900 dark:text-gray-200 font-medium">${Number(dbUser.balance).toFixed(4)}</p>
         </div>
       </div>
       <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-6">
-        <h3 className="font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-200 mb-4">{t('profile.name')}</h3>
+        <h3 className="font-semibold text-gray-900 dark:text-gray-200 mb-4">{t('profile.name')}</h3>
         <div className="flex gap-3">
           <input 
             type="text" 
@@ -70,7 +70,7 @@ export default function ClientProfile() {
         {dbUser.name && <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{t('profile.currentName', { name: dbUser.name })}</p>}
       </div>
       <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-6">
-        <h3 className="font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-200 mb-4">{t('profile.email')}</h3>
+        <h3 className="font-semibold text-gray-900 dark:text-gray-200 mb-4">{t('profile.email')}</h3>
         <input type="text" readOnly value={dbUser.email} className="input-primary w-full bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200" />
       </div>
     </div>

@@ -45,32 +45,32 @@ export default function AdminMysteryBoxes() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2"><Gift className="w-5 h-5"/> Mystery Box Tiers</h3>
+        <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2"><Gift className="w-5 h-5 text-indigo-600 dark:text-indigo-400"/> Mystery Box Tiers</h3>
         <button onClick={() => setIsModalOpen(true)} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4"/> Add Tier</button>
       </div>
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 border-gray-100 overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
         <div className="overflow-x-auto w-full">
-        <table className="min-w-full divide-y divide-gray-100">
-          <thead className="bg-gray-50 dark:bg-slate-700 dark:bg-slate-700">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
+          <thead className="bg-gray-50 dark:bg-slate-700/50">
             <tr>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Name</th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Min / Max ($)</th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Probability (%)</th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Actions</th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Name</th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Min / Max ($)</th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Probability (%)</th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Status</th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Actions</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-100">
+          <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700">
             {tiers.map((t: any) => (
-              <tr key={t.id}>
-                <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100 dark:text-gray-100">{t.name}</td>
-                <td className="px-6 py-4 text-sm text-gray-500">${Number(t.minAmount).toFixed(2)} - ${Number(t.maxAmount).toFixed(2)}</td>
-                <td className="px-6 py-4 text-sm">{t.probability}%</td>
-                <td className="px-6 py-4 text-sm"><span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">{t.status}</span></td>
-                <td className="px-6 py-4 text-sm"><button onClick={async()=>{const token=await user?.getIdToken();const res=await apiFetch(`/api/admin/mystery-boxes/${t.id}`, user,{method:'DELETE',headers:{Authorization:`Bearer ${token}`}});if(res.ok){notify.success('Tier deactivated');queryClient.invalidateQueries({queryKey:['admin-mystery-tiers']});}else notify.error('Action failed')}} className="text-red-600 hover:underline">Deactivate</button></td>
+              <tr key={t.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/50">
+                <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-200">{t.name}</td>
+                <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">${Number(t.minAmount).toFixed(2)} - ${Number(t.maxAmount).toFixed(2)}</td>
+                <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{t.probability}%</td>
+                <td className="px-6 py-4 text-sm"><span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 rounded text-xs">{t.status}</span></td>
+                <td className="px-6 py-4 text-sm"><button onClick={async()=>{const token=await user?.getIdToken();const res=await apiFetch(`/api/admin/mystery-boxes/${t.id}`, user,{method:'DELETE',headers:{Authorization: `Bearer ${token}`}});if(res.ok){notify.success('Tier deactivated');queryClient.invalidateQueries({queryKey:['admin-mystery-tiers']});}else notify.error('Action failed')}} className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300">Deactivate</button></td>
               </tr>
             ))}
-            {tiers.length === 0 && <tr><td colSpan={4} className="px-6 py-8 text-center text-gray-500">No tiers found.</td></tr>}
+            {tiers.length === 0 && <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">No tiers found.</td></tr>}
           </tbody>
         </table>
         </div>
@@ -78,8 +78,8 @@ export default function AdminMysteryBoxes() {
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-slate-800 rounded-lg p-6 max-w-md dark:border-slate-600 dark:text-gray-200 w-full shadow-xl">
-            <h3 className="text-lg font-bold mb-4">Add Mystery Box Tier</h3>
+          <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg p-6 max-w-md w-full shadow-xl">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">Add Mystery Box Tier</h3>
             <form onSubmit={(e) => { e.preventDefault(); createMutation.mutate(formData); }} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tier Name (e.g. Bronze, Gold)</label>
@@ -100,7 +100,7 @@ export default function AdminMysteryBoxes() {
                 <input required type="number" value={formData.probability} onChange={e => setFormData({...formData, probability: e.target.value})} className="input-primary dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200" />
               </div>
               <div className="flex justify-end gap-3 mt-6">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 border rounded-md">Cancel</button>
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-md text-gray-700 dark:text-gray-300">Cancel</button>
                 <button type="submit" disabled={createMutation.isPending} className="btn-primary">Create</button>
               </div>
             </form>

@@ -33,7 +33,7 @@ export default function ClientShortlinks() {
       setClaimTokens(prev => ({ ...prev, [id]: data.token }));
       return data;
     },
-    onError: (err: any) => notify.error(err.message)
+    onError: (err: any) => notify.error(err)
   });
 
   const claimMutation = useMutation({
@@ -53,7 +53,7 @@ export default function ClientShortlinks() {
       queryClient.invalidateQueries({ queryKey: ['client-user-info'] });
       queryClient.invalidateQueries({ queryKey: ['client-shortlinks'] });
     },
-    onError: (err: any) => notify.error(err.message)
+    onError: (err: any) => notify.error(err)
   });
 
   return (

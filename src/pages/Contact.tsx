@@ -31,7 +31,7 @@ export default function Contact() {
       return data;
     },
     onSuccess: () => { setSent(true); setName(''); setEmail(''); setSubject(''); setMessage(''); },
-    onError: (e: any) => notify.error(e.message || t('contact.error')),
+    onError: (e: any) => notify.error(e, t('contact.error')),
   });
 
   return (

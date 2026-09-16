@@ -37,7 +37,7 @@ export default function ClientTickets() {
       setMessage('');
       notify.success(t('tickets.created'));
     },
-    onError: (err: any) => notify.error(err.message)
+    onError: (err: any) => notify.error(err)
   });
 
   const { data: tickets = [] } = useQuery({

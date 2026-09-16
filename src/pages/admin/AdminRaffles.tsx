@@ -44,7 +44,7 @@ export default function AdminRaffles() {
       setFormData({ title: 'Weekly Raffle', prizeAmount: '', ticketPrice: '', maxTickets: '', maxTicketsPerUser: '', endDate: '' });
       notify.success('Raffle created successfully');
     },
-    onError: (err: any) => notify.error(err.message)
+    onError: (err: any) => notify.error(err)
   });
 
   const actionMutation = useMutation({
@@ -64,7 +64,7 @@ export default function AdminRaffles() {
       queryClient.invalidateQueries({ queryKey: ['admin-raffles'] });
       notify.success(`Raffle ${variables.action}d successfully`);
     },
-    onError: (err: any) => notify.error(err.message)
+    onError: (err: any) => notify.error(err)
   });
 
   return (

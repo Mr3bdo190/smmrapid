@@ -41,7 +41,7 @@ export default function ClientLottery() {
       queryClient.invalidateQueries({ queryKey: ['client-raffles'] });
       notify.success(t('lottery.ticketsPurchased'));
     },
-    onError: (err: any) => notify.error(err.message)
+    onError: (err: any) => notify.error(err)
   });
 
   if (isLoading) {

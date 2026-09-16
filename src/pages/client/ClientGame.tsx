@@ -36,7 +36,7 @@ export default function ClientGame() {
       queryClient.invalidateQueries({ queryKey: ['client-user-info'] });
       notify.success(t('game.claimedPoints', { points: data.points }));
     },
-    onError: (err: any) => notify.error(err.message)
+    onError: (err: any) => notify.error(err)
   });
 
   const exchangeMutation = useMutation({
@@ -54,7 +54,7 @@ export default function ClientGame() {
       queryClient.invalidateQueries({ queryKey: ['client-user-info'] });
       notify.success(t('game.exchangedKey'));
     },
-    onError: (err: any) => notify.error(err.message)
+    onError: (err: any) => notify.error(err)
   });
 
   const canClaim = !userInfo?.lastClaimDate || (new Date().getTime() - new Date(userInfo.lastClaimDate).getTime()) > (24 * 60 * 60 * 1000);

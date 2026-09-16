@@ -149,7 +149,7 @@ export default function LandingPage() {
       await resetPassword(email.trim());
       notify.success(text.resetSent);
     } catch (err: any) {
-      notify.error(err?.message || 'Unable to send reset link');
+      notify.error(err, 'Unable to send reset link');
     }
   };
 
@@ -167,7 +167,7 @@ export default function LandingPage() {
       setAuth(null);
       navigate('/dashboard', { replace: true });
     } catch (err: any) {
-      notify.error(err?.message || 'Authentication failed');
+      notify.error(err, 'Authentication failed');
     }
   };
 

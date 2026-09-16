@@ -143,7 +143,7 @@ export default function AdminUsers() {
       return res.json();
     },
     onSuccess: () => { notify.success(t('common.bulkUpdated')); queryClient.invalidateQueries({ queryKey: ['admin-users'] }); setSelected(new Set()); },
-    onError: (x: any) => notify.error(x.message),
+    onError: (x: any) => notify.error(x),
   });
 
   const handleBulkStatus = () => {

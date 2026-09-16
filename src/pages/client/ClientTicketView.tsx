@@ -40,7 +40,7 @@ export default function ClientTicketView() {
       setMessage('');
       queryClient.invalidateQueries({ queryKey: ['client-ticket', id] });
     },
-    onError: (err: any) => notify.error(err.message)
+    onError: (err: any) => notify.error(err)
   });
 
   const handleReply = (e: React.FormEvent) => {

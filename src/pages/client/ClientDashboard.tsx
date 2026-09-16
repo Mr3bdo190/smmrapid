@@ -68,13 +68,13 @@ export default function ClientDashboard() {
       return r.json();
     },
     onSuccess: () => { notify.success(t('newOrder.orderPlaced')); setLink(''); setQuantity(selectedService && !singleUnit ? num(selectedService.minQuantity) : ''); qc.invalidateQueries({ queryKey: ['client-dashboard'] }); qc.invalidateQueries({ queryKey: ['client-orders'] }); qc.invalidateQueries({ queryKey: ['client-me'] }); },
-    onError: (e:any) => notify.error(e.message || e.code || 'ORDER_CREATION_FAILED', t('newOrder.orderFailed'))
+    onError: (e:any) => notify.error(e, t('newOrder.orderFailed'))
   });
 
   const refill = useMutation({
     mutationFn: async (id: string) => { const tok = await user!.getIdToken(); const r = await apiFetch(`/api/client/orders/${id}/refill`, user, { method: 'POST', headers: { Authorization: `Bearer ${tok}` } }); if (!r.ok) throw new Error(await readError(r, 'Refill request failed')); return r.json(); },
     onSuccess: () => { notify.success(L('Refill request submitted', 'تم إرسال طلب الإعادة')); qc.invalidateQueries({ queryKey: ['client-dashboard'] }); },
-    onError: (e:any) => notify.error(e.message || 'REFILL_FAILED')
+    onError: (e:any) => notify.error(e, 'REFILL_FAILED')
   });
 
   if (isLoading) return <div className="flex items-center gap-space-sm p-space-lg font-body-md text-on-surface-variant"><RefreshCw className="h-4 w-4 animate-spin" /> {t('dashboard.loading')}</div>;

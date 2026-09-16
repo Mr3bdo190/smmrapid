@@ -48,7 +48,7 @@ export default function AdminPayments() {
       queryClient.invalidateQueries({ queryKey: ['client-me'] });
       queryClient.invalidateQueries({ queryKey: ['client-transactions'] });
     },
-    onError: (e: any) => notify.error(e.message || 'Payment operation failed'),
+    onError: (e: any) => notify.error(e, 'Payment operation failed'),
   });
 
   const payments = data?.data || [];

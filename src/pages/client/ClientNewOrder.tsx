@@ -122,7 +122,7 @@ export default function ClientNewOrder() {
       const r = await apiFetch('/api/client/coupons/validate', user, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` }, body: JSON.stringify({ code: couponCode, subtotal: totalPrice }) });
       const data = await r.json(); if (!r.ok) throw new Error(data?.error || 'Invalid coupon');
       setCouponResult(data); notify.success(`Coupon applied: -$${Number(data.discount).toFixed(4)}`);
-    } catch (e:any) { setCouponResult(null); notify.error(e.message || 'Invalid coupon'); }
+    } catch (e:any) { setCouponResult(null); notify.error(e, 'Invalid coupon'); }
   };
 
   const order = useMutation({
@@ -137,7 +137,7 @@ export default function ClientNewOrder() {
       return r.json();
     },
     onSuccess: () => { notify.success(t('newOrder.orderPlaced')); setBannerOpen(true); setLink(''); setQuantity(''); qc.invalidateQueries({ queryKey: ['client-orders'] }); qc.invalidateQueries({ queryKey: ['client-dashboard'] }); qc.invalidateQueries({ queryKey: ['client-me'] }); },
-    onError: (e: any) => notify.error(e.message || e.code || 'ORDER_CREATION_FAILED', t('newOrder.orderFailed'))
+    onError: (e: any) => notify.error(e, t('newOrder.orderFailed'))
   });
 
   /** Real "Complementary Boosts" rows: the client's real favourites/recent services, then the current category. */

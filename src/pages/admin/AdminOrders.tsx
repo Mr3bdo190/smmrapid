@@ -66,7 +66,7 @@ export default function AdminOrders() {
       return r.json();
     },
     onSuccess: () => { notify.success(t('admin.orders.refreshSuccess') || 'Order refreshed'); qc.invalidateQueries({ queryKey: ['admin-orders'] }); },
-    onError: (x: any) => notify.error(x.message),
+    onError: (x: any) => notify.error(x),
   });
 
   const bulkStatusMutation = useMutation({
@@ -81,7 +81,7 @@ export default function AdminOrders() {
       return r.json();
     },
     onSuccess: (data: any) => { notify.success(t('common.bulkUpdated')); qc.invalidateQueries({ queryKey: ['admin-orders'] }); setSelected(new Set()); },
-    onError: (x: any) => notify.error(x.message),
+    onError: (x: any) => notify.error(x),
   });
 
   const handleBulkStatus = () => {

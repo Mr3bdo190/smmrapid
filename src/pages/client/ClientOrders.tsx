@@ -63,18 +63,18 @@ export default function ClientOrders() {
   const refill = useMutation({
     mutationFn: async (id: string) => { const t = await user!.getIdToken(); const r = await apiFetch(`/api/client/orders/${id}/refill`, user, { method: 'POST', headers: { Authorization: `Bearer ${t}` } }); if (!r.ok) throw new Error(await readErr(r, 'Refill request failed')); return r.json(); },
     onSuccess: () => { notify.success('Refill requested — we\'ll update the order once the provider responds'); qc.invalidateQueries({ queryKey: ['client-orders'] }); },
-    onError: (e: any) => notify.error(e.message),
+    onError: (e: any) => notify.error(e),
   });
   const cancel = useMutation({
     mutationFn: async (id: string) => { const t = await user!.getIdToken(); const r = await apiFetch(`/api/client/orders/${id}/cancel`, user, { method: 'POST', headers: { Authorization: `Bearer ${t}` } }); if (!r.ok) throw new Error(await readErr(r, 'Cancel request failed')); return r.json(); },
     onSuccess: (data: any) => { notify.success(Number(data?.refundedAmount || 0) > 0 ? 'Order canceled. The unfulfilled quantity was refunded to your wallet.' : 'Cancellation requested. The provider is processing it now; your refund will be calculated from the unfulfilled quantity.'); qc.invalidateQueries({ queryKey: ['client-orders'] }); qc.invalidateQueries({ queryKey: ['client-me'] }); },
-    onError: (e: any) => notify.error(e.message),
+    onError: (e: any) => notify.error(e),
   });
 
   const refreshOrder = useMutation({
     mutationFn: async (id: string) => { const t = await user!.getIdToken(); const r = await apiFetch(`/api/client/orders/${id}/refresh`, user, { method: 'POST', headers: { Authorization: `Bearer ${t}` } }); if (!r.ok) throw new Error(await readErr(r, 'Could not refresh order')); return r.json(); },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['client-orders'] }); qc.invalidateQueries({ queryKey: ['client-me'] }); },
-    onError: (e: any) => notify.error(e.message),
+    onError: (e: any) => notify.error(e),
   });
 
   const orderList: any[] = orders as any;

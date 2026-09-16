@@ -55,7 +55,7 @@ export default function AdminSystemReports() {
       return r.json();
     },
     onSuccess: () => { notify.success('Report resolved'); qc.invalidateQueries({ queryKey: ['admin-reports'] }); },
-    onError: (e: any) => notify.error(e.message),
+    onError: (e: any) => notify.error(e),
   });
 
   const reportRows = reportsQ.data?.data || [];
@@ -89,7 +89,7 @@ export default function AdminSystemReports() {
       return r.json();
     },
     onSuccess: () => { notify.success('Old logs cleared'); qc.invalidateQueries({ queryKey: ['admin-system-logs'] }); },
-    onError: (e: any) => notify.error(e.message),
+    onError: (e: any) => notify.error(e),
   });
 
   const logRows = logsQ.data?.data || [];

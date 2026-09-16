@@ -39,7 +39,7 @@ export default function AdminMysteryBoxes() {
       setFormData({ name: '', minAmount: '', maxAmount: '', probability: '' });
       notify.success('Tier created successfully');
     },
-    onError: (err: any) => notify.error(err.message)
+    onError: (err: any) => notify.error(err)
   });
 
   return (

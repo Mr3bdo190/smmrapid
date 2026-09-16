@@ -36,7 +36,7 @@ export default function ClientMysteryBoxes() {
       queryClient.invalidateQueries({ queryKey: ['client-user-info'] });
       notify.success(t('mysteryBoxes.wonReward', { amount: Number(data.reward).toFixed(4), tier: data.tier }));
     },
-    onError: (err: any) => notify.error(err.message)
+    onError: (err: any) => notify.error(err)
   });
 
   return (

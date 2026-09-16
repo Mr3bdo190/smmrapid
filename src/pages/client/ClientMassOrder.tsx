@@ -29,7 +29,7 @@ export default function ClientMassOrder() {
       notify.success(data.message || 'Mass orders processed');
       setOrdersText('');
     } catch (err: any) {
-      notify.error(err.message);
+      notify.error(err);
     }
   };
 

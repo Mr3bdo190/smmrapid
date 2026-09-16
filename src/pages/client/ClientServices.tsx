@@ -5,26 +5,33 @@ import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
 import { notify } from '../../lib/notify';
 import { useTranslation } from '../../lib/i18n';
+import { Aperture, ArrowUpDown, AudioWaveform, BadgeCheck, Briefcase, Camera, CircleX, Download, Globe, Info, MessageCircle, MessagesSquare, MonitorPlay, Network, PlayCircle, RefreshCcw, RotateCcw, Search, Send, ShieldCheck, SlidersHorizontal, Tag, Terminal, ThumbsUp, Tv, X, Zap } from 'lucide-react';
 
 const PAGE_SIZE = 20;
 
-/** Material Symbols per platform, derived from the real category name. */
+/** lucide-react icon per platform, derived from the real category name. */
 const platformIcon = (name: string) => {
   const n = String(name || '').toLowerCase();
-  if (n.includes('instagram') || n.includes('انست') || n.includes('إنست')) return 'photo_camera';
-  if (n.includes('tiktok') || n.includes('tik tok') || n.includes('تيك')) return 'play_circle';
-  if (n.includes('youtube') || n.includes('يوتيوب')) return 'smart_display';
-  if (n.includes('telegram') || n.includes('تيليجرام') || n.includes('تلجرام')) return 'send';
-  if (n.includes('twitter') || n.includes('تويتر') || n === 'x') return 'tag';
-  if (n.includes('spotify') || n.includes('سبوتيفاي')) return 'graphic_eq';
-  if (n.includes('facebook') || n.includes('فيسبوك') || n.includes('فيس بوك')) return 'thumb_up';
-  if (n.includes('whatsapp') || n.includes('واتس')) return 'chat';
-  if (n.includes('snap')) return 'camera';
-  if (n.includes('discord') || n.includes('ديسكورد')) return 'forum';
-  if (n.includes('twitch')) return 'live_tv';
-  if (n.includes('linkedin')) return 'work';
-  if (n.includes('traffic') || n.includes('web') || n.includes('موقع')) return 'travel_explore';
-  return 'hub';
+  if (n.includes('instagram') || n.includes('انست') || n.includes('إنست')) return Camera;
+  if (n.includes('tiktok') || n.includes('tik tok') || n.includes('تيك')) return PlayCircle;
+  if (n.includes('youtube') || n.includes('يوتيوب')) return MonitorPlay;
+  if (n.includes('telegram') || n.includes('تيليجرام') || n.includes('تلجرام')) return Send;
+  if (n.includes('twitter') || n.includes('تويتر') || n === 'x') return Tag;
+  if (n.includes('spotify') || n.includes('سبوتيفاي')) return AudioWaveform;
+  if (n.includes('facebook') || n.includes('فيسبوك') || n.includes('فيس بوك')) return ThumbsUp;
+  if (n.includes('whatsapp') || n.includes('واتس')) return MessageCircle;
+  if (n.includes('snap')) return Aperture;
+  if (n.includes('discord') || n.includes('ديسكورد')) return MessagesSquare;
+  if (n.includes('twitch')) return Tv;
+  if (n.includes('linkedin')) return Briefcase;
+  if (n.includes('traffic') || n.includes('web') || n.includes('موقع')) return Globe;
+  return Network;
+};
+
+/** Renders the platform icon for a category name at a fixed size. */
+const PlatformIcon = ({ name, className }: { name?: string; className?: string }) => {
+  const Icon = platformIcon(String(name || ''));
+  return <Icon className={className} />;
 };
 
 const iconTones = ['text-secondary', 'text-tertiary', 'text-primary', 'text-error', 'text-on-surface'];
@@ -187,11 +194,11 @@ export default function ClientServices() {
           </div>
           <div className="flex items-center gap-space-xs">
             <button onClick={exportCsv} className="inline-flex items-center gap-space-xs px-space-md py-space-sm rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md transition-all shadow-sm" type="button">
-              <span className="material-symbols-outlined text-base text-primary">download</span>
+              <Download className="text-primary h-[18px] w-[18px] shrink-0" />
               <span>{t('common.export')}</span>
             </button>
             <Link to="/dashboard/api" className="inline-flex items-center gap-space-xs px-space-md py-space-sm rounded-xl bg-primary-container text-on-primary-container hover:bg-primary font-label-md text-label-md shadow-md transition-all">
-              <span className="material-symbols-outlined text-base">terminal</span>
+              <Terminal className="h-[18px] w-[18px] shrink-0" />
               <span>{t('api.viewClientApi')}</span>
             </Link>
           </div>
@@ -203,7 +210,7 @@ export default function ClientServices() {
         <div className="relative overflow-hidden rounded-xl bg-surface-container p-space-lg shadow-md flex flex-col justify-between">
           <div className="flex items-center justify-between mb-space-xs">
             <span className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">{L('إجمالي الخدمات النشطة', 'Active Services Total')}</span>
-            <span className="material-symbols-outlined text-primary text-xl">hub</span>
+            <Network className="text-primary h-[24px] w-[24px] shrink-0" />
           </div>
           <div className="flex items-baseline justify-between mt-space-xs">
             <div>
@@ -220,7 +227,7 @@ export default function ClientServices() {
         <div className="relative overflow-hidden rounded-xl bg-surface-container p-space-lg shadow-md flex flex-col justify-between">
           <div className="flex items-center justify-between mb-space-xs">
             <span className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">{L('معدل الثبات وضمان التعويض', 'Refill & Cancel Coverage')}</span>
-            <span className="material-symbols-outlined text-secondary text-xl">verified_user</span>
+            <ShieldCheck className="text-secondary h-[24px] w-[24px] shrink-0" />
           </div>
           <div className="flex items-baseline justify-between mt-space-xs">
             <div>
@@ -240,7 +247,7 @@ export default function ClientServices() {
         {/* Row 1: search and platform pills */}
         <div className="flex flex-col lg:flex-row items-center justify-between gap-space-md">
           <div className="relative w-full lg:w-96">
-            <span className="material-symbols-outlined absolute start-space-md top-1/2 -translate-y-1/2 text-outline text-lg">search</span>
+            <Search className="absolute start-space-md top-1/2 -translate-y-1/2 text-outline h-[20px] w-[20px] shrink-0" />
             <input
               className={`${inputCls} ps-10 pe-space-md`}
               placeholder={L('بحث برقم الخدمة (#ID)، المنصة، أو اسم الخدمة...', 'Search by service ID (#ID), platform or service name...')}
@@ -269,7 +276,7 @@ export default function ClientServices() {
                   : 'px-space-md py-space-xs rounded-xl bg-surface-container-high hover:bg-surface-bright text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm whitespace-nowrap transition-all flex items-center gap-space-xs'}
                 type="button"
               >
-                <span className="material-symbols-outlined text-sm">{platformIcon(c.name)}</span>
+                <PlatformIcon name={c.name} className="h-4 w-4 shrink-0" />
                 <span>{c.name}</span>
                 <span className="font-code-xs text-code-xs px-1.5 py-0.5 rounded bg-surface-container-lowest">{toNum(c.count)}</span>
               </button>
@@ -303,7 +310,7 @@ export default function ClientServices() {
           {/* Sorter & reset */}
           <div className="flex items-center gap-space-sm">
             <div className="flex items-center gap-space-xs bg-surface-container-lowest px-space-sm py-space-xs rounded-xl text-on-surface font-label-sm text-label-sm">
-              <span className="material-symbols-outlined text-base text-outline">sort</span>
+              <ArrowUpDown className="text-outline h-[18px] w-[18px] shrink-0" />
               <select className={selectCls} value={sortBy} onChange={e => { setSortBy(e.target.value); setPage(1); }}>
                 <option className={optionCls} value="id_asc">{L('ترتيب: معرف الخدمة (ID)', 'Sort: Service ID')}</option>
                 <option className={optionCls} value="price_asc">{L('السعر: من الأقل للأعلى', 'Price: low to high')}</option>
@@ -311,7 +318,7 @@ export default function ClientServices() {
               </select>
             </div>
             <button onClick={resetFilters} className="w-8 h-8 rounded-xl bg-surface-container-lowest hover:bg-surface-container-high flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors" title={L('إعادة ضبط الفلاتر', 'Reset filters')} type="button">
-              <span className="material-symbols-outlined text-sm">restart_alt</span>
+              <RotateCcw className="h-[16px] w-[16px] shrink-0" />
             </button>
           </div>
         </div>
@@ -319,8 +326,8 @@ export default function ClientServices() {
 
       {/* Services data table container */}
       <div className="w-full bg-surface-container rounded-xl overflow-hidden shadow-lg mb-space-2xl">
-        <div className="px-space-lg py-space-md bg-surface-container-low flex items-center justify-between">
-          <div className="flex items-center gap-space-sm">
+        <div className="px-space-lg py-space-md bg-surface-container-low flex flex-wrap items-center justify-between gap-space-sm">
+          <div className="flex min-w-0 flex-wrap items-center gap-space-sm">
             <span className="font-headline-sm text-headline-sm text-on-surface font-semibold">{t('services.title')}</span>
             <span className="font-code-xs text-code-xs px-space-xs py-space-2xs rounded bg-surface-container-high text-tertiary">
               {L('عرض', 'Showing')} {toNum(pageItems.length)} {L('من', 'of')} {toNum(filtered.length)} {L('نقطة نهاية', 'endpoints')}
@@ -355,9 +362,9 @@ export default function ClientServices() {
                 <tr key={s.id} className="hover:bg-surface-container-high/60 transition-colors group">
                   <td className="py-space-md px-space-lg">
                     <div className="flex flex-col gap-space-2xs max-w-md">
-                      <div className="flex items-center gap-space-xs">
-                        <span className="font-code-xs text-code-xs px-space-xs py-space-2xs rounded bg-surface-container-lowest text-primary font-bold">#{s.id}</span>
-                        <span className="font-label-lg text-label-lg text-on-surface font-semibold group-hover:text-primary transition-colors">{s.name}</span>
+                      <div className="flex min-w-0 items-center gap-space-xs">
+                        <span className="shrink-0 font-code-xs text-code-xs px-space-xs py-space-2xs rounded bg-surface-container-lowest text-primary font-bold">#{s.id}</span>
+                        <span className="truncate font-label-lg text-label-lg text-on-surface font-semibold transition-colors group-hover:text-primary">{s.name}</span>
                       </div>
                       <div className="flex flex-wrap items-center gap-space-xs">
                         {!!s.description && (
@@ -366,13 +373,13 @@ export default function ClientServices() {
                         {Number(s.cashbackPercentage) > 0 && (
                           <span className="font-code-xs text-code-xs px-space-xs py-space-2xs rounded bg-surface-container text-on-surface-variant">{L('كاش باك', 'Cashback')}: {Number(s.cashbackPercentage)}%</span>
                         )}
-                        <span className="font-code-xs text-code-xs text-outline">API: <code className="text-on-surface-variant">{`action=add&service=${s.id}`}</code></span>
+                        <span className="min-w-0 font-code-xs text-code-xs text-outline">API: <code className="break-all text-on-surface-variant">{`action=add&service=${s.id}`}</code></span>
                       </div>
                     </div>
                   </td>
                   <td className="py-space-md px-space-md">
                     <div className="flex items-center gap-space-xs">
-                      <span className={`material-symbols-outlined text-lg ${toneFor(s.category?.name || '')}`}>{platformIcon(s.category?.name)}</span>
+                      <PlatformIcon name={s.category?.name || ''} className={`h-5 w-5 shrink-0 ${toneFor(s.category?.name || '')}`} />
                       <div className="flex flex-col">
                         <span className="font-label-md text-label-md text-on-surface">{s.category?.name || '—'}</span>
                         <span className="font-code-xs text-code-xs text-on-surface-variant">{isUnit(s) ? L('لكل عنصر', 'per item') : t('newOrder.perThousand')}</span>
@@ -395,18 +402,18 @@ export default function ClientServices() {
                     <div className="flex flex-wrap items-center gap-space-2xs">
                       {s.refillable ? (
                         <div className="inline-flex items-center gap-space-2xs px-space-xs py-space-2xs rounded bg-surface-container-lowest text-secondary font-label-sm text-label-sm">
-                          <span className="material-symbols-outlined text-sm">verified</span>
+                          <BadgeCheck className="h-[16px] w-[16px] shrink-0" />
                           <span>{L('تعويض متاح', 'Refill available')}</span>
                         </div>
                       ) : (
                         <div className="inline-flex items-center gap-space-2xs px-space-xs py-space-2xs rounded bg-surface-container-lowest text-on-surface-variant font-label-sm text-label-sm">
-                          <span className="material-symbols-outlined text-sm text-outline">published_with_changes</span>
+                          <RefreshCcw className="text-outline h-[16px] w-[16px] shrink-0" />
                           <span>{L('بدون تعويض', 'No refill')}</span>
                         </div>
                       )}
                       {s.cancelable && (
                         <div className="inline-flex items-center gap-space-2xs px-space-xs py-space-2xs rounded bg-surface-container-lowest text-tertiary font-label-sm text-label-sm">
-                          <span className="material-symbols-outlined text-sm">cancel</span>
+                          <CircleX className="h-[16px] w-[16px] shrink-0" />
                           <span>{L('إلغاء متاح', 'Cancel available')}</span>
                         </div>
                       )}
@@ -415,11 +422,11 @@ export default function ClientServices() {
                   <td className="py-space-md px-space-lg text-center whitespace-nowrap">
                     <div className="flex items-center justify-center gap-space-xs">
                       <Link to="/dashboard/new-order" className="px-space-md py-space-xs rounded-xl bg-primary-container text-on-primary-container hover:bg-primary font-label-md text-label-md shadow-sm transition-all flex items-center gap-space-2xs">
-                        <span className="material-symbols-outlined text-sm">bolt</span>
+                        <Zap className="h-[16px] w-[16px] shrink-0" />
                         <span>{L('طلب فوري', 'Instant order')}</span>
                       </Link>
                       <button onClick={() => setDetail(s)} className="p-space-xs rounded-xl bg-surface-container-high hover:bg-surface-bright text-on-surface-variant hover:text-on-surface transition-colors" title={L('مواصفات ونقاط الخدمة', 'Service specifications')} type="button">
-                        <span className="material-symbols-outlined text-base">info</span>
+                        <Info className="h-[18px] w-[18px] shrink-0" />
                       </button>
                     </div>
                   </td>
@@ -454,17 +461,17 @@ export default function ClientServices() {
           <div className="w-full max-w-xl bg-surface-container rounded-xl shadow-2xl overflow-hidden flex flex-col">
             <div className="px-space-lg py-space-md bg-surface-container-low flex items-center justify-between">
               <div className="flex items-center gap-space-sm">
-                <span className="material-symbols-outlined text-primary text-xl">tune</span>
+                <SlidersHorizontal className="text-primary h-[24px] w-[24px] shrink-0" />
                 <span className="font-headline-sm text-headline-sm text-on-surface font-bold">{L('مواصفات ونقاط الخدمة الفنية', 'Service specifications')}</span>
               </div>
               <button className="text-on-surface-variant hover:text-on-surface p-1" onClick={() => setDetail(null)} type="button">
-                <span className="material-symbols-outlined">close</span>
+                <X className="h-[18px] w-[18px] shrink-0" />
               </button>
             </div>
             <div className="p-space-lg flex flex-col gap-space-md max-h-[70vh] overflow-y-auto">
               <div className="flex items-center justify-between p-space-sm rounded-lg bg-surface-container-lowest">
                 <span className="font-code-xs text-code-xs text-on-surface-variant">{L('معرّف نقطة النهاية', 'Service endpoint identifier')}</span>
-                <code className="font-code-sm text-code-sm text-tertiary">#{detail.id}</code>
+                <code className="break-all text-end font-code-sm text-code-sm text-tertiary">#{detail.id}</code>
               </div>
               <div>
                 <h4 className="font-label-lg text-label-lg text-on-surface font-bold mb-space-xs">{detail.name}</h4>
@@ -504,7 +511,7 @@ export default function ClientServices() {
                 {t('common.close')}
               </button>
               <Link to="/dashboard/new-order" onClick={() => setDetail(null)} className="px-space-md py-space-xs rounded-xl bg-primary-container hover:bg-primary text-on-primary-container font-label-md text-label-md transition-colors flex items-center gap-space-2xs">
-                <span className="material-symbols-outlined text-sm">bolt</span>
+                <Zap className="h-[16px] w-[16px] shrink-0" />
                 <span>{L('الانتقال لإنشاء الطلب فوراً', 'Go to create the order now')}</span>
               </Link>
             </div>

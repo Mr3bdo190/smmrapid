@@ -104,6 +104,53 @@ const logSystemError = async (level: 'error' | 'warning' | 'info', message: stri
     console.error('Failed to write system log:', e);
   }
 };
+
+/**
+ * Customer-facing failure policy.
+ *
+ * Known, actionable failures (minimum amount, wrong wallet number, insufficient balance, …) keep
+ * their specific message and code so the customer is told exactly what to change.
+ *
+ * Everything else — provider/gateway faults, misconfiguration, database errors — is INTERNAL: the
+ * customer only ever receives a neutral, reassuring message plus a short support reference, while
+ * the real cause is written to the system log where the admin can read it (Admin → System Reports /
+ * Audit Logs, searchable by the same reference).
+ */
+const supportRef = () => crypto.randomBytes(3).toString('hex').toUpperCase();
+
+const CUSTOMER_SAFE_TEXT: Record<string, string> = {
+  payment: 'We could not start this payment right now. No money was deducted — please try again in a moment or use another payment method. If it keeps failing, contact support with the reference below.',
+  order: 'We could not complete this order right now. No amount was deducted from your balance — please try again. If it keeps failing, contact support with the reference below.',
+  wallet: 'We could not complete this wallet operation right now. Nothing was deducted from your balance — please try again in a moment.',
+  generic: 'We could not complete this operation right now. Nothing was changed — please try again in a moment.',
+};
+
+// Codes the customer is allowed to see with their specific meaning (they describe what the CUSTOMER did).
+const CUSTOMER_VISIBLE_CODES = new Set([
+  'MIN_AMOUNT_ERROR', 'INVALID_AMOUNT', 'INVALID_WALLET_NUMBER', 'INVALID_WALLET_METHOD',
+  'INSUFFICIENT_BALANCE', 'INVALID_LINK', 'INVALID_QUANTITY', 'SINGLE_UNIT_REQUIRED',
+  'SERVICE_UNAVAILABLE', 'PAYMENT_NOT_FOUND', 'REFERENCE_MISSING', 'INVALID_COUPON',
+]);
+
+const internalFailure = async (
+  res: express.Response,
+  e: any,
+  opts: { kind?: keyof typeof CUSTOMER_SAFE_TEXT; code?: string; route?: string; status?: number; message?: string } = {}
+) => {
+  const ref = supportRef();
+  const code = opts.code || e?.code || 'INTERNAL_ERROR';
+  await logSystemError('error', opts.message || 'Customer operation failed', {
+    ref,
+    route: opts.route,
+    code,
+    httpStatus: opts.status ?? 500,
+    customerVisible: CUSTOMER_VISIBLE_CODES.has(code),
+    error: e?.message || String(e ?? ''),
+    gatewayBody: e?.gatewayBody ?? undefined,
+  });
+  return res.status(opts.status ?? 500).json({ error: CUSTOMER_SAFE_TEXT[opts.kind || 'generic'], code, ref });
+};
+
 const uuidLike = (v: unknown) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
 const validUrl = (v: unknown) => { try { const u = new URL(String(v)); return ['http:', 'https:'].includes(u.protocol); } catch { return false; } };
 
@@ -589,11 +636,16 @@ app.post('/api/client/orders', orderLimiter, requireAuth, async (req: any, res) 
     const raw = String(e?.message || '');
     if (/insufficient balance/i.test(raw)) return apiError(res, 400, 'Your balance is not enough to complete this order.', 'INSUFFICIENT_BALANCE');
     if (/valid url is required/i.test(raw)) return apiError(res, 400, 'Please enter a valid service link.', 'INVALID_LINK');
-    if (/quantity must be between/i.test(raw)) return apiError(res, 400, raw, 'INVALID_QUANTITY');
+    if (/quantity must be between/i.test(raw)) {
+      const range = raw.match(/between\s+([\d,]+)\s+and\s+([\d,]+)/i);
+      return apiError(res, 400, range
+        ? `The quantity must be between ${range[1]} and ${range[2]} for this service.`
+        : 'The quantity is outside the range allowed by this service.', 'INVALID_QUANTITY');
+    }
     if (/service is unavailable/i.test(raw)) return apiError(res, 409, 'This service is currently unavailable. Please choose another service.', 'SERVICE_UNAVAILABLE');
     if (/exactly 1 item/i.test(raw)) return apiError(res, 400, 'This service accepts exactly one item.', 'SINGLE_UNIT_REQUIRED');
-    console.error('Order creation failed:', e);
-    apiError(res, 500, 'We could not create your order right now. Your balance was not charged. Please try again.', 'ORDER_CREATION_FAILED');
+    // Unexpected failure: the customer gets a neutral message, the admin gets the real cause.
+    return internalFailure(res, e, { kind: 'order', code: 'ORDER_CREATION_FAILED', status: 502, route: '/api/client/orders', message: 'Order creation failed' });
   }
 });
 
@@ -623,7 +675,14 @@ app.post('/api/client/orders/mass', orderLimiter, requireAuth, async (req: any, 
     });
     for (const id of ids) placeOrderToProvider(id).catch(err => console.error(err));
     res.status(201).json({ success: true, orderIds: ids, message: `${ids.length} orders successfully placed` });
-  } catch (e: any) { apiError(res, 400, e.message || 'Mass order failed', 'MASS_ORDER_ERROR'); }
+  } catch (e: any) {
+    if (/insufficient balance/i.test(String(e?.message || ''))) return apiError(res, 400, 'Your balance is not enough to place these orders.', 'INSUFFICIENT_BALANCE');
+    if (/provide 1 to 100 orders/i.test(String(e?.message || ''))) return apiError(res, 400, 'Provide between 1 and 100 orders per submission.', 'INVALID_QUANTITY');
+    if (/no orders provided/i.test(String(e?.message || ''))) return apiError(res, 400, 'Add at least one order line before submitting.', 'INVALID_QUANTITY');
+    if (/service is unavailable/i.test(String(e?.message || ''))) return apiError(res, 409, 'This service is currently unavailable. Please choose another service.', 'SERVICE_UNAVAILABLE');
+    // Anything else is internal: the customer gets a neutral message, the admin gets the log entry.
+    return internalFailure(res, e, { kind: 'order', code: 'MASS_ORDER_ERROR', status: 502, route: '/api/client/orders/mass', message: 'Mass order submission failed' });
+  }
 });
 
 // Wallet/payment
@@ -639,7 +698,7 @@ app.post('/api/client/payments', paymentLimiter, requireAuth, async (req: any, r
   const details = req.body?.transactionDetails && typeof req.body.transactionDetails === 'object' ? req.body.transactionDetails : {};
   const settingsRows = await db.select().from(settings);
   const rate = num(settingsRows.find(s => s.key === 'usd_exchange_rate')?.value ?? '50');
-  if (!Number.isFinite(rate) || rate <= 0) return apiError(res, 503, 'Exchange rate is not configured — set it in Admin Settings', 'RATE_NOT_CONFIGURED');
+  if (!Number.isFinite(rate) || rate <= 0) return internalFailure(res, new Error('Exchange rate is not configured'), { kind: 'payment', code: 'RATE_NOT_CONFIGURED', status: 503, route: '/api/client/payments', message: 'Exchange rate is not configured — admin action required' });
   const usdAmount = money(amountEgp / rate);
   if (!positiveMoney(usdAmount)) return apiError(res, 400, 'Invalid amount', 'INVALID_AMOUNT');
   const minDepositUsd = num(settingsRows.find(s => s.key === 'min_deposit_amount')?.value ?? 1);
@@ -792,11 +851,10 @@ app.post('/api/heleket/create', paymentLimiter, requireAuth, async (req: any, re
     }
   } catch (e: any) {
     console.error('Heleket create:', e?.message || e);
-    const status = e?.code === 'GATEWAY_NOT_CONFIGURED' || e?.code === 'INVALID_MERCHANT_ID' ? 503 : e?.code === 'MERCHANT_UNKNOWN' ? 502 : 400;
-    const clientMessage = ['GATEWAY_NOT_CONFIGURED', 'INVALID_MERCHANT_ID', 'MERCHANT_UNKNOWN'].includes(e?.code)
-      ? 'Crypto payment is temporarily unavailable. Please try another payment method or contact support.'
-      : (e?.message || 'Heleket payment initialization failed');
-    apiError(res, status, clientMessage, e?.code || 'HELEKET_CREATE_ERROR');
+    const code = e?.code || 'HELEKET_CREATE_ERROR';
+    const status = ['GATEWAY_NOT_CONFIGURED', 'INVALID_MERCHANT_ID'].includes(code) ? 503 : 502;
+    // Crypto-gateway faults are internal: never surface the gateway's own wording to the customer.
+    return internalFailure(res, e, { kind: 'payment', code, status, route: '/api/heleket/create', message: 'Heleket payment initialization failed' });
   }
 });
 
@@ -904,7 +962,7 @@ app.post('/api/shahnawy/create', paymentLimiter, requireAuth, async (req:any, re
     if (!['vf_cash','or_cash','et_cash'].includes(method)) return apiError(res, 400, 'Unsupported electronic wallet', 'INVALID_WALLET_METHOD');
     if (!positiveMoney(amountEgp) || amountEgp < cfg.minAmount || amountEgp > cfg.maxAmount) return apiError(res, 400, `Amount must be between ${cfg.minAmount} and ${cfg.maxAmount} EGP`, 'INVALID_AMOUNT');
     const rate = num((await db.select().from(settings)).find((s:any)=>s.key==='usd_exchange_rate')?.value || '50');
-    if (!Number.isFinite(rate) || rate <= 0) return apiError(res, 503, 'Exchange rate is not configured', 'RATE_NOT_CONFIGURED');
+    if (!Number.isFinite(rate) || rate <= 0) return internalFailure(res, new Error('Exchange rate is not configured'), { kind: 'payment', code: 'RATE_NOT_CONFIGURED', status: 503, route: '/api/shahnawy/create', message: 'Exchange rate is not configured — admin action required' });
     const usdAmount = money(amountEgp / rate);
     const minDepositUsd = await getMinSetting('min_deposit_amount', 1);
     if (usdAmount < minDepositUsd) return apiError(res, 400, `Minimum deposit is $${minDepositUsd.toFixed(2)} USD`, 'MIN_AMOUNT_ERROR');
@@ -938,8 +996,10 @@ app.post('/api/shahnawy/create', paymentLimiter, requireAuth, async (req:any, re
   } catch(e:any) {
     console.error('Sha7nawy create:', e?.message || e);
     const code=e?.code || (e?.httpStatus===401?'GATEWAY_UNAUTHORIZED':'SHA7NAWY_CREATE_ERROR');
-    const status=e?.httpStatus===401?503:(e?.code==='GATEWAY_DISABLED'?503:e?.code==='GATEWAY_NOT_CONFIGURED'?503:400);
-    apiError(res,status,e?.message || 'Electronic wallet payment initialization failed',code);
+    const status=e?.httpStatus===401?503:(['GATEWAY_DISABLED','GATEWAY_NOT_CONFIGURED','GATEWAY_UNAUTHORIZED'].includes(code)?503:502);
+    // Wallet-gateway faults are internal: the customer sees a neutral, actionable message and the
+    // gateway's own wording/body is kept in the system log for the admin (searchable by the ref).
+    return internalFailure(res, e, { kind: 'payment', code, status, route: '/api/shahnawy/create', message: 'Electronic wallet payment initialization failed' });
   }
 });
 
@@ -984,7 +1044,7 @@ app.post('/api/shahnawy/confirm', paymentLimiter, requireAuth, async (req:any,re
       if(/pending|معلقة|يرجى إعادة المحاولة/i.test(msg)) return res.status(202).json({success:false,status:'pending',message:msg});
       throw e;
     }
-  } catch(e:any){ apiError(res,e?.httpStatus===401?503:400,e?.message||'Payment confirmation failed',e?.code||'SHA7NAWY_CONFIRM_ERROR'); }
+  } catch(e:any){ return internalFailure(res, e, { kind: 'payment', code: e?.code || 'SHA7NAWY_CONFIRM_ERROR', status: e?.httpStatus===401?503:502, route: '/api/shahnawy/confirm', message: 'Electronic wallet payment confirmation failed' }); }
 });
 
 app.post('/api/shahnawy/webhook', async (req:any,res) => {

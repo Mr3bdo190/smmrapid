@@ -71,7 +71,7 @@ export default function AdminLayout() {
           <div className="px-gutter-sm py-space-sm">
             <div className="flex items-center justify-between rounded-xl bg-surface-container px-space-md py-space-sm">
               <div className="flex items-center gap-1">
-                <span className="material-symbols-outlined text-[18px] text-tertiary">dns</span>
+                <Server className="text-tertiary h-[18px] w-[18px] shrink-0" />
                 <span className="font-mono text-label-sm uppercase tracking-wider text-on-surface-variant">Control Plane</span>
               </div>
               <span className="flex items-center gap-1 font-mono text-code-xs text-tertiary">

@@ -4,10 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
 import { useTranslation, LanguageSwitcher, ThemeToggle, translations } from '../../lib/i18n';
-import {
-  LayoutDashboard, ShoppingCart, ListOrdered, Wallet, LogOut, Menu, X, User, Ticket,
-  LifeBuoy, Tags, Link2, Code, Users, Gift, Gamepad2, RefreshCw, Layers, Receipt, ShieldCheck,
-} from 'lucide-react';
+import { Award, BadgeCheck, Banknote, Bell, Code, Gamepad2, Gift, Layers, LayoutDashboard, LifeBuoy, Link2, ListOrdered, LogOut, Menu, Plus, Receipt, RefreshCw, Search, ShieldCheck, ShoppingCart, Tags, Terminal, Ticket, User, Users, Wallet, X, Zap } from 'lucide-react';
 import { BrandLogo } from '../../components/BrandLogo';
 import { cn } from '../../lib/utils';
 
@@ -147,7 +144,7 @@ export default function ClientLayout() {
           <div className="px-gutter-sm py-space-sm">
             <div className="flex items-center justify-between rounded-xl bg-surface-container px-space-md py-space-sm dark:bg-surface-container">
               <div className="flex items-center gap-1">
-                <span className="material-symbols-outlined text-[18px] text-tertiary">terminal</span>
+                <Terminal className="text-tertiary h-[18px] w-[18px] shrink-0" />
                 <span className="font-mono text-label-sm uppercase tracking-wider text-on-surface-variant dark:text-on-surface-variant">API Engine</span>
               </div>
               <span className="flex items-center gap-1 font-mono text-code-xs text-tertiary dark:text-tertiary">
@@ -199,25 +196,27 @@ export default function ClientLayout() {
 
         {/* Foot */}
         <div className="rapid-sidebar-foot space-y-2 p-gutter-sm">
-          <div className="flex items-center justify-between rounded-xl bg-surface-container p-space-md dark:bg-surface-container">
-            <div className="flex flex-col">
+          <div className="flex items-center justify-between gap-space-sm rounded-xl bg-surface-container p-space-md dark:bg-surface-container">
+            <div className="flex min-w-0 flex-col">
               <span className="font-mono text-label-sm uppercase tracking-wider text-on-surface-variant dark:text-on-surface-variant">Tier Level</span>
-              <span className="font-display text-headline-sm font-semibold text-primary dark:text-primary">{dbUser.isAdmin ? 'Administrator' : 'Standard Member'}</span>
+              <span className="truncate font-display text-headline-sm font-semibold text-primary dark:text-primary">{dbUser.isAdmin ? 'Administrator' : 'Standard Member'}</span>
             </div>
-            <span className="material-symbols-outlined text-xl text-primary dark:text-primary">{dbUser.isAdmin ? 'verified' : 'workspace_premium'}</span>
+            {dbUser.isAdmin
+              ? <BadgeCheck className="h-6 w-6 shrink-0 text-primary dark:text-primary" />
+              : <Award className="h-6 w-6 shrink-0 text-primary dark:text-primary" />}
           </div>
-          <LanguageSwitcher className="w-full justify-center border-slate-700 text-slate-400 hover:bg-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800" />
+          <LanguageSwitcher className="w-full justify-center border-outline-variant text-on-surface-variant hover:bg-surface-container-high dark:border-outline-variant dark:text-on-surface-variant dark:hover:bg-surface-container-high" />
           <button onClick={logOut} className="rapid-nav-item w-full justify-start"><LogOut className="h-[18px] w-[18px]" /> {t('common.signOut')}</button>
         </div>
       </aside>
 
       {/* ─── Column ───────────────────────────────────────────────────────── */}
-      <div className={cn("flex min-w-0 flex-1 flex-col", dir === 'rtl' ? "md:pr-64" : "md:pl-64")}>
+      <div className="flex min-w-0 flex-1 flex-col md:ps-64">
         <header className="rapid-topbar fixed inset-x-0 top-0 z-30 flex h-16 items-center justify-between px-gutter-lg md:ps-64">
           <div className="flex flex-1 items-center gap-space-md">
-            <button onClick={() => setIsMobileMenuOpen(true)} className="text-slate-400 hover:text-slate-100 md:hidden"><Menu className="h-5 w-5" /></button>
+            <button onClick={() => setIsMobileMenuOpen(true)} className="text-on-surface-variant hover:text-on-surface md:hidden"><Menu className="h-5 w-5" /></button>
             <form onSubmit={submitSearch} className="relative w-full max-w-md">
-              <span className="material-symbols-outlined absolute start-space-md top-1/2 -translate-y-1/2 text-[18px] text-slate-500 dark:text-outline">search</span>
+              <Search className="absolute start-space-md top-1/2 -translate-y-1/2 text-slate-500 dark:text-outline h-[18px] w-[18px] shrink-0" />
               <input
                 type="search"
                 value={search}
@@ -231,7 +230,7 @@ export default function ClientLayout() {
           <div className="flex items-center gap-space-md">
             {/* Balance */}
             <div className="hidden items-center gap-space-sm rounded-xl bg-surface-container px-space-md py-space-xs sm:flex dark:bg-surface-container">
-              <span className="material-symbols-outlined text-[18px] text-tertiary">payments</span>
+              <Banknote className="text-tertiary h-[18px] w-[18px] shrink-0" />
               <div className="flex flex-col">
                 <span className="font-mono text-code-xs leading-none text-on-surface-variant dark:text-on-surface-variant">{t('common.currentBalance')}</span>
                 <span className="font-mono text-code-sm font-medium tabular-nums text-on-surface dark:text-on-surface">
@@ -239,13 +238,13 @@ export default function ClientLayout() {
                 </span>
               </div>
               <Link to="/dashboard/add-funds" className="ms-1 flex h-6 w-6 items-center justify-center rounded-lg bg-surface-container-high text-tertiary transition-colors hover:bg-surface-bright">
-                <span className="material-symbols-outlined text-[16px]">add</span>
+                <Plus className="h-[16px] w-[16px] shrink-0" />
               </Link>
             </div>
 
             {/* Instant order */}
             <Link to="/dashboard/new-order" className="inline-flex items-center gap-1 rounded-xl bg-primary-container px-space-md py-space-sm font-label-lg text-label-lg font-semibold text-on-primary-container shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] transition-all hover:bg-primary">
-              <span className="material-symbols-outlined text-[18px]">bolt</span>
+              <Zap className="h-[18px] w-[18px] shrink-0" />
               <span className="hidden sm:inline">{t('nav.newOrder')}</span>
             </Link>
 
@@ -256,7 +255,7 @@ export default function ClientLayout() {
                 onClick={() => setNotificationsOpen(v => !v)}
                 className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-surface-container text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface dark:bg-surface-container"
               >
-                <span className="material-symbols-outlined text-[18px]">notifications</span>
+                <Bell className="h-[18px] w-[18px] shrink-0" />
                 {notificationData?.unread > 0 && <span className="absolute end-2 top-2 h-2 w-2 rounded-full bg-error ring-2 ring-surface-container" />}
               </button>
               {notificationsOpen && (
@@ -272,7 +271,7 @@ export default function ClientLayout() {
                         <button key={n.id} onClick={async () => { const token = await user?.getIdToken(); if (!n.readAt) await apiFetch(`/api/client/notifications/${n.id}/read`, user, { method: 'PUT', headers: { Authorization: `Bearer ${token}` } }); await refetchNotifications(); if (n.link) window.location.href = n.link; }} className={cn("mt-1 w-full rounded-lg p-3 text-start", n.readAt ? 'bg-slate-700/40' : 'bg-indigo-500/15')}>
                           <div className="text-xs font-semibold">{n.title}</div>
                           <div className="mt-1 text-xs text-slate-400 dark:text-slate-400">{n.message}</div>
-                          <div className="mt-1 font-mono text-[10px] text-slate-500 dark:text-slate-500">{n.createdAt ? new Date(n.createdAt).toLocaleString() : ''}</div>
+                          <div className="mt-1 font-mono text-[10px] text-outline">{n.createdAt ? new Date(n.createdAt).toLocaleString() : ''}</div>
                         </button>
                       ))}
                   </div>
@@ -282,11 +281,11 @@ export default function ClientLayout() {
 
             {/* Theme + identity */}
             <ThemeButton />
-            <div className="flex items-center gap-space-sm ps-space-sm">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-100 font-semibold text-violet-700 ring-1 ring-outline/30 dark:bg-violet-900/40 dark:text-violet-300">{(account?.email || 'R')[0].toUpperCase()}</span>
-              <div className="hidden flex-col xl:flex">
-                <span className="font-label-lg text-label-lg leading-tight">{account?.name || account?.email?.split('@')[0]}</span>
-                <span className="font-mono text-code-xs text-on-surface-variant dark:text-on-surface-variant">{account?.email}</span>
+            <div className="flex min-w-0 items-center gap-space-sm ps-space-sm">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-100 font-semibold text-violet-700 ring-1 ring-outline/30 dark:bg-violet-900/40 dark:text-violet-300">{(account?.email || 'R')[0].toUpperCase()}</span>
+              <div className="hidden min-w-0 flex-col xl:flex">
+                <span className="max-w-[180px] truncate font-label-lg text-label-lg leading-tight text-on-surface">{account?.name || account?.email?.split('@')[0]}</span>
+                <span className="max-w-[180px] truncate font-mono text-code-xs text-on-surface-variant dark:text-on-surface-variant">{account?.email}</span>
               </div>
             </div>
           </div>

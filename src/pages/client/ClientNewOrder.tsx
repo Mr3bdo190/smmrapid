@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { notify } from '../../lib/notify';
-import { Search, Star, CheckCircle2, RefreshCw, Info, Zap } from 'lucide-react';
+import { ArrowRightLeft, AtSign, AudioLines, BadgeCheck, CheckCircle2, ChevronsUpDown, Clipboard, Facebook, FileX, Ghost, Info, Instagram, Layers, Link2, Linkedin, MessageCircle, MessageSquare, MessagesSquare, Music2, PiggyBank, Pin, RefreshCw, Search, Send, Shapes, Shield, ShieldCheck, Square, SquareCheck, Star, Tag, Twitter, Unlock, Wand2, X, Youtube, Zap } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
 import { useTranslation } from '../../lib/i18n';
@@ -17,22 +17,23 @@ const QUICK_ADDS = [500, 1000, 5000, 10000, 25000];
 const BOOST_TONES = ['text-primary', 'text-secondary', 'text-tertiary'];
 /** Quick-add chip styling; the chip that equals the current quantity is highlighted, as in the design. */
 const quickAddClass = (add: number, current: number | '') => `px-space-sm py-space-2xs rounded-lg font-mono text-code-xs transition-all ${current === add ? 'bg-primary-container text-on-primary-container' : 'bg-surface-container-high hover:bg-surface-bright text-on-surface'}`;
-/** Maps a real category name onto the design's platform glyphs (falls back to a neutral glyph). */
-const categoryIcon = (name: any) => {
+/** Maps a real category name onto a lucide glyph component (falls back to a neutral glyph). */
+function CategoryGlyph({ name, className }: { name?: any; className?: string }) {
   const n = String(name || '').toLowerCase();
-  if (n.includes('insta')) return 'photo_camera';
-  if (n.includes('tiktok') || n.includes('tik tok')) return 'music_note';
-  if (n.includes('youtube')) return 'smart_display';
-  if (n.includes('telegram')) return 'send';
-  if (n.includes('twitter') || n.includes('x/twitter')) return 'tag';
-  if (n.includes('facebook')) return 'thumb_up';
-  if (n.includes('spotify')) return 'graphic_eq';
-  if (n.includes('whatsapp')) return 'chat';
-  if (n.includes('snapchat')) return 'camera';
-  if (n.includes('discord')) return 'forum';
-  if (n.includes('linkedin')) return 'work';
-  return 'category';
-};
+  const Icon = n.includes('insta') ? Instagram
+    : n.includes('tiktok') || n.includes('tik tok') ? Music2
+    : n.includes('youtube') ? Youtube
+    : n.includes('telegram') ? Send
+    : n.includes('twitter') || n.includes('x/twitter') ? Twitter
+    : n.includes('facebook') ? Facebook
+    : n.includes('spotify') ? AudioLines
+    : n.includes('whatsapp') ? MessageCircle
+    : n.includes('snapchat') ? Ghost
+    : n.includes('discord') ? MessagesSquare
+    : n.includes('linkedin') ? Linkedin
+    : Shapes;
+  return <Icon className={className} />;
+}
 
 export default function ClientNewOrder() {
   const { user, dbUser } = useAuth();
@@ -66,6 +67,8 @@ export default function ClientNewOrder() {
 
   const categories = useMemo(() => Array.from(new Map(services.map((s: any) => [s.category?.id, s.category])).values()).filter(Boolean).sort((a: any, b: any) => a.sortOrder - b.sortOrder), [services]);
   const categoryServices = useMemo(() => services.filter((s: any) => s.category?.id === categoryId), [services, categoryId]);
+  /** Real per-category service counts, shown as the category dropdown's option hint. */
+  const countByCategory = useMemo(() => services.reduce((acc: Record<string, number>, s: any) => { const k = s.category?.id; if (k) acc[k] = (acc[k] || 0) + 1; return acc; }, {} as Record<string, number>), [services]);
 
   const visibleServices = useMemo(() => categoryServices
     .filter((s: any) => !search || String(s.name).toLowerCase().includes(search.toLowerCase()))
@@ -87,8 +90,10 @@ export default function ClientNewOrder() {
     setFavorites(next); localStorage.setItem('favoriteServices', JSON.stringify(next));
   };
   const chooseService = (id: string) => {
-    setServiceId(id);
     const picked = services.find((s: any) => s.id === id);
+    /** Keeps both dropdowns in sync when a favourite/recent pick belongs to another category. */
+    if (picked?.category?.id && picked.category.id !== categoryId) { setCategoryId(picked.category.id); setSearch(''); }
+    setServiceId(id);
     setQuantity(picked && Number(picked.minQuantity) === 1 && Number(picked.maxQuantity) === 1 ? 1 : '');
     const next = [id, ...recent.filter(x => x !== id)].slice(0, 8);
     setRecent(next); localStorage.setItem('recentServices', JSON.stringify(next));
@@ -170,7 +175,7 @@ export default function ClientNewOrder() {
       </div>
       <div className="flex items-center gap-space-md">
         <div className="flex items-center gap-space-xs bg-surface-container px-space-md py-space-xs rounded-xl shadow-sm">
-          <span className="material-symbols-outlined text-secondary text-base">swap_calls</span>
+          <ArrowRightLeft className="text-secondary h-[18px] w-[18px] shrink-0" />
           <span className="font-mono text-code-xs text-on-surface-variant">{en('Bulk Mode:', 'الوضع الجماعي:')}</span>
           <Link to="/dashboard/mass-order" className="font-mono text-code-xs font-semibold text-primary hover:text-on-primary-container px-space-xs py-space-2xs rounded bg-surface-container-high transition-colors">{en('Switch to Mass Order', 'التحويل لطلب جماعي')}</Link>
         </div>
@@ -190,14 +195,13 @@ export default function ClientNewOrder() {
             </div>
           : <>
 
-          {/* 1 — Platform Category */}
+          {/* 1 — Category (native dropdown; replaces the old tile grid) */}
           <div className="flex flex-col gap-space-sm">
             <div className="flex flex-wrap items-center justify-between gap-space-sm">
-              <span className="font-mono text-label-sm uppercase tracking-wider text-on-surface-variant flex items-center gap-space-xs">
+              <label htmlFor="category-select" className="font-mono text-label-sm uppercase tracking-wider text-on-surface-variant flex items-center gap-space-xs">
                 <span className="w-5 h-5 rounded-full bg-primary-container text-on-primary flex items-center justify-center font-mono text-code-xs font-semibold">1</span>
                 {en('Platform Category', 'القسم / المنصة')}
-                <span className="sr-only">{t('newOrder.chooseCategory')}</span>
-              </span>
+              </label>
               <div className="flex items-center gap-space-sm">
                 <span className="font-mono text-code-xs text-tertiary">{categories.length} {en('Networks Online', 'شبكة متصلة')}</span>
                 <button type="button" onClick={() => servicesQ.refetch()} className="flex h-7 w-7 items-center justify-center rounded-lg bg-surface-container text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface">
@@ -206,24 +210,22 @@ export default function ClientNewOrder() {
                 </button>
               </div>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-space-xs">
-              {categories.map((c: any) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => { setCategoryId(c.id); setServiceId(''); setQuantity(''); setSearch(''); }}
-                  className={categoryId === c.id
-                    ? "group flex flex-col items-center justify-center py-space-md px-space-xs rounded-xl bg-primary-container text-on-primary-container transition-all shadow-sm"
-                    : "group flex flex-col items-center justify-center py-space-md px-space-xs rounded-xl bg-surface-container-high text-on-surface-variant hover:text-on-surface hover:bg-surface-bright transition-all shadow-sm"}
-                >
-                  <span className="material-symbols-outlined text-xl mb-space-2xs">{categoryIcon(c.name)}</span>
-                  <span className="font-label-sm text-label-sm text-center break-words">{c.name}</span>
-                </button>
-              ))}
+            <div className="relative">
+              <select
+                id="category-select"
+                aria-label={t('newOrder.chooseCategory')}
+                value={categoryId}
+                onChange={e => { setCategoryId(e.target.value); setServiceId(''); setQuantity(''); setSearch(''); }}
+                className="w-full bg-surface-container-low text-on-surface font-mono text-code-sm rounded-xl px-space-md py-space-sm pe-12 appearance-none focus:outline-none focus:bg-surface-container-lowest transition-all cursor-pointer"
+              >
+                <option value="">{t('newOrder.chooseCategory')}</option>
+                {categories.map((c: any) => <option key={c.id} value={c.id}>{`${c.name} • ${countByCategory[c.id] || 0} ${(countByCategory[c.id] || 0) === 1 ? en('service', 'خدمة') : en('services', 'خدمة')}`}</option>)}
+              </select>
+              <ChevronsUpDown className="absolute end-space-md top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none h-[18px] w-[18px] shrink-0" />
             </div>
           </div>
 
-          {/* 2 — Select Target Service */}
+          {/* 2 — Service (single native dropdown, filtered by the selected category) */}
           <div className="flex flex-col gap-space-sm">
             <div className="flex flex-wrap items-center justify-between gap-space-sm">
               <label htmlFor="service-select" className="font-mono text-label-sm uppercase tracking-wider text-on-surface-variant flex items-center gap-space-xs">
@@ -235,16 +237,18 @@ export default function ClientNewOrder() {
             <div className="relative">
               <select
                 id="service-select"
+                aria-label={t('newOrder.selectedService')}
                 disabled={!categoryId}
                 value={serviceId}
                 onChange={e => chooseService(e.target.value)}
                 className="w-full bg-surface-container-low text-on-surface font-mono text-code-sm rounded-xl px-space-md py-space-sm pe-12 appearance-none focus:outline-none focus:bg-surface-container-lowest transition-all cursor-pointer disabled:opacity-50"
               >
-                <option value="">{!categoryId ? en('Select category first', 'اختر القسم أولاً') : en('Select service', 'اختر الخدمة')}</option>
-                {visibleServices.map((s: any) => <option key={s.id} value={s.id}>{`#${shortId(s.id)} - ${s.name} - $${num(s.pricePer1k).toFixed(4)} / 1k`}</option>)}
+                <option value="">{!categoryId ? en('Select category first', 'اختر القسم أولاً') : visibleServices.length ? en('Select service', 'اختر الخدمة') : t('newOrder.noServicesInCategory')}</option>
+                {visibleServices.map((s: any) => <option key={s.id} value={s.id}>{`#${shortId(s.id)} — ${s.name} — $${num(s.pricePer1k).toFixed(4)}/1k`}</option>)}
               </select>
-              <span className="material-symbols-outlined absolute end-space-md top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none">unfold_more</span>
+              <ChevronsUpDown className="absolute end-space-md top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none h-[18px] w-[18px] shrink-0" />
             </div>
+            {!categoryId && <p className="font-mono text-code-xs text-on-surface-variant">{en('Pick a category first to load its services.', 'اختر القسم أولاً لتحميل خدماته.')}</p>}
             {categoryId && <div className="flex flex-wrap items-center gap-space-sm">
               <div className="relative flex-1 min-w-[220px]">
                 <Search className="absolute start-space-md top-1/2 -translate-y-1/2 w-4 h-4 text-outline" />
@@ -254,15 +258,15 @@ export default function ClientNewOrder() {
             </div>}
             {selectedService && <div className="flex flex-wrap items-center gap-space-xs mt-space-2xs">
               <span className="inline-flex items-center gap-space-2xs px-space-xs py-space-2xs rounded bg-surface-container-high text-tertiary font-mono text-code-xs">
-                <span className="material-symbols-outlined text-xs">autorenew</span>
+                <RefreshCw className="h-[14px] w-[14px] shrink-0" />
                 {selectedService.refillable ? en('Refill: Available', 'إعادة التعبئة: متاحة') : en('Refill: Not available', 'إعادة التعبئة: غير متاحة')}
               </span>
               <span className="inline-flex items-center gap-space-2xs px-space-xs py-space-2xs rounded bg-surface-container-high text-secondary font-mono text-code-xs">
-                <span className="material-symbols-outlined text-xs">verified</span>
+                <BadgeCheck className="h-[14px] w-[14px] shrink-0" />
                 {selectedService.cancelable ? en('Cancel: Available', 'الإلغاء: متاح') : en('Cancel: Not available', 'الإلغاء: غير متاح')}
               </span>
               <span className="inline-flex items-center gap-space-2xs px-space-xs py-space-2xs rounded bg-surface-container-high text-on-surface font-mono text-code-xs">
-                <span className="material-symbols-outlined text-xs">savings</span>
+                <PiggyBank className="h-[14px] w-[14px] shrink-0" />
                 {t('newOrder.cashback')} {num(selectedService.cashbackPercentage)}%
               </span>
               <button type="button" onClick={() => toggleFavorite(selectedService.id)} className="flex h-7 w-7 items-center justify-center rounded-lg bg-surface-container-high text-on-surface-variant transition-colors hover:bg-surface-bright hover:text-on-surface" title={favorites.includes(selectedService.id) ? en('Favourite', 'مفضلة') : en('Add favourite', 'أضف للمفضلة')}>
@@ -287,16 +291,16 @@ export default function ClientNewOrder() {
               </span>
             </div>
             <p className="font-body-sm text-body-sm text-on-surface-variant leading-relaxed whitespace-pre-wrap">{serviceDetails(selectedService)}</p>
-            <div className="grid grid-cols-3 gap-space-sm pt-space-xs">
-              <div className="flex flex-col bg-surface-container p-space-xs rounded-lg">
+            <div className="flex flex-col gap-space-xs pt-space-xs">
+              <div className="flex flex-wrap items-center justify-between gap-space-sm bg-surface-container p-space-xs rounded-lg">
                 <span className="font-mono text-code-xs text-on-surface-variant uppercase">{en('Min / Max', 'الأقل / الأعلى')}</span>
                 <span className="font-mono text-code-sm text-on-surface font-semibold">{num(selectedService.minQuantity).toLocaleString()} / {num(selectedService.maxQuantity).toLocaleString()}</span>
               </div>
-              <div className="flex flex-col bg-surface-container p-space-xs rounded-lg">
+              <div className="flex flex-wrap items-center justify-between gap-space-sm bg-surface-container p-space-xs rounded-lg">
                 <span className="font-mono text-code-xs text-on-surface-variant uppercase">{en('Rate / 1K', 'السعر / 1000')}</span>
                 <span className="font-mono text-code-sm text-tertiary font-semibold">${num(selectedService.pricePer1k).toFixed(4)}</span>
               </div>
-              <div className="flex flex-col bg-surface-container p-space-xs rounded-lg">
+              <div className="flex flex-wrap items-center justify-between gap-space-sm bg-surface-container p-space-xs rounded-lg">
                 <span className="font-mono text-code-xs text-on-surface-variant uppercase">{en('Refill Policy', 'سياسة إعادة التعبئة')}</span>
                 <span className="font-mono text-code-sm text-secondary font-semibold">{selectedService.refillable ? en('Available', 'متاحة') : en('Not available', 'غير متاحة')}</span>
               </div>
@@ -322,7 +326,7 @@ export default function ClientNewOrder() {
                   : en('e.g. https://instagram.com/username', 'مثال: https://instagram.com/username')}</span>
               </div>
               <div className="relative flex items-center">
-                <span className="material-symbols-outlined absolute start-space-md text-on-surface-variant text-base pointer-events-none">{singleUnit ? 'alternate_email' : 'link'}</span>
+                {singleUnit ? <AtSign className="absolute start-space-md top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none h-[18px] w-[18px] shrink-0" /> : <Link2 className="absolute start-space-md top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none h-[18px] w-[18px] shrink-0" />}
                 <input
                   id="target-link"
                   required
@@ -333,7 +337,7 @@ export default function ClientNewOrder() {
                   className="w-full bg-surface-container-low text-on-surface font-mono text-code-sm rounded-xl ps-10 pe-24 py-space-sm placeholder:text-outline focus:outline-none focus:bg-surface-container-lowest transition-all"
                 />
                 <button type="button" onClick={pasteLink} className="absolute end-space-xs px-space-sm py-space-2xs rounded-lg bg-surface-container-high text-on-surface-variant hover:text-on-surface hover:bg-surface-bright font-mono text-code-xs transition-colors flex items-center gap-space-2xs">
-                  <span className="material-symbols-outlined text-xs">content_paste</span>
+                  <Clipboard className="h-[14px] w-[14px] shrink-0" />
                   <span>{en('Paste', 'لصق')}</span>
                 </button>
               </div>
@@ -354,7 +358,7 @@ export default function ClientNewOrder() {
                 <span className="font-body-sm text-body-sm text-on-surface-variant mt-space-2xs">{en('This service is sold as one package/item. The price above is charged once.', 'تُباع هذه الخدمة كوحدة واحدة، ويُخصم السعر أعلاه مرة واحدة.')}</span>
               </div> : <>
                 <div className="relative flex items-center">
-                  <span className="material-symbols-outlined absolute start-space-md text-on-surface-variant text-base pointer-events-none">pin</span>
+                  <Pin className="absolute start-space-md text-on-surface-variant pointer-events-none h-[18px] w-[18px] shrink-0" />
                   <input
                     id="order-quantity"
                     required
@@ -383,13 +387,13 @@ export default function ClientNewOrder() {
             {/* Auto-refill status — a real service flag, shown read-only (the API takes no refill toggle). */}
             {selectedService && <div className="flex items-center justify-between gap-space-sm p-space-sm rounded-xl bg-surface-container-low">
               <div className="flex items-center gap-space-sm">
-                <span className="material-symbols-outlined text-lg text-primary">{selectedService.refillable ? 'check_box' : 'check_box_outline_blank'}</span>
+                {selectedService.refillable ? <SquareCheck className="text-primary h-[18px] w-[18px] shrink-0" /> : <Square className="text-on-surface-variant h-[18px] w-[18px] shrink-0" />}
                 <div className="flex flex-col">
                   <span className="font-label-lg text-label-lg text-on-surface">{selectedService.refillable ? en('Auto-Refill Guarantee Active', 'ضمان إعادة التعبئة التلقائية مُفعّل') : en('Auto-Refill Not Offered', 'إعادة التعبئة التلقائية غير متاحة')}</span>
                   <span className="font-body-sm text-body-sm text-on-surface-variant">{en('Automated replenish is applied by this provider when a drop occurs.', 'يقوم المزوّد بإعادة التعويض تلقائياً عند حدوث نقص.')}</span>
                 </div>
               </div>
-              {selectedService.refillable && <span className="material-symbols-outlined text-secondary text-lg">verified_user</span>}
+              {selectedService.refillable && <ShieldCheck className="text-secondary h-[20px] w-[20px] shrink-0" />}
             </div>}
 
             {/* Calculated charge / order summary + execute */}
@@ -415,7 +419,7 @@ export default function ClientNewOrder() {
               </div>
               <div className="flex flex-wrap items-center justify-between gap-space-sm font-mono text-code-xs text-on-surface-variant">
                 <span className="flex items-center gap-space-2xs">
-                  <span className="material-symbols-outlined text-xs text-tertiary">bolt</span>
+                  <Zap className="text-tertiary h-[14px] w-[14px] shrink-0" />
                   {en('Endpoint', 'المزوّد')}: #{selectedService ? shortId(selectedService.id) : '—'}
                 </span>
                 <span className={`${sufficient ? 'text-tertiary' : 'text-on-error-container'}`}>{sufficient ? en('Balance Sufficient', 'الرصيد كافٍ') : en('Insufficient Balance', 'الرصيد غير كافٍ')}</span>
@@ -424,7 +428,7 @@ export default function ClientNewOrder() {
               {/* Coupon — existing feature kept (the mockup has no coupon block). */}
               <div className="flex flex-wrap items-center gap-space-sm">
                 <div className="relative flex-1 min-w-[160px]">
-                  <span className="material-symbols-outlined absolute start-space-sm top-1/2 -translate-y-1/2 text-on-surface-variant text-base">local_offer</span>
+                  <Tag className="absolute start-space-sm top-1/2 -translate-y-1/2 text-on-surface-variant h-[18px] w-[18px] shrink-0" />
                   <input
                     value={couponCode}
                     onChange={e => setCouponCode(e.target.value)}
@@ -448,19 +452,19 @@ export default function ClientNewOrder() {
               disabled={order.isPending || !link || !validQty}
               className="w-full py-space-md px-space-lg rounded-xl bg-primary-container hover:bg-primary text-on-primary-container disabled:opacity-50 font-display text-headline-sm flex items-center justify-center gap-space-sm shadow-xl transition-all"
             >
-              <span className="material-symbols-outlined text-xl">electric_bolt</span>
+              <Zap className="h-[24px] w-[24px] shrink-0" />
               <span>{order.isPending ? t('newOrder.placingOrder') : <>{en('Confirm & Submit Order', 'تأكيد وإرسال الطلب')} (${money(estimatedCharge)})</>}</span>
             </button>
 
             {order.isSuccess && bannerOpen && <div className="p-space-md rounded-xl bg-surface-container-high text-on-surface flex items-center justify-between gap-space-sm shadow-md">
               <div className="flex items-center gap-space-sm">
-                <span className="material-symbols-outlined text-tertiary text-2xl">check_circle</span>
+                <CheckCircle2 className="text-tertiary h-[28px] w-[28px] shrink-0" />
                 <div className="flex flex-col">
                   <span className="font-label-lg text-label-lg font-semibold text-on-surface">{t('newOrder.orderPlaced')}</span>
                   <span className="font-mono text-code-xs text-tertiary">{en('Task ID', 'معرّف المهمة')} #{(order.data as any)?.orderId}</span>
                 </div>
               </div>
-              <button type="button" onClick={() => setBannerOpen(false)} className="text-on-surface-variant hover:text-on-surface"><span className="material-symbols-outlined text-base">close</span></button>
+              <button type="button" onClick={() => setBannerOpen(false)} className="text-on-surface-variant hover:text-on-surface"><X className="h-[18px] w-[18px] shrink-0" /></button>
             </div>}
           </form>
           </>}
@@ -478,7 +482,7 @@ export default function ClientNewOrder() {
         {boostServices.length > 0 && <div className="bg-surface-container p-space-xl rounded-xl shadow-md flex flex-col gap-space-md">
           <div className="flex items-center justify-between gap-space-sm">
             <div className="flex items-center gap-space-xs">
-              <span className="material-symbols-outlined text-secondary text-lg">auto_fix_high</span>
+              <Wand2 className="text-secondary h-[20px] w-[20px] shrink-0" />
               <span className="font-display text-headline-sm text-on-surface">{en('Complementary Boosts', 'عروض مكمّلة')}</span>
             </div>
             <span className="font-mono text-code-xs text-on-surface-variant">{en('Synergy Engine', 'محرّك التكامل')}</span>
@@ -489,7 +493,7 @@ export default function ClientNewOrder() {
               <div key={s.id} className="p-space-sm rounded-xl bg-surface-container-low hover:bg-surface-container-high transition-colors flex items-center justify-between gap-space-sm group cursor-pointer">
                 <div className="flex items-center gap-space-sm min-w-0">
                   <div className={`w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center shrink-0 ${BOOST_TONES[i % 3]}`}>
-                    <span className="material-symbols-outlined text-base">{categoryIcon(s.category?.name)}</span>
+                    <CategoryGlyph name={s.category?.name} className="h-[18px] w-[18px]" />
                   </div>
                   <div className="flex flex-col min-w-0">
                     <span className="font-label-lg text-label-lg text-on-surface truncate">{s.name}</span>
@@ -505,26 +509,26 @@ export default function ClientNewOrder() {
         {/* Safe Delivery Protocols — design guidance copy, no data binding */}
         <div className="bg-surface-container p-space-xl rounded-xl shadow-md flex flex-col gap-space-md">
           <div className="flex items-center gap-space-xs">
-            <span className="material-symbols-outlined text-primary text-lg">shield</span>
+            <Shield className="text-primary h-[20px] w-[20px] shrink-0" />
             <span className="font-display text-headline-sm text-on-surface">{en('Safe Delivery Protocols', 'بروتوكولات التسليم الآمن')}</span>
           </div>
           <ul className="flex flex-col gap-space-sm">
             <li className="flex items-start gap-space-sm">
-              <span className="material-symbols-outlined text-tertiary text-base mt-0.5">lock_open</span>
+              <Unlock className="text-tertiary mt-0.5 h-[18px] w-[18px] shrink-0" />
               <div className="flex flex-col">
                 <span className="font-label-lg text-label-lg text-on-surface">{en('Keep Profile Unlocked', 'اترك الحساب عاماً')}</span>
                 <span className="font-body-sm text-body-sm text-on-surface-variant">{en("Account must remain strictly public until the entire order state flags 'Completed'.", "يجب أن يبقى الحساب عاماً حتى تصبح حالة الطلب 'مكتمل'.")}</span>
               </div>
             </li>
             <li className="flex items-start gap-space-sm">
-              <span className="material-symbols-outlined text-tertiary text-base mt-0.5">edit_off</span>
+              <FileX className="text-tertiary mt-0.5 h-[18px] w-[18px] shrink-0" />
               <div className="flex flex-col">
                 <span className="font-label-lg text-label-lg text-on-surface">{en('Do Not Modify Handle', 'لا تعدّل الاسم أو الرابط')}</span>
                 <span className="font-body-sm text-body-sm text-on-surface-variant">{en('Changing target username during active injection will result in automatic partial cancellation.', 'تغيير الاسم المستهدف أثناء التنفيذ يؤدي إلى إلغاء جزئي تلقائي.')}</span>
               </div>
             </li>
             <li className="flex items-start gap-space-sm">
-              <span className="material-symbols-outlined text-tertiary text-base mt-0.5">layers</span>
+              <Layers className="text-tertiary mt-0.5 h-[18px] w-[18px] shrink-0" />
               <div className="flex flex-col">
                 <span className="font-label-lg text-label-lg text-on-surface">{en('Avoid Redundant Submissions', 'تجنّب الطلبات المكررة')}</span>
                 <span className="font-body-sm text-body-sm text-on-surface-variant">{en('Wait for active queue to process before dispatching duplicate tasks to the identical URL.', 'انتظر انتهاء الطلبات النشطة قبل إرسال طلب مكرر لنفس الرابط.')}</span>
@@ -546,7 +550,7 @@ export default function ClientNewOrder() {
             </div>
           </div>
           <Link to="/dashboard/tickets" className="px-space-md py-space-xs rounded-xl bg-surface-bright hover:bg-surface-container-highest text-primary font-label-lg text-label-lg flex items-center gap-space-2xs transition-colors">
-            <span className="material-symbols-outlined text-sm">chat</span>
+            <MessageSquare className="h-[16px] w-[16px] shrink-0" />
             <span>{en('Open Live Chat', 'افتح الدعم المباشر')}</span>
           </Link>
         </div>

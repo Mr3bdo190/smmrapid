@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext'; import { apiFetch } from '../../lib/api'; import { notify } from '../../lib/notify';
 import { useTranslation } from '../../lib/i18n';
+import { BadgeCheck, Banknote, Copy, Download, ExternalLink, Home, Info, Landmark, RefreshCcw, RefreshCw, Search, TrendingUp, X, Zap } from 'lucide-react';
 
 const readErr = async (r: Response, fallback: string) => { const b = await r.json().catch(() => ({})); return b?.error || fallback; };
 const CANCELABLE_STATUSES = ['Pending', 'Processing', 'In Progress'];
@@ -108,7 +109,7 @@ export default function ClientOrders() {
         <div className="flex flex-col gap-space-2xs">
           <div className="flex items-center gap-space-xs font-label-sm text-label-sm text-on-surface-variant">
             <Link className="flex items-center gap-space-2xs transition-colors hover:text-primary" to="/dashboard">
-              <span className="material-symbols-outlined text-sm">home</span>
+              <Home className="h-[16px] w-[16px] shrink-0" />
               <span>{t('nav.dashboard')}</span>
             </Link>
             <span>/</span>
@@ -123,15 +124,15 @@ export default function ClientOrders() {
         </div>
         <div className="flex flex-wrap items-center gap-space-sm sm:flex-nowrap">
           <div className="relative w-full sm:w-72">
-            <span className="material-symbols-outlined absolute start-space-md top-1/2 -translate-y-1/2 text-lg text-outline">search</span>
+            <Search className="absolute start-space-md top-1/2 -translate-y-1/2 text-outline h-[20px] w-[20px] shrink-0" />
             <input className="h-10 w-full rounded-xl bg-surface-container ps-10 pe-space-md font-body-sm text-body-sm text-on-surface transition-all placeholder:text-outline focus:bg-surface-container-high focus:outline-none" placeholder={lang === 'ar' ? 'تصفية حسب رقم الطلب أو الرابط...' : 'Filter by Order ID, target URL...'} type="text" value={q} onChange={e => setQ(e.target.value)} />
           </div>
           <button className="flex h-10 items-center gap-space-xs rounded-xl bg-surface-container px-space-md font-label-lg text-label-lg text-on-surface shadow-sm transition-colors hover:bg-surface-container-high" onClick={() => refetch()} type="button">
-            <span className="material-symbols-outlined text-base">sync</span>
+            <RefreshCw className="h-[18px] w-[18px] shrink-0" />
             <span className="hidden lg:inline">{t('common.refresh')}</span>
           </button>
           <button className="flex h-10 items-center gap-space-xs rounded-xl bg-primary px-space-md font-label-lg text-label-lg text-on-primary shadow-sm transition-colors hover:bg-primary-fixed" onClick={exportCsv} type="button">
-            <span className="material-symbols-outlined text-base">file_download</span>
+            <Download className="h-[18px] w-[18px] shrink-0" />
             <span>{t('common.export')}</span>
           </button>
         </div>
@@ -143,7 +144,7 @@ export default function ClientOrders() {
           <div className="absolute -end-4 -bottom-4 h-20 w-20 rounded-full bg-primary/5 blur-xl transition-all group-hover:bg-primary/10"></div>
           <div className="flex items-center justify-between text-on-surface-variant">
             <span className="font-label-sm text-label-sm uppercase tracking-wider">{lang === 'ar' ? 'إجمالي المرسل' : 'Total Dispatched'}</span>
-            <span className="material-symbols-outlined text-lg text-primary">stacked_line_chart</span>
+            <TrendingUp className="text-primary h-[20px] w-[20px] shrink-0" />
           </div>
           <div className="mt-space-md flex items-baseline justify-between">
             <span className="font-headline-lg text-headline-lg font-bold text-on-surface">{totalOrders.toLocaleString()}</span>
@@ -154,7 +155,7 @@ export default function ClientOrders() {
           <div className="absolute -end-4 -bottom-4 h-20 w-20 rounded-full bg-tertiary/5 blur-xl transition-all group-hover:bg-tertiary/10"></div>
           <div className="flex items-center justify-between text-on-surface-variant">
             <span className="font-label-sm text-label-sm uppercase tracking-wider">{lang === 'ar' ? 'قيد التنفيذ الفعلي' : 'Active Execution'}</span>
-            <span className="material-symbols-outlined text-lg text-tertiary">cycle</span>
+            <RefreshCcw className="text-tertiary h-[20px] w-[20px] shrink-0" />
           </div>
           <div className="mt-space-md flex items-baseline justify-between">
             <span className="font-headline-lg text-headline-lg font-bold text-tertiary">{activeCount.toLocaleString()}</span>
@@ -165,7 +166,7 @@ export default function ClientOrders() {
           <div className="absolute -end-4 -bottom-4 h-20 w-20 rounded-full bg-secondary/5 blur-xl transition-all group-hover:bg-secondary/10"></div>
           <div className="flex items-center justify-between text-on-surface-variant">
             <span className="font-label-sm text-label-sm uppercase tracking-wider">{lang === 'ar' ? 'إجمالي المصروف (30 يوم)' : 'Total Spent (30D)'}</span>
-            <span className="material-symbols-outlined text-lg text-secondary">account_balance</span>
+            <Landmark className="text-secondary h-[20px] w-[20px] shrink-0" />
           </div>
           <div className="mt-space-md flex items-baseline justify-between">
             <span className="font-headline-lg text-headline-lg font-bold text-on-surface">{money(spent30d)}</span>
@@ -176,7 +177,7 @@ export default function ClientOrders() {
           <div className="absolute -end-4 -bottom-4 h-20 w-20 rounded-full bg-primary-container/10 blur-xl transition-all group-hover:bg-primary-container/20"></div>
           <div className="flex items-center justify-between text-on-surface-variant">
             <span className="font-label-sm text-label-sm uppercase tracking-wider">{lang === 'ar' ? 'معدل الإنجاز' : 'Fulfillment Rate'}</span>
-            <span className="material-symbols-outlined text-lg text-primary">verified</span>
+            <BadgeCheck className="text-primary h-[20px] w-[20px] shrink-0" />
           </div>
           <div className="mt-space-md flex items-baseline justify-between">
             <span className="font-headline-lg text-headline-lg font-bold text-on-surface">{fulfillmentRate.toFixed(1)}%</span>
@@ -238,7 +239,7 @@ export default function ClientOrders() {
                       <div className="flex items-center gap-space-xs">
                         <span className="font-bold text-primary">#{String(o.id).slice(0, 8)}</span>
                         <button className="flex h-6 w-6 items-center justify-center rounded bg-surface-container-high text-outline transition-colors hover:bg-surface-bright hover:text-on-surface" onClick={() => copyId(o.id)} title={t('common.copy')} type="button">
-                          <span className="material-symbols-outlined text-xs">content_copy</span>
+                          <Copy className="h-[14px] w-[14px] shrink-0" />
                         </button>
                       </div>
                     </td>
@@ -252,7 +253,7 @@ export default function ClientOrders() {
                       <div className="group flex items-center gap-space-xs">
                         <span className="max-w-[160px] truncate font-code-xs text-code-xs text-tertiary" title={o.link}>{o.link}</span>
                         <a className="text-outline transition-colors hover:text-tertiary" href={o.link} rel="noreferrer" target="_blank">
-                          <span className="material-symbols-outlined text-sm">open_in_new</span>
+                          <ExternalLink className="h-[16px] w-[16px] shrink-0" />
                         </a>
                       </div>
                     </td>
@@ -264,17 +265,17 @@ export default function ClientOrders() {
                         </div>
                         {o.cancelRequested ? (
                           <div className="flex items-center gap-space-xs font-code-xs text-code-xs text-error">
-                            <span className="material-symbols-outlined text-xs">info</span>
+                            <Info className="h-[14px] w-[14px] shrink-0" />
                             <span>{lang === 'ar' ? 'تم طلب الإلغاء' : 'Cancellation requested'}</span>
                           </div>
                         ) : o.status === 'Partial' && refunded > 0 ? (
                           <div className="flex items-center gap-space-xs font-code-xs text-code-xs text-secondary">
-                            <span className="material-symbols-outlined text-xs">payments</span>
+                            <Banknote className="h-[14px] w-[14px] shrink-0" />
                             <span>{lang === 'ar' ? `المسترد: ${money(refunded)} إلى الرصيد` : `Refunded: ${money(refunded)} to balance`}</span>
                           </div>
                         ) : o.providerOrderId ? (
                           <div className="flex items-center gap-space-xs font-body-sm text-body-sm text-outline">
-                            <span className="material-symbols-outlined text-xs text-primary">bolt</span>
+                            <Zap className="text-primary h-[14px] w-[14px] shrink-0" />
                             <span className="font-code-xs text-code-xs text-on-surface-variant">{lang === 'ar' ? 'مرجع المزود: ' : 'Provider ref: '}{o.providerOrderId}</span>
                           </div>
                         ) : null}
@@ -306,15 +307,15 @@ export default function ClientOrders() {
                     <td className="px-space-md py-space-md text-end">
                       <div className="flex items-center justify-end gap-space-xs">
                         {canRefresh && <button disabled={refreshOrder.isPending} onClick={() => refreshOrder.mutate(o.id)} className="flex items-center gap-space-2xs rounded bg-surface-container-high px-space-xs py-1 font-label-sm text-label-sm text-on-surface-variant transition-colors hover:bg-surface-bright disabled:opacity-50" title="Refresh order status" type="button">
-                          <span className="material-symbols-outlined text-xs">sync</span>
+                          <RefreshCw className="h-[14px] w-[14px] shrink-0" />
                           <span>{lang === 'ar' ? 'تحديث الحالة' : 'Update status'}</span>
                         </button>}
                         {canRefill && <button disabled={refill.isPending} onClick={() => refill.mutate(o.id)} className="flex items-center gap-space-2xs rounded bg-surface-container-high px-space-xs py-1 font-label-sm text-label-sm text-tertiary transition-colors hover:bg-surface-bright disabled:opacity-50" title="Request refill" type="button">
-                          <span className="material-symbols-outlined text-xs">autorenew</span>
+                          <RefreshCw className="h-[14px] w-[14px] shrink-0" />
                           <span>{lang === 'ar' ? 'إعادة تعبئة' : 'Refill'}</span>
                         </button>}
                         {canCancel && <button disabled={cancel.isPending} onClick={() => confirm('Cancel this order and refund it to your wallet?') && cancel.mutate(o.id)} className="flex items-center gap-space-2xs rounded bg-error-container/20 px-space-xs py-1 font-label-sm text-label-sm text-error transition-colors hover:bg-error-container/40 disabled:opacity-50" title="Cancel order" type="button">
-                          <span className="material-symbols-outlined text-xs">close</span>
+                          <X className="h-[14px] w-[14px] shrink-0" />
                           <span>{t('common.cancel')}</span>
                         </button>}
                         {!canRefill && !canCancel && <span className="text-outline">-</span>}

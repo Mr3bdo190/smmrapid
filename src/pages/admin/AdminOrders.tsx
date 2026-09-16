@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { RefreshCw, Trash2 } from 'lucide-react';
+import { CircleX, Copy, Download, Link2, Network, RefreshCw, Search, Trash2, TrendingUp } from 'lucide-react';
 import { notify } from '../../lib/notify';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
@@ -185,17 +185,17 @@ export default function AdminOrders() {
           </button>
           <button type="button" onClick={handleMassCancel} disabled={selected.size === 0 || bulkStatusMutation.isPending}
             className="flex items-center gap-space-xs rounded-xl bg-error-container px-space-md py-space-sm font-label-lg text-label-lg text-on-error-container shadow-sm transition-colors hover:bg-error-container/80 disabled:opacity-50">
-            <span className="material-symbols-outlined text-base">cancel</span>
+            <CircleX className="h-[18px] w-[18px] shrink-0" />
             <span>{L('Mass Cancel', 'إلغاء جماعي')}</span>
           </button>
           <button type="button" onClick={() => handleExport('all')} title={t('common.exportAll')}
             className="flex items-center gap-space-xs rounded-xl bg-surface-container-highest px-space-md py-space-sm font-label-lg text-label-lg text-on-surface-variant transition-colors hover:bg-surface-bright hover:text-on-surface">
-            <span className="material-symbols-outlined text-base">download</span>
+            <Download className="h-[18px] w-[18px] shrink-0" />
             <span>{L('Export Log', 'تصدير السجل')}</span>
           </button>
           <button type="button" onClick={() => handleExport('page')}
             className="flex items-center gap-space-xs rounded-xl bg-surface-container-highest px-space-md py-space-sm font-label-lg text-label-lg text-on-surface-variant transition-colors hover:bg-surface-bright hover:text-on-surface">
-            <span className="material-symbols-outlined text-base">file_download</span>
+            <Download className="h-[18px] w-[18px] shrink-0" />
             <span>{t('common.exportPage')}</span>
           </button>
         </div>
@@ -220,7 +220,7 @@ export default function AdminOrders() {
         <div className="relative flex flex-col justify-between overflow-hidden rounded-xl bg-surface-container p-space-lg shadow-md">
           <div className="flex items-center justify-between">
             <span className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">{L('Gross Volume', 'إجمالي المبيعات')}</span>
-            <span className="material-symbols-outlined text-lg text-tertiary">trending_up</span>
+            <TrendingUp className="text-tertiary h-[20px] w-[20px] shrink-0" />
           </div>
           <div className="mt-space-md">
             <div className="font-display text-headline-lg font-bold text-on-surface">{money(gross)}</div>
@@ -234,7 +234,7 @@ export default function AdminOrders() {
         <div className="relative flex flex-col justify-between overflow-hidden rounded-xl bg-surface-container p-space-lg shadow-md">
           <div className="flex items-center justify-between">
             <span className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">{L('Provider Cost', 'تكلفة المزود')}</span>
-            <span className="material-symbols-outlined text-lg text-secondary">hub</span>
+            <Network className="text-secondary h-[20px] w-[20px] shrink-0" />
           </div>
           <div className="mt-space-md">
             <div className="font-display text-headline-lg font-bold text-on-surface">{money(cost)}</div>
@@ -263,7 +263,7 @@ export default function AdminOrders() {
       {/* ─── Search + status filter tabs ──────────────────────────────────── */}
       <div className="flex flex-col items-stretch justify-between gap-space-md lg:flex-row lg:items-center">
         <div className="relative max-w-xl flex-1">
-          <span className="material-symbols-outlined absolute start-3 top-1/2 -translate-y-1/2 text-lg text-outline">search</span>
+          <Search className="absolute start-3 top-1/2 -translate-y-1/2 text-outline h-[20px] w-[20px] shrink-0" />
           <input
             type="search"
             className="h-11 w-full rounded-xl bg-surface-container pe-space-md ps-11 font-body-sm text-body-sm text-on-surface shadow-sm placeholder:text-outline focus:bg-surface-container-high focus:outline-none"
@@ -282,7 +282,7 @@ export default function AdminOrders() {
                 type="button"
                 onClick={() => setStatus(tab.value)}
                 title={tab.value === 'all' ? t('common.allStatuses') : undefined}
-                className={`status-tab flex items-center gap-space-2xs rounded-xl px-space-md py-space-sm font-label-md text-label-md transition-all ${
+                className={`status-tab flex h-11 items-center gap-space-2xs whitespace-nowrap rounded-xl px-space-md font-label-md text-label-md transition-all ${
                   active
                     ? 'bg-primary-container text-on-primary-container shadow-sm'
                     : `bg-surface-container hover:bg-surface-container-high ${isErrorTab ? 'text-error' : 'text-on-surface-variant'}`
@@ -323,11 +323,11 @@ export default function AdminOrders() {
                   ))}
                 </select>
                 <button type="button" onClick={handleBulkStatus} disabled={bulkStatusMutation.isPending}
-                  className="rounded-lg bg-primary-container px-space-sm py-space-2xs font-label-sm text-label-sm text-on-primary-container transition-colors hover:bg-primary disabled:opacity-50">
+                  className="inline-flex h-[30px] items-center justify-center rounded-lg bg-primary-container px-space-sm font-label-sm text-label-sm text-on-primary-container transition-colors hover:bg-primary disabled:opacity-50">
                   {t('common.apply')}
                 </button>
                 <button type="button" onClick={() => { setSelected(new Set()); setBulkStatus(''); }}
-                  className="rounded-lg bg-surface-container-lowest px-space-sm py-space-2xs font-label-sm text-label-sm text-on-surface-variant transition-colors hover:bg-surface-bright hover:text-on-surface">
+                  className="inline-flex h-[30px] items-center justify-center rounded-lg bg-surface-container-lowest px-space-sm font-label-sm text-label-sm text-on-surface-variant transition-colors hover:bg-surface-bright hover:text-on-surface">
                   {t('common.cancel')}
                 </button>
               </>
@@ -391,10 +391,10 @@ export default function AdminOrders() {
                           <td className="px-space-md py-space-md" title={t('admin.orders.headers.user')}>
                             <div className="flex items-center gap-space-sm">
                               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-container-highest font-mono text-code-xs font-bold text-primary">{initials}</div>
-                              <div className="flex flex-col">
+                              <div className="flex min-w-0 flex-col">
                                 <span className={`font-mono text-code-sm font-bold ${isFailed ? 'text-error' : 'text-primary'}`} title={t('admin.orders.headers.id')}>#{String(o.id).slice(0, 8)}</span>
-                                <span className="font-body-sm text-body-sm leading-tight text-on-surface">{o.user?.email || '-'}</span>
-                                <span className="font-mono text-code-xs text-tertiary">{o.user?.name || o.user?.role || '-'}</span>
+                                <span className="max-w-[180px] truncate font-body-sm text-body-sm leading-tight text-on-surface" title={o.user?.email || '-'}>{o.user?.email || '-'}</span>
+                                <span className="max-w-[180px] truncate font-mono text-code-xs text-tertiary">{o.user?.name || o.user?.role || '-'}</span>
                               </div>
                             </div>
                           </td>
@@ -403,10 +403,10 @@ export default function AdminOrders() {
                               <span className="font-label-md text-label-md text-on-surface" title={t('admin.orders.headers.mode')}>
                                 {o.service?.executionMode === 'manual' ? t('admin.orders.manual') : t('admin.orders.provider')}
                               </span>
-                              <span className="flex items-center gap-space-2xs font-mono text-code-xs text-on-surface-variant" title={t('admin.orders.headers.provider_id')}>
-                                ID: <span className="font-semibold text-primary">{o.providerOrderId || '-'}</span>
+                              <span className="flex min-w-0 items-center gap-space-2xs font-mono text-code-xs text-on-surface-variant" title={t('admin.orders.headers.provider_id')}>
+                                ID: <span className="max-w-[140px] truncate font-semibold text-primary">{o.providerOrderId || '-'}</span>
                                 {o.providerOrderId
-                                  ? <button type="button" onClick={() => copyText(String(o.providerOrderId))} title={t('common.copy')} className="material-symbols-outlined cursor-pointer text-xs text-tertiary">content_copy</button>
+                                  ? <button type="button" onClick={() => copyText(String(o.providerOrderId))} title={t('common.copy')} aria-label={t('common.copy')} className="inline-flex shrink-0 cursor-pointer items-center text-tertiary transition-colors hover:text-primary"><Copy className="h-3.5 w-3.5" /></button>
                                   : null}
                               </span>
                               {o.providerError
@@ -419,16 +419,16 @@ export default function AdminOrders() {
                             </div>
                           </td>
                           <td className="max-w-xs px-space-md py-space-md" title={t('admin.orders.headers.service')}>
-                            <div className="flex flex-col">
-                              <div className="flex items-center gap-space-xs">
-                                <span className="rounded bg-surface-container-lowest px-space-xs py-space-2xs font-mono text-code-xs text-on-surface-variant">
+                            <div className="flex min-w-0 flex-col">
+                              <div className="flex min-w-0 items-center gap-space-xs">
+                                <span className="shrink-0 rounded bg-surface-container-lowest px-space-xs py-space-2xs font-mono text-code-xs text-on-surface-variant">
                                   SID: {o.service?.id ? String(o.service.id).slice(0, 8) : '-'}
                                 </span>
-                                <span className="truncate font-label-md text-label-md font-medium text-on-surface">{o.service?.name || '-'}</span>
+                                <span className="truncate font-label-md text-label-md font-medium text-on-surface" title={o.service?.name || '-'}>{o.service?.name || '-'}</span>
                               </div>
                               <a href={o.link} target="_blank" rel="noreferrer"
                                 className="mt-space-2xs flex items-center gap-space-2xs truncate font-mono text-code-xs text-tertiary hover:underline">
-                                <span className="material-symbols-outlined text-xs">link</span>
+                                <Link2 className="h-[14px] w-[14px] shrink-0" />
                                 {o.link}
                               </a>
                             </div>

@@ -56,10 +56,13 @@ export async function apiJson<T = any>(path: string, user?: User | null, init: R
     body = {};
   }
   if (!response.ok) {
-    // Build error from server response or generic message
+    // Build error from server response or generic message. `code` and `ref` are preserved so the
+    // shared notify helper can turn them into a clear, actionable customer message (and quote the
+    // support reference for internal failures).
     const normalizedError: any = new Error(body?.error || body?.message || `Request failed (${response.status})`);
     normalizedError.status = response.status;
     normalizedError.code = body?.code;
+    normalizedError.ref = body?.ref;
     // If the server didn't send a code but the message implies db unavailable, tag it
     if (!normalizedError.code && isAuthDbUnavailableError(normalizedError)) {
       normalizedError.code = AUTH_DB_UNAVAILABLE;

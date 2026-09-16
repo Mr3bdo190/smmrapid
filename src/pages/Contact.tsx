@@ -39,7 +39,7 @@ export default function Contact() {
       <p>{t('contact.subtitle')}</p>
 
       <div className="grid sm:grid-cols-2 gap-4">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="rounded-xl border-white/10 bg-surface-container/[0.03] p-5">
           <Mail className="w-5 h-5 text-amber-400 mb-2" />
           <h3 className="text-slate-100 font-semibold mb-1">{t('contact.emailLabel')}</h3>
           {config?.supportEmail ? (
@@ -48,7 +48,7 @@ export default function Contact() {
             <p className="text-slate-500 text-sm">{t('contact.emailNotConfigured')}</p>
           )}
         </div>
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="rounded-xl border-white/10 bg-surface-container/[0.03] p-5">
           <LifeBuoy className="w-5 h-5 text-amber-400 mb-2" />
           <h3 className="text-slate-100 font-semibold mb-1">{t('contact.existingCustomer')}</h3>
           <p className="text-slate-500 text-sm mb-2">{t('contact.openTicket')}</p>
@@ -56,7 +56,7 @@ export default function Contact() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+      <div className="rounded-xl border-white/10 bg-surface-container/[0.03] p-6">
         <h3 className="text-slate-100 font-semibold mb-4">{t('contact.formTitle')}</h3>
         {sent ? (
           <p className="text-emerald-400 text-sm">{t('contact.success')}</p>
@@ -65,20 +65,20 @@ export default function Contact() {
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-1">{t('contact.name')}</label>
-                <input value={name} onChange={e => setName(e.target.value)} required maxLength={100} className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg outline-none text-slate-100 focus:border-amber-400/50 text-sm" />
+                <input value={name} onChange={e => setName(e.target.value)} required maxLength={100} className="w-full px-3 py-2.5 bg-surface-container/5 border-white/10 rounded-lg outline-none text-slate-100 focus:border-amber-400/50 text-sm" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-1">{t('common.email')}</label>
-                <input type="email" value={email} onChange={e => setEmail(e.target.value)} required maxLength={200} className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg outline-none text-slate-100 focus:border-amber-400/50 text-sm" />
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)} required maxLength={200} className="w-full px-3 py-2.5 bg-surface-container/5 border-white/10 rounded-lg outline-none text-slate-100 focus:border-amber-400/50 text-sm" />
               </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-1">{t('contact.subject')}</label>
-              <input value={subject} onChange={e => setSubject(e.target.value)} required maxLength={200} className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg outline-none text-slate-100 focus:border-amber-400/50 text-sm" />
+              <input value={subject} onChange={e => setSubject(e.target.value)} required maxLength={200} className="w-full px-3 py-2.5 bg-surface-container/5 border-white/10 rounded-lg outline-none text-slate-100 focus:border-amber-400/50 text-sm" />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-1">{t('contact.message')}</label>
-              <textarea value={message} onChange={e => setMessage(e.target.value)} required minLength={10} maxLength={5000} rows={5} className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg outline-none text-slate-100 focus:border-amber-400/50 text-sm resize-none" />
+              <textarea value={message} onChange={e => setMessage(e.target.value)} required minLength={10} maxLength={5000} rows={5} className="w-full px-3 py-2.5 bg-surface-container/5 border-white/10 rounded-lg outline-none text-slate-100 focus:border-amber-400/50 text-sm resize-none" />
             </div>
             <button type="submit" disabled={mutation.isPending} className="px-6 py-2.5 text-sm font-semibold text-[#0B0F17] bg-amber-400 rounded-lg hover:bg-amber-300 transition-colors disabled:opacity-50">
               {mutation.isPending ? t('contact.sending') : t('contact.sendMessage')}

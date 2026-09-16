@@ -25,7 +25,7 @@ function UserDetailsModal({ userId, onClose }: { userId: string, onClose: () => 
 
   if (isLoading) return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white dark:bg-slate-800 rounded-lg p-6 max-w-4xl dark:border-slate-600 w-full shadow-xl">{t('common.loading')}</div>
+      <div className="bg-surface-container rounded-lg p-6 max-w-4xl border-outline-variant w-full shadow-xl">{t('common.loading')}</div>
     </div>
   );
   if (!data) return null;
@@ -37,57 +37,57 @@ function UserDetailsModal({ userId, onClose }: { userId: string, onClose: () => 
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-      <div className="bg-white dark:bg-slate-800 rounded-lg max-w-5xl dark:border-slate-600 w-full shadow-xl my-8 flex flex-col max-h-[90vh]">
-        <div className="flex justify-between items-center p-6 border-b border-gray-100 dark:border-slate-700">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{t('admin.users.details')}: {u.email}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-200"><X className="w-6 h-6"/></button>
+      <div className="bg-surface-container rounded-lg max-w-5xl border-outline-variant w-full shadow-xl my-8 flex-col max-h-[90vh]">
+        <div className="flex justify-between items-center p-6 border-b border-outline-variant">
+          <h2 className="text-2xl font-bold text-on-surface">{t('admin.users.details')}: {u.email}</h2>
+          <button onClick={onClose} className="text-outline hover:text-on-surface-variant dark:hover:text-gray-200"><X className="w-6 h-6"/></button>
         </div>
         
         <div className="p-6 overflow-y-auto flex-1 space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+          <div className="grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-indigo-50 p-4 rounded-xl border-indigo-100">
               <p className="text-sm font-medium text-indigo-800">{t('common.currentBalance')}</p>
               <p className="text-2xl font-bold text-indigo-900">${Number(u.balance).toFixed(4)}</p>
             </div>
-            <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100">
+            <div className="bg-emerald-50 p-4 rounded-xl border-emerald-100">
               <p className="text-sm font-medium text-emerald-800">{t('admin.users.totalSpent')}</p>
               <p className="text-2xl font-bold text-emerald-900">${totalSpent.toFixed(4)}</p>
             </div>
-            <div className="bg-amber-50 p-4 rounded-xl border border-amber-100">
+            <div className="bg-amber-50 p-4 rounded-xl border-amber-100">
               <p className="text-sm font-medium text-amber-800">{t('admin.users.totalOrders')}</p>
               <p className="text-2xl font-bold text-amber-900">{orders.length}</p>
             </div>
-            <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+            <div className="bg-blue-50 p-4 rounded-xl border-blue-100">
               <p className="text-sm font-medium text-blue-800">{t('admin.users.completedOrders')}</p>
               <p className="text-2xl font-bold text-blue-900">{completedOrders}</p>
             </div>
           </div>
 
           <div className="space-y-4">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 border-b dark:border-slate-600 pb-2">{t('admin.users.recentOrders')}</h3>
+            <h3 className="text-lg font-bold text-on-surface border-b border-outline-variant pb-2">{t('admin.users.recentOrders')}</h3>
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
-                <thead><tr><th className="text-left py-2 text-gray-500">{t('orders.service')}</th><th className="text-left py-2 text-gray-500">{t('newOrder.quantity')}</th><th className="text-left py-2 text-gray-500">{t('orders.charge')}</th><th className="text-left py-2 text-gray-500">{t('common.status')}</th></tr></thead>
+                <thead><tr><th className="text-left py-2 text-on-surface-variant">{t('orders.service')}</th><th className="text-left py-2 text-on-surface-variant">{t('newOrder.quantity')}</th><th className="text-left py-2 text-on-surface-variant">{t('orders.charge')}</th><th className="text-left py-2 text-on-surface-variant">{t('common.status')}</th></tr></thead>
                 <tbody className="divide-y divide-gray-50">
                   {orders.slice(0, 5).map((o: any) => (
                     <tr key={o.id}><td className="py-2">{o.service?.name}</td><td className="py-2">{o.quantity}</td><td className="py-2">${Number(o.charge).toFixed(4)}</td><td className="py-2">{o.status}</td></tr>
                   ))}
-                  {orders.length === 0 && <tr><td colSpan={4} className="py-2 text-gray-500">{t('common.noResults')}</td></tr>}
+                  {orders.length === 0 && <tr><td colSpan={4} className="py-2 text-on-surface-variant">{t('common.noResults')}</td></tr>}
                 </tbody>
               </table>
             </div>
           </div>
 
           <div className="space-y-4">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 border-b dark:border-slate-600 pb-2">{t('admin.users.recentPayments')}</h3>
+            <h3 className="text-lg font-bold text-on-surface border-b border-outline-variant pb-2">{t('admin.users.recentPayments')}</h3>
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
-                <thead><tr><th className="text-left py-2 text-gray-500">{t('common.date')}</th><th className="text-left py-2 text-gray-500">{t('common.type')}</th><th className="text-left py-2 text-gray-500">{t('common.amount')}</th><th className="text-left py-2 text-gray-500">{t('common.status')}</th></tr></thead>
+                <thead><tr><th className="text-left py-2 text-on-surface-variant">{t('common.date')}</th><th className="text-left py-2 text-on-surface-variant">{t('common.type')}</th><th className="text-left py-2 text-on-surface-variant">{t('common.amount')}</th><th className="text-left py-2 text-on-surface-variant">{t('common.status')}</th></tr></thead>
                 <tbody className="divide-y divide-gray-50">
                   {payments.slice(0, 5).map((p: any) => (
                     <tr key={p.id}><td className="py-2">{new Date(p.createdAt).toLocaleDateString()}</td><td className="py-2">{p.method}</td><td className="py-2 text-emerald-600 font-bold">${Number(p.amount).toFixed(4)}</td><td className="py-2">{p.status}</td></tr>
                   ))}
-                  {payments.length === 0 && <tr><td colSpan={4} className="py-2 text-gray-500">{t('common.noResults')}</td></tr>}
+                  {payments.length === 0 && <tr><td colSpan={4} className="py-2 text-on-surface-variant">{t('common.noResults')}</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -219,16 +219,16 @@ export default function AdminUsers() {
   };
 
   if (isLoading) return <div className="p-6 text-center text-slate-500">{t('common.loading')}</div>;
-  if (isError) return <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-6"><p className="font-bold text-red-600">{t('admin.users.loadError')}</p><p className="text-sm text-slate-500 mt-2">{String((error as any)?.message || '')}</p><button className="btn-primary mt-4" onClick={() => refetch()}>{t('common.refresh')}</button></div>;
+  if (isError) return <div className="bg-surface-container border-outline-variant rounded-xl p-6"><p className="font-bold text-red-600">{t('admin.users.loadError')}</p><p className="text-sm text-slate-500 mt-2">{String((error as any)?.message || '')}</p><button className="btn-primary mt-4" onClick={() => refetch()}>{t('common.refresh')}</button></div>;
 
   return (
     <div className="space-y-6" dir={dir}>
       <div className="flex justify-between flex-wrap gap-3">
         <div>
-          <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">{t('admin.users.title')}</h3>
+          <h3 className="text-xl font-bold text-on-surface tracking-tight">{t('admin.users.title')}</h3>
           <p className="text-sm text-slate-500 mt-1">{t('admin.users.subtitle')}</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex-wrap gap-2">
           <button className="btn-secondary" onClick={() => refetch()} disabled={isFetching}>
             <RefreshCw className="w-4 h-4 inline mr-1"/> {t('common.refresh')}
           </button>
@@ -243,7 +243,7 @@ export default function AdminUsers() {
 
       {/* Bulk Actions Bar */}
       {selected.size > 0 && (
-        <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 flex flex-wrap gap-3 items-center">
+        <div className="bg-indigo-50 border-indigo-200 rounded-xl p-4 flex-wrap gap-3 items-center">
           <span className="text-sm font-medium text-indigo-900">{t('common.selected', { count: selected.size })}</span>
           <select className="input-primary w-auto" value={bulkStatus} onChange={e => setBulkStatus(e.target.value)}>
             <option value="">{t('admin.users.selectStatus')}</option>
@@ -260,9 +260,9 @@ export default function AdminUsers() {
         </div>
       )}
 
-      <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-4 flex gap-3 flex-wrap">
+      <div className="bg-surface-container border-outline-variant rounded-xl p-4 flex gap-3 flex-wrap">
         <div className="relative flex-1 min-w-[220px]">
-          <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400"/>
+          <Search className="absolute left-3 top-3 w-4 h-4 text-outline"/>
           <input className="input-primary pl-9" placeholder={t('admin.users.search')} value={qInput} onChange={e => setQInput(e.target.value)}/>
         </div>
         <select className="input-primary w-auto" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
@@ -273,12 +273,12 @@ export default function AdminUsers() {
         </select>
       </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden w-full">
+      <div className="bg-surface-container rounded-xl shadow-sm border-outline-variant overflow-hidden w-full">
         <div className="overflow-x-auto w-full">
-          <table className="min-w-full divide-y divide-gray-100">
-            <thead className="bg-gray-50 dark:bg-slate-700">
+          <table className="min-w-full divide-y divide-outline-variant">
+            <thead className="bg-surface-container-low bg-surface-container-high">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">
                   <input
                     type="checkbox"
                     checked={allSelected}
@@ -288,18 +288,18 @@ export default function AdminUsers() {
                     }}
                   />
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('common.email')}</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('common.name')}</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('admin.users.role')}</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('admin.users.balance')}</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('common.status')}</th>
-                <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('common.actions')}</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">{t('common.email')}</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">{t('common.name')}</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">{t('admin.users.role')}</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">{t('admin.users.balance')}</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">{t('common.status')}</th>
+                <th className="px-6 py-4 text-right text-xs font-semibold text-on-surface-variant uppercase tracking-wider">{t('common.actions')}</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-100">
-              {rows.length === 0 && <tr><td colSpan={7} className="px-6 py-10 text-center text-gray-500">{t('admin.users.noUsers')}</td></tr>}
+            <tbody className="bg-surface-container divide-y divide-outline-variant">
+              {rows.length === 0 && <tr><td colSpan={7} className="px-6 py-10 text-center text-on-surface-variant">{t('admin.users.noUsers')}</td></tr>}
               {rows.map((u: any) => (
-                <tr key={u.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/50">
+                <tr key={u.id} className="hover:bg-surface-container-high/60">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <input
                       type="checkbox"
@@ -312,10 +312,10 @@ export default function AdminUsers() {
                       }}
                     />
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 font-medium">{u.email}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">{u.name || '-'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-on-surface font-medium">{u.email}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-on-surface-variant">{u.name || '-'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">{u.role}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-gray-100">${Number(u.balance).toFixed(4)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-on-surface">${Number(u.balance).toFixed(4)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium
                       ${u.status === 'active' ? 'bg-emerald-100 text-emerald-800' : ''}
@@ -344,16 +344,16 @@ export default function AdminUsers() {
       
       {balanceModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-slate-800 dark:border-slate-600 border border-gray-200 rounded-lg p-6 max-w-sm w-full shadow-xl">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">{t('admin.users.editBalanceFor', { name: balanceModal.email })}</h3>
+          <div className="bg-surface-container border-outline-variant border-outline-variant rounded-lg p-6 max-w-sm w-full shadow-xl">
+            <h3 className="text-lg font-bold text-on-surface mb-4">{t('admin.users.editBalanceFor', { name: balanceModal.email })}</h3>
             <form onSubmit={handleAddBalanceSubmit}>
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('admin.users.balanceAmount')}</label>
+                <label className="block text-sm font-medium text-on-surface-variant mb-1">{t('admin.users.balanceAmount')}</label>
                 <input type="number" step="0.01" value={balanceAmount} onChange={e => setBalanceAmount(e.target.value)} placeholder="50 or -10" className="input-primary w-full" required />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{t('admin.users.balanceHint')}</p>
+                <p className="text-xs text-on-surface-variant mt-2">{t('admin.users.balanceHint')}</p>
               </div>
               <div className="flex justify-end gap-3">
-                <button type="button" onClick={() => setBalanceModal(null)} className="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-md text-gray-700 dark:text-gray-300">{t('common.cancel')}</button>
+                <button type="button" onClick={() => setBalanceModal(null)} className="px-4 py-2 border-gray-300 border-outline-variant rounded-md text-on-surface-variant">{t('common.cancel')}</button>
                 <button type="submit" className="btn-primary">{t('admin.users.saveBalance')}</button>
               </div>
             </form>

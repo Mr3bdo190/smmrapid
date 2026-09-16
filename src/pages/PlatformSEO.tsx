@@ -58,7 +58,7 @@ export default function PlatformSEO() {
       <section>
         <h2 className="text-xl font-bold text-white mb-3">{safeLang === 'ar' ? `خدمات ${data.name} المتخصصة` : `${data.name} services`}</h2>
         <div className="grid sm:grid-cols-2 gap-3">
-          {data.services.map(s => <div key={s} className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-slate-200">{s}</div>)}
+          {data.services.map(s => <div key={s} className="rounded-xl border-white/10 bg-surface-container/[0.03] p-4 text-slate-200">{s}</div>)}
         </div>
       </section>
       <section>

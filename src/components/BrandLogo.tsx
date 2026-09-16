@@ -38,7 +38,7 @@ export function BrandLogo({
   return (
     <span className={`inline-flex items-center gap-2 ${className}`}>
       <BrandMark size={size} />
-      <span className="flex flex-col leading-tight">
+      <span className="flex-col leading-tight">
         <span className="brand-wordmark text-[1.05rem] text-slate-900 dark:text-slate-200">
           SMM<span>RAPID</span>
         </span>

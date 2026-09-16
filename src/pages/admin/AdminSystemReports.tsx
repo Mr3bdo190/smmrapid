@@ -100,11 +100,11 @@ export default function AdminSystemReports() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+          <h3 className="text-xl font-bold text-on-surface flex items-center gap-2">
             <ShieldAlert className="w-5 h-5" />
             {t('admin.settings.systemReports')}
           </h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-sm text-on-surface-variant">
             {activeTab === 'reports'
               ? t('admin.settings.reportsSubtitle')
               : t('settings.systemLogsSubtitle')}
@@ -113,14 +113,14 @@ export default function AdminSystemReports() {
       </div>
 
       {/* Tab Navigation */}
-      <div className="border-b border-gray-200 dark:border-slate-700">
+      <div className="border-b border-outline-variant">
         <nav className="flex gap-6">
           <button
             onClick={() => setActiveTab('reports')}
             className={`pb-2 px-1 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'reports'
                 ? 'border-indigo-600 text-indigo-700 dark:text-indigo-300'
-                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                : 'border-transparent text-on-surface-variant hover:text-on-surface dark:hover:text-gray-200'
             }`}
           >
             {t('admin.settings.systemReports')}
@@ -130,7 +130,7 @@ export default function AdminSystemReports() {
             className={`pb-2 px-1 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'logs'
                 ? 'border-indigo-600 text-indigo-700 dark:text-indigo-300'
-                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                : 'border-transparent text-on-surface-variant hover:text-on-surface dark:hover:text-gray-200'
             }`}
           >
             {t('settings.systemLogs')}
@@ -141,18 +141,18 @@ export default function AdminSystemReports() {
       {/* Reports Tab */}
       {activeTab === 'reports' && (
         <>
-          <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-4 flex flex-wrap gap-3">
+          <div className="bg-surface-container border-outline-variant rounded-xl p-4 flex-wrap gap-3">
             <div className="relative flex-1 min-w-[220px]">
-              <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400 dark:text-gray-500" />
+              <Search className="absolute left-3 top-3 w-4 h-4 text-outline" />
               <input
-                className="input-primary pl-9 dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200"
+                className="input-primary pl-9 bg-surface-container-high border-outline-variant text-on-surface"
                 placeholder="Search this page: action, location or error"
                 value={q}
                 onChange={e => setQ(e.target.value)}
               />
             </div>
             <select
-              className="input-primary w-auto dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200"
+              className="input-primary w-auto bg-surface-container-high border-outline-variant text-on-surface"
               value={status}
               onChange={e => setStatus(e.target.value)}
             >
@@ -162,32 +162,32 @@ export default function AdminSystemReports() {
             </select>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl overflow-x-auto">
+          <div className="bg-surface-container border-outline-variant rounded-xl overflow-x-auto">
             <table className="min-w-[1000px] w-full">
-              <thead className="bg-gray-50 dark:bg-gray-900">
+              <thead className="bg-surface-container-low dark:bg-gray-900">
                 <tr>
                   {['Date', 'Action', 'Location', 'Error / Reason', 'Status', 'Actions'].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs text-gray-500 dark:text-gray-400 uppercase">
+                    <th key={h} className="px-4 py-3 text-left text-xs text-on-surface-variant uppercase">
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+              <tbody className="divide-y divide-outline-variant">
                 {reportsQ.isLoading ? (
                   <tr>
-                    <td colSpan={6} className="p-8 text-center text-gray-500 dark:text-gray-400">Loading...</td>
+                    <td colSpan={6} className="p-8 text-center text-on-surface-variant">Loading...</td>
                   </tr>
                 ) : (
                   reportFiltered.map((r: any) => (
                     <tr key={r.id}>
-                      <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">
+                      <td className="px-4 py-3 text-xs text-on-surface-variant">
                         {new Date(r.createdAt).toLocaleString()}
                       </td>
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">{r.action}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{r.location}</td>
+                      <td className="px-4 py-3 text-sm font-medium text-on-surface">{r.action}</td>
+                      <td className="px-4 py-3 text-sm text-on-surface-variant">{r.location}</td>
                       <td className="px-4 py-3 text-sm text-red-600">{r.errorReason}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{r.status}</td>
+                      <td className="px-4 py-3 text-sm text-on-surface-variant">{r.status}</td>
                       <td className="px-4 py-3">
                         {r.status !== 'Resolved' && (
                           <button
@@ -205,7 +205,7 @@ export default function AdminSystemReports() {
                 )}
                 {!reportsQ.isLoading && !reportFiltered.length && (
                   <tr>
-                    <td colSpan={6} className="p-8 text-center text-gray-500 dark:text-gray-400">
+                    <td colSpan={6} className="p-8 text-center text-on-surface-variant">
                       No reports found.
                     </td>
                   </tr>
@@ -228,19 +228,19 @@ export default function AdminSystemReports() {
       {/* System Logs Tab */}
       {activeTab === 'logs' && (
         <>
-          <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-4 flex flex-wrap gap-3 items-center justify-between">
-            <div className="flex flex-wrap gap-3 items-center">
+          <div className="bg-surface-container border-outline-variant rounded-xl p-4 flex-wrap gap-3 items-center justify-between">
+            <div className="flex-wrap gap-3 items-center">
               <div className="relative flex-1 min-w-[220px]">
-                <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400 dark:text-gray-500" />
+                <Search className="absolute left-3 top-3 w-4 h-4 text-outline" />
                 <input
-                  className="input-primary pl-9 dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200"
+                  className="input-primary pl-9 bg-surface-container-high border-outline-variant text-on-surface"
                   placeholder={t('settings.filterByLevel')}
                   value={q}
                   onChange={e => setQ(e.target.value)}
                 />
               </div>
               <select
-                className="input-primary w-auto dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200"
+                className="input-primary w-auto bg-surface-container-high border-outline-variant text-on-surface"
                 value={logLevel}
                 onChange={e => setLogLevel(e.target.value)}
               >
@@ -268,21 +268,21 @@ export default function AdminSystemReports() {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl overflow-x-auto">
+          <div className="bg-surface-container border-outline-variant rounded-xl overflow-x-auto">
             <table className="min-w-[1000px] w-full">
-              <thead className="bg-gray-50 dark:bg-gray-900">
+              <thead className="bg-surface-container-low dark:bg-gray-900">
                 <tr>
                   {['Time', 'Level', 'Message', 'Details'].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs text-gray-500 dark:text-gray-400 uppercase">
+                    <th key={h} className="px-4 py-3 text-left text-xs text-on-surface-variant uppercase">
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+              <tbody className="divide-y divide-outline-variant">
                 {logsQ.isLoading ? (
                   <tr>
-                    <td colSpan={4} className="p-8 text-center text-gray-500 dark:text-gray-400">
+                    <td colSpan={4} className="p-8 text-center text-on-surface-variant">
                       {t('settings.loadingLogs')}
                     </td>
                   </tr>
@@ -297,7 +297,7 @@ export default function AdminSystemReports() {
                       const Icon = levelIcons[r.level] || Server;
                       return (
                         <tr key={r.id}>
-                          <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">
+                          <td className="px-4 py-3 text-xs text-on-surface-variant">
                             {new Date(r.createdAt).toLocaleString()}
                           </td>
                           <td className="px-4 py-3">
@@ -312,8 +312,8 @@ export default function AdminSystemReports() {
                               {r.level}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">{r.message}</td>
-                          <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 max-w-xs truncate">
+                          <td className="px-4 py-3 text-sm text-on-surface">{r.message}</td>
+                          <td className="px-4 py-3 text-sm text-on-surface-variant max-w-xs truncate">
                             {r.details || '-'}
                           </td>
                         </tr>
@@ -322,7 +322,7 @@ export default function AdminSystemReports() {
                 )}
                 {!logsQ.isLoading && !logRows.length && (
                   <tr>
-                    <td colSpan={4} className="p-8 text-center text-gray-500 dark:text-gray-400">
+                    <td colSpan={4} className="p-8 text-center text-on-surface-variant">
                       No logs found.
                     </td>
                   </tr>

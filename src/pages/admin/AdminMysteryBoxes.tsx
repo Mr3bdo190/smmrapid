@@ -45,32 +45,32 @@ export default function AdminMysteryBoxes() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2"><Gift className="w-5 h-5 text-indigo-600 dark:text-indigo-400"/> Mystery Box Tiers</h3>
+        <h3 className="text-xl font-bold text-on-surface flex items-center gap-2"><Gift className="w-5 h-5 text-indigo-600 dark:text-indigo-400"/> Mystery Box Tiers</h3>
         <button onClick={() => setIsModalOpen(true)} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4"/> Add Tier</button>
       </div>
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
+      <div className="bg-surface-container rounded-xl shadow-sm border-outline-variant overflow-hidden">
         <div className="overflow-x-auto w-full">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
-          <thead className="bg-gray-50 dark:bg-slate-700/50">
+        <table className="min-w-full divide-y divide-outline-variant">
+          <thead className="bg-surface-container-low">
             <tr>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Name</th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Min / Max ($)</th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Probability (%)</th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Status</th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Actions</th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-on-surface-variant uppercase">Name</th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-on-surface-variant uppercase">Min / Max ($)</th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-on-surface-variant uppercase">Probability (%)</th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-on-surface-variant uppercase">Status</th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-on-surface-variant uppercase">Actions</th>
             </tr>
           </thead>
-          <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700">
+          <tbody className="bg-surface-container divide-y divide-outline-variant">
             {tiers.map((t: any) => (
-              <tr key={t.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/50">
-                <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-200">{t.name}</td>
-                <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">${Number(t.minAmount).toFixed(2)} - ${Number(t.maxAmount).toFixed(2)}</td>
-                <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{t.probability}%</td>
+              <tr key={t.id} className="hover:bg-surface-container-high/60">
+                <td className="px-6 py-4 text-sm font-medium text-on-surface">{t.name}</td>
+                <td className="px-6 py-4 text-sm text-on-surface-variant">${Number(t.minAmount).toFixed(2)} - ${Number(t.maxAmount).toFixed(2)}</td>
+                <td className="px-6 py-4 text-sm text-on-surface-variant">{t.probability}%</td>
                 <td className="px-6 py-4 text-sm"><span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 rounded text-xs">{t.status}</span></td>
                 <td className="px-6 py-4 text-sm"><button onClick={async()=>{const token=await user?.getIdToken();const res=await apiFetch(`/api/admin/mystery-boxes/${t.id}`, user,{method:'DELETE',headers:{Authorization: `Bearer ${token}`}});if(res.ok){notify.success('Tier deactivated');queryClient.invalidateQueries({queryKey:['admin-mystery-tiers']});}else notify.error('Action failed')}} className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300">Deactivate</button></td>
               </tr>
             ))}
-            {tiers.length === 0 && <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">No tiers found.</td></tr>}
+            {tiers.length === 0 && <tr><td colSpan={5} className="px-6 py-8 text-center text-on-surface-variant">No tiers found.</td></tr>}
           </tbody>
         </table>
         </div>
@@ -78,29 +78,29 @@ export default function AdminMysteryBoxes() {
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg p-6 max-w-md w-full shadow-xl">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">Add Mystery Box Tier</h3>
+          <div className="bg-surface-container border-outline-variant rounded-lg p-6 max-w-md w-full shadow-xl">
+            <h3 className="text-lg font-bold text-on-surface mb-4">Add Mystery Box Tier</h3>
             <form onSubmit={(e) => { e.preventDefault(); createMutation.mutate(formData); }} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tier Name (e.g. Bronze, Gold)</label>
-                <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="input-primary dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200" />
+                <label className="block text-sm font-medium text-on-surface-variant mb-1">Tier Name (e.g. Bronze, Gold)</label>
+                <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="input-primary bg-surface-container-high border-outline-variant text-on-surface" />
               </div>
               <div className="flex gap-4">
                 <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Min Amount ($)</label>
-                  <input required type="number" step="0.01" value={formData.minAmount} onChange={e => setFormData({...formData, minAmount: e.target.value})} className="input-primary dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200" />
+                  <label className="block text-sm font-medium text-on-surface-variant mb-1">Min Amount ($)</label>
+                  <input required type="number" step="0.01" value={formData.minAmount} onChange={e => setFormData({...formData, minAmount: e.target.value})} className="input-primary bg-surface-container-high border-outline-variant text-on-surface" />
                 </div>
                 <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Max Amount ($)</label>
-                  <input required type="number" step="0.01" value={formData.maxAmount} onChange={e => setFormData({...formData, maxAmount: e.target.value})} className="input-primary dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200" />
+                  <label className="block text-sm font-medium text-on-surface-variant mb-1">Max Amount ($)</label>
+                  <input required type="number" step="0.01" value={formData.maxAmount} onChange={e => setFormData({...formData, maxAmount: e.target.value})} className="input-primary bg-surface-container-high border-outline-variant text-on-surface" />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Probability Weight (e.g. 50)</label>
-                <input required type="number" value={formData.probability} onChange={e => setFormData({...formData, probability: e.target.value})} className="input-primary dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200" />
+                <label className="block text-sm font-medium text-on-surface-variant mb-1">Probability Weight (e.g. 50)</label>
+                <input required type="number" value={formData.probability} onChange={e => setFormData({...formData, probability: e.target.value})} className="input-primary bg-surface-container-high border-outline-variant text-on-surface" />
               </div>
               <div className="flex justify-end gap-3 mt-6">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-md text-gray-700 dark:text-gray-300">Cancel</button>
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 border-gray-300 border-outline-variant rounded-md text-on-surface-variant">Cancel</button>
                 <button type="submit" disabled={createMutation.isPending} className="btn-primary">Create</button>
               </div>
             </form>

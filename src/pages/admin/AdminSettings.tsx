@@ -163,7 +163,7 @@ export default function AdminSettings() {
     <div className="space-y-6 max-w-6xl mx-auto">
       {/* Header */}
       <div className="flex justify-between items-center">
-        <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">{t('nav.admin.settings')}</h3>
+        <h3 className="text-xl font-bold text-on-surface tracking-tight">{t('nav.admin.settings')}</h3>
         <button onClick={handleSave} className="btn-primary flex items-center gap-2" disabled={updateMutation.isPending}>
           {updateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           {t('admin.settings.save')}
@@ -171,7 +171,7 @@ export default function AdminSettings() {
       </div>
 
       {/* Tab Navigation */}
-      <div className="border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-gray-900 rounded-t-xl shadow-sm">
+      <div className="border-b border-outline-variant bg-surface-container dark:bg-gray-900 rounded-t-xl shadow-sm">
         <nav className="flex overflow-x-auto" dir="ltr">
           {tabs.map(tab => {
             const Icon = tab.icon;
@@ -183,7 +183,7 @@ export default function AdminSettings() {
                 className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                   isActive
                     ? 'border-indigo-600 text-indigo-700 dark:text-indigo-300'
-                    : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
+                    : 'border-transparent text-on-surface-variant hover:text-on-surface dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -195,53 +195,53 @@ export default function AdminSettings() {
       </div>
 
       {/* Tab Content */}
-      <div className="bg-white dark:bg-slate-800 rounded-b-xl shadow-sm border border-gray-200 dark:border-slate-700 p-6 min-h-[400px]">
+      <div className="bg-surface-container rounded-b-xl shadow-sm border-outline-variant p-6 min-h-[400px]">
         {/* General Settings Tab */}
         {activeTab === 'general' && (
           <div className="space-y-6" dir="ltr">
-            <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t('admin.settings.general')}</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <h4 className="text-lg font-semibold text-on-surface">{t('admin.settings.general')}</h4>
+            <div className="grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('admin.settings.siteName')}</label>
+                <label className="block text-sm font-medium text-on-surface-variant mb-1">{t('admin.settings.siteName')}</label>
                 <input type="text" value={siteName} onChange={e => setSiteName(e.target.value)}
                   className="input-primary w-full" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('admin.settings.currencySymbol')}</label>
+                <label className="block text-sm font-medium text-on-surface-variant mb-1">{t('admin.settings.currencySymbol')}</label>
                 <input type="text" value={currencySymbol} onChange={e => setCurrencySymbol(e.target.value)}
                   className="input-primary w-full" />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('admin.settings.siteDescription')}</label>
+                <label className="block text-sm font-medium text-on-surface-variant mb-1">{t('admin.settings.siteDescription')}</label>
                 <input type="text" value={siteDescription} onChange={e => setSiteDescription(e.target.value)}
                   className="input-primary w-full" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('admin.settings.supportEmail')}</label>
+                <label className="block text-sm font-medium text-on-surface-variant mb-1">{t('admin.settings.supportEmail')}</label>
                 <input type="email" value={supportEmail} onChange={e => setSupportEmail(e.target.value)}
-                  className="input-primary w-full placeholder-gray-400 dark:placeholder-gray-500" />
+                  className="input-primary w-full placeholder-gray-400 placeholder:text-outline" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('admin.settings.siteLogo')}</label>
+                <label className="block text-sm font-medium text-on-surface-variant mb-1">{t('admin.settings.siteLogo')}</label>
                 <input type="url" value={siteLogo} onChange={e => setSiteLogo(e.target.value)}
-                  className="input-primary w-full placeholder-gray-400 dark:placeholder-gray-500" />
+                  className="input-primary w-full placeholder-gray-400 placeholder:text-outline" />
               </div>
             </div>
 
-            <div className="border-t border-gray-200 dark:border-slate-700 pt-6" dir="ltr">
-              <h5 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-4">{t('admin.settings.affiliate')}</h5>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="border-t border-outline-variant pt-6" dir="ltr">
+              <h5 className="text-sm font-bold text-on-surface mb-4">{t('admin.settings.affiliate')}</h5>
+              <div className="grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('admin.settings.commission')}</label>
+                  <label className="block text-sm font-medium text-on-surface-variant mb-1">{t('admin.settings.commission')}</label>
                   <input type="number" step="0.1" value={affiliateComm} onChange={e => setAffiliateComm(e.target.value)}
                     className="input-primary w-full max-w-xs" />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('admin.settings.commissionDesc')}</p>
+                  <p className="text-xs text-on-surface-variant mt-1">{t('admin.settings.commissionDesc')}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('admin.settings.profitMargin')}</label>
+                  <label className="block text-sm font-medium text-on-surface-variant mb-1">{t('admin.settings.profitMargin')}</label>
                   <input type="number" min="0" max="10000" step="0.1" value={defaultProfitMargin} onChange={e => setDefaultProfitMargin(e.target.value)}
                     className="input-primary w-full max-w-xs" />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('admin.settings.profitMarginDesc')}</p>
+                  <p className="text-xs text-on-surface-variant mt-1">{t('admin.settings.profitMarginDesc')}</p>
                 </div>
               </div>
             </div>
@@ -251,29 +251,29 @@ export default function AdminSettings() {
         {/* Financial Limits Tab */}
         {activeTab === 'financial' && (
           <div className="space-y-6" dir="ltr">
-            <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t('admin.settings.financial')}</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <h4 className="text-lg font-semibold text-on-surface">{t('admin.settings.financial')}</h4>
+            <div className="grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('settings.minDeposit')}</label>
+                <label className="block text-sm font-medium text-on-surface-variant mb-1">{t('settings.minDeposit')}</label>
                 <input type="number" min="0" step="0.01" value={minDeposit} onChange={e => setMinDeposit(e.target.value)}
                   className="input-primary w-full max-w-xs" />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('settings.minDepositDesc')}</p>
+                <p className="text-xs text-on-surface-variant mt-1">{t('settings.minDepositDesc')}</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('settings.minWithdrawal')}</label>
+                <label className="block text-sm font-medium text-on-surface-variant mb-1">{t('settings.minWithdrawal')}</label>
                 <input type="number" min="0" step="0.01" value={minWithdrawal} onChange={e => setMinWithdrawal(e.target.value)}
                   className="input-primary w-full max-w-xs" />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('settings.minWithdrawalDesc')}</p>
+                <p className="text-xs text-on-surface-variant mt-1">{t('settings.minWithdrawalDesc')}</p>
               </div>
             </div>
-            <div className="border-t border-gray-200 dark:border-slate-700 pt-6">
-              <h5 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-4">{t('admin.settings.exchange')}</h5>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="border-t border-outline-variant pt-6">
+              <h5 className="text-sm font-bold text-on-surface mb-4">{t('admin.settings.exchange')}</h5>
+              <div className="grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('admin.settings.exchangeRate')}</label>
+                  <label className="block text-sm font-medium text-on-surface-variant mb-1">{t('admin.settings.exchangeRate')}</label>
                   <input type="number" step="0.01" min="0.01" value={usdExchangeRate} onChange={e => setUsdExchangeRate(e.target.value)}
                     className="input-primary w-full max-w-xs" />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('admin.settings.exchangeRateDesc')}</p>
+                  <p className="text-xs text-on-surface-variant mt-1">{t('admin.settings.exchangeRateDesc')}</p>
                 </div>
               </div>
             </div>
@@ -283,40 +283,40 @@ export default function AdminSettings() {
         {/* API Settings Tab */}
         {activeTab === 'api' && (
           <div className="space-y-6" dir="ltr">
-            <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+            <h4 className="text-lg font-semibold text-on-surface flex items-center gap-2">
               <Key className="w-5 h-5" /> {t('admin.settings.apiSettings')}
             </h4>
-            <div className="rounded-xl bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 p-5 space-y-4">
+            <div className="rounded-xl bg-surface-container-low bg-surface-container-high border-outline-variant p-5 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('admin.settings.sha7nawyPublic')}</label>
+                <label className="block text-sm font-medium text-on-surface-variant mb-1">{t('admin.settings.sha7nawyPublic')}</label>
                 <input value={shahnawyPublicKey} onChange={e => setShahnawyPublicKey(e.target.value)}
-                  className="input-primary w-full placeholder-gray-400 dark:placeholder-gray-500" placeholder="Public API key" />
+                  className="input-primary w-full placeholder-gray-400 placeholder:text-outline" placeholder="Public API key" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('admin.settings.sha7nawySecret')}</label>
+                <label className="block text-sm font-medium text-on-surface-variant mb-1">{t('admin.settings.sha7nawySecret')}</label>
                 <input type="password" value={shahnawySecretKey} onChange={e => setShahnawySecretKey(e.target.value)}
-                  className="input-primary w-full placeholder-gray-400 dark:placeholder-gray-500" placeholder="Secret API key" />
+                  className="input-primary w-full placeholder-gray-400 placeholder:text-outline" placeholder="Secret API key" />
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('admin.settings.baseUrl')}</label>
+                  <label className="block text-sm font-medium text-on-surface-variant mb-1">{t('admin.settings.baseUrl')}</label>
                   <input value={shahnawyBaseUrl} onChange={e => setShahnawyBaseUrl(e.target.value)}
-                    className="input-primary w-full placeholder-gray-400 dark:placeholder-gray-500" />
+                    className="input-primary w-full placeholder-gray-400 placeholder:text-outline" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('admin.settings.merchantWallet')}</label>
+                  <label className="block text-sm font-medium text-on-surface-variant mb-1">{t('admin.settings.merchantWallet')}</label>
                   <input value={shahnawyMerchantWalletNumber} onChange={e => setShahnawyMerchantWalletNumber(e.target.value.replace(/\D/g, '').slice(0, 11))}
-                    className="input-primary w-full placeholder-gray-400 dark:placeholder-gray-500" placeholder="01XXXXXXXXX" />
+                    className="input-primary w-full placeholder-gray-400 placeholder:text-outline" placeholder="01XXXXXXXXX" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('admin.settings.minEgp')}</label>
+                  <label className="block text-sm font-medium text-on-surface-variant mb-1">{t('admin.settings.minEgp')}</label>
                   <input type="number" min="1" value={shahnawyMinAmount} onChange={e => setShahnawyMinAmount(e.target.value)}
-                    className="input-primary w-full placeholder-gray-400 dark:placeholder-gray-500" />
+                    className="input-primary w-full placeholder-gray-400 placeholder:text-outline" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('admin.settings.maxEgp')}</label>
+                  <label className="block text-sm font-medium text-on-surface-variant mb-1">{t('admin.settings.maxEgp')}</label>
                   <input type="number" min="1" value={shahnawyMaxAmount} onChange={e => setShahnawyMaxAmount(e.target.value)}
-                    className="input-primary w-full placeholder-gray-400 dark:placeholder-gray-500" />
+                    className="input-primary w-full placeholder-gray-400 placeholder:text-outline" />
                 </div>
               </div>
             </div>
@@ -326,19 +326,19 @@ export default function AdminSettings() {
         {/* Payment Methods Tab */}
         {activeTab === 'payments' && (
           <div className="space-y-6" dir="ltr">
-            <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+            <h4 className="text-lg font-semibold text-on-surface flex items-center gap-2">
               <PlugZap className="w-5 h-5" /> {t('admin.settings.paymentMethods')}
             </h4>
 
             {/* Sha7nawy Gate */}
-            <div className="rounded-xl border border-indigo-100 dark:border-indigo-900 bg-indigo-50 dark:bg-indigo-900/20 p-5 space-y-4">
+            <div className="rounded-xl border-indigo-100 dark:border-indigo-900 bg-indigo-50 dark:bg-indigo-900/20 p-5 space-y-4">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <h5 className="font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                  <h5 className="font-bold text-on-surface flex items-center gap-2">
                     <Globe className="w-4 h-4" />
                     {t('admin.settings.sha7nawyGate')}
                   </h5>
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                  <p className="text-xs text-on-surface-variant mt-1">
                     {t('admin.settings.sha7nawyDesc')}
                   </p>
                 </div>
@@ -348,28 +348,28 @@ export default function AdminSettings() {
                   className={`px-4 py-2 rounded-lg text-sm font-semibold ${
                     shahnawyEnabled
                       ? 'bg-emerald-600 text-white'
-                      : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
+                      : 'bg-gray-200 dark:bg-gray-600 text-on-surface-variant'
                   }`}
                 >
                   {shahnawyEnabled ? 'Enabled' : 'Disabled'}
                 </button>
               </div>
-              <div className="rounded-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 p-4 text-xs text-gray-600 dark:text-gray-400 space-y-2">
-                <p><strong>{t('admin.settings.webhook')}:</strong> <code className="bg-gray-100 dark:bg-slate-700 px-1 rounded">/api/shahnawy/webhook</code> — {t('admin.settings.webhookDesc')}</p>
+              <div className="rounded-xl bg-surface-container border-outline-variant p-4 text-xs text-on-surface-variant space-y-2">
+                <p><strong>{t('admin.settings.webhook')}:</strong> <code className="bg-surface-container-high px-1 rounded">/api/shahnawy/webhook</code> — {t('admin.settings.webhookDesc')}</p>
                 <p><strong>{t('admin.settings.security')}:</strong> {t('admin.settings.securityDesc')}</p>
               </div>
             </div>
 
             {/* Add Funds Instructions */}
-            <div className="border-t border-gray-200 dark:border-slate-700 pt-6">
-              <h5 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-2">{t('admin.settings.addFundsInstructions')}</h5>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+            <div className="border-t border-outline-variant pt-6">
+              <h5 className="text-sm font-bold text-on-surface mb-2">{t('admin.settings.addFundsInstructions')}</h5>
+              <p className="text-xs text-on-surface-variant mb-4">
                 {t('admin.settings.addFundsDesc')}
               </p>
               <div className="space-y-5">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label className="block text-sm font-medium text-on-surface-variant mb-1">
                       {t('admin.settings.walletIntroAr')}
                     </label>
                     <textarea
@@ -379,7 +379,7 @@ export default function AdminSettings() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label className="block text-sm font-medium text-on-surface-variant mb-1">
                       {t('admin.settings.walletIntroEn')}
                     </label>
                     <textarea
@@ -389,7 +389,7 @@ export default function AdminSettings() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label className="block text-sm font-medium text-on-surface-variant mb-1">
                       {t('admin.settings.walletVerificationAr')}
                     </label>
                     <textarea
@@ -399,7 +399,7 @@ export default function AdminSettings() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label className="block text-sm font-medium text-on-surface-variant mb-1">
                       {t('admin.settings.walletVerificationEn')}
                     </label>
                     <textarea
@@ -417,9 +417,9 @@ export default function AdminSettings() {
                   ['Crypto payment', cryptoIntroAr, setCryptoIntroAr, cryptoIntroEn, setCryptoIntroEn],
                   ['Crypto invoice', cryptoInvoiceAr, setCryptoInvoiceAr, cryptoInvoiceEn, setCryptoInvoiceEn],
                 ].map(([label, arv, setAr, env, setEn]: any) => (
-                  <div key={label} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div key={label} className="grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      <label className="block text-sm font-medium text-on-surface-variant mb-1">
                         {label} — العربية
                       </label>
                       <textarea
@@ -429,7 +429,7 @@ export default function AdminSettings() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      <label className="block text-sm font-medium text-on-surface-variant mb-1">
                         {label} — English
                       </label>
                       <textarea
@@ -444,11 +444,11 @@ export default function AdminSettings() {
             </div>
 
             {/* Heleket Connection */}
-            <div className="border-t border-gray-200 dark:border-slate-700 pt-6">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <div className="border-t border-outline-variant pt-6">
+              <label className="block text-sm font-medium text-on-surface-variant mb-1">
                 {t('admin.settings.heleketConnection')}
               </label>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+              <p className="text-xs text-on-surface-variant mb-2">
                 {t('admin.settings.heleketTest')}
               </p>
               <button

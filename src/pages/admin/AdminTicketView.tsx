@@ -64,19 +64,19 @@ export default function AdminTicketView() {
     replyMutation.mutate(message);
   };
 
-  if (isLoading) return <div className="p-6 text-gray-500 dark:text-gray-400">Loading...</div>;
-  if (!ticketData?.ticket) return <div className="p-6 text-gray-500 dark:text-gray-400">Ticket not found</div>;
+  if (isLoading) return <div className="p-6 text-on-surface-variant">Loading...</div>;
+  if (!ticketData?.ticket) return <div className="p-6 text-on-surface-variant">Ticket not found</div>;
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto flex flex-col h-[calc(100vh-8rem)]">
+    <div className="space-y-6 max-w-4xl mx-auto flex-col h-[calc(100vh-8rem)]">
       <div className="flex items-center gap-4">
-        <Link to="/admin/tickets" className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"><ArrowLeft className="w-5 h-5"/></Link>
+        <Link to="/admin/tickets" className="text-on-surface-variant hover:text-on-surface dark:hover:text-gray-200"><ArrowLeft className="w-5 h-5"/></Link>
         <div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">{ticketData.ticket.subject}</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">User: {ticketData.ticket.user?.email}</p>
+          <h2 className="text-xl font-bold text-on-surface">{ticketData.ticket.subject}</h2>
+          <p className="text-sm text-on-surface-variant">User: {ticketData.ticket.user?.email}</p>
         </div>
         <div className="ml-auto flex items-center gap-3">
-          <span className="px-2.5 py-1 bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-gray-200 rounded-full text-xs font-medium">{ticketData.ticket.status}</span>
+          <span className="px-2.5 py-1 bg-surface-container-high text-on-surface rounded-full text-xs font-medium">{ticketData.ticket.status}</span>
           {ticketData.ticket.status !== 'Closed' ? (
             <button onClick={() => statusMutation.mutate('Closed')} className="btn-secondary flex items-center gap-2"><CheckCircle className="w-4 h-4"/> Close Ticket</button>
           ) : (
@@ -85,17 +85,17 @@ export default function AdminTicketView() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-6 space-y-6 flex flex-col-reverse">
+      <div className="flex-1 overflow-y-auto bg-surface-container rounded-xl shadow-sm border-outline-variant p-6 space-y-6 flex-col-reverse">
         <div className="space-y-6">
           {ticketData.messages.map((m: any) => (
-            <div key={m.id} className={`flex flex-col ${!m.isAdmin ? 'items-start' : 'items-end'}`}>
-              <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${!m.isAdmin ? 'bg-gray-100 dark:bg-slate-700 text-gray-900' : 'bg-indigo-600 text-white'}`}>
+            <div key={m.id} className={`flex-col ${!m.isAdmin ? 'items-start' : 'items-end'}`}>
+              <div className={`max-w-[80%] rounded-xl px-4 py-3 ${!m.isAdmin ? 'bg-surface-container-high text-on-surface' : 'bg-indigo-600 text-white'}`}>
                 <p className="text-sm whitespace-pre-wrap">{m.message}</p>
               </div>
-              <span className="text-xs text-gray-400 dark:text-gray-500 mt-1">{new Date(m.createdAt).toLocaleString()}</span>
+              <span className="text-xs text-outline mt-1">{new Date(m.createdAt).toLocaleString()}</span>
             </div>
           ))}
-          {ticketData.messages.length === 0 && <p className="text-center text-gray-500 dark:text-gray-400">No messages yet.</p>}
+          {ticketData.messages.length === 0 && <p className="text-center text-on-surface-variant">No messages yet.</p>}
         </div>
       </div>
 
@@ -105,7 +105,7 @@ export default function AdminTicketView() {
           value={message} 
           onChange={e => setMessage(e.target.value)} 
           placeholder="Type admin reply..." 
-          className="input-primary flex-1 dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200"
+          className="input-primary flex-1 bg-surface-container-high border-outline-variant text-on-surface"
           disabled={ticketData.ticket.status === 'Closed' || replyMutation.isPending}
         />
         <button 

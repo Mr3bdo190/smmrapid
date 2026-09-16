@@ -38,35 +38,35 @@ export default function AdminContactMessages() {
 
   return (
     <div className="space-y-6">
-      <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2"><Mail className="w-5 h-5" /> Contact Messages</h3>
-      <p className="text-sm text-gray-500">Messages sent through the public Contact page by visitors who don't have an account yet.</p>
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 border-gray-100 overflow-hidden divide-y divide-gray-100">
+      <h3 className="text-xl font-bold text-on-surface flex items-center gap-2"><Mail className="w-5 h-5" /> Contact Messages</h3>
+      <p className="text-sm text-on-surface-variant">Messages sent through the public Contact page by visitors who don't have an account yet.</p>
+      <div className="bg-surface-container rounded-xl shadow-sm border-outline-variant border-outline-variant overflow-hidden divide-y divide-outline-variant">
         {messages.map((m) => (
           <div key={m.id}>
-            <button onClick={() => open(m)} className="w-full text-left px-6 py-4 hover:bg-gray-50/50 flex items-center justify-between gap-4">
+            <button onClick={() => open(m)} className="w-full text-left px-6 py-4 hover:bg-surface-container-low/50 flex items-center justify-between gap-4">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-gray-900 truncate">{m.subject}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${m.status === 'New' ? 'bg-amber-100 text-amber-700' : m.status === 'Replied' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>{m.status}</span>
+                  <span className="font-medium text-on-surface truncate">{m.subject}</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${m.status === 'New' ? 'bg-amber-100 text-amber-700' : m.status === 'Replied' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-on-surface-variant'}`}>{m.status}</span>
                 </div>
-                <div className="text-sm text-gray-500 truncate">{m.name} &lt;{m.email}&gt;</div>
+                <div className="text-sm text-on-surface-variant truncate">{m.name} &lt;{m.email}&gt;</div>
               </div>
-              <span className="text-xs text-gray-400 whitespace-nowrap">{new Date(m.createdAt).toLocaleString()}</span>
+              <span className="text-xs text-outline whitespace-nowrap">{new Date(m.createdAt).toLocaleString()}</span>
             </button>
             {openId === m.id && (
               <div className="px-6 pb-4">
-                <p className="text-sm text-gray-700 whitespace-pre-wrap bg-gray-50 rounded-lg p-4">{m.message}</p>
+                <p className="text-sm text-on-surface-variant whitespace-pre-wrap bg-surface-container-low rounded-lg p-4">{m.message}</p>
                 <div className="flex items-center gap-3 mt-3">
                   <a href={`mailto:${m.email}?subject=${encodeURIComponent('Re: ' + m.subject)}`} className="text-sm text-indigo-600 hover:underline">Reply by email</a>
                   {m.status !== 'Replied' && (
-                    <button onClick={() => updateStatus.mutate({ id: m.id, status: 'Replied' })} className="text-sm text-gray-500 hover:text-gray-900">Mark as replied</button>
+                    <button onClick={() => updateStatus.mutate({ id: m.id, status: 'Replied' })} className="text-sm text-on-surface-variant hover:text-on-surface">Mark as replied</button>
                   )}
                 </div>
               </div>
             )}
           </div>
         ))}
-        {messages.length === 0 && <div className="px-6 py-8 text-center text-gray-500">No messages yet.</div>}
+        {messages.length === 0 && <div className="px-6 py-8 text-center text-on-surface-variant">No messages yet.</div>}
       </div>
     </div>
   );

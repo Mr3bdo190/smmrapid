@@ -35,11 +35,11 @@ export default function ClientMassOrder() {
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2"><ListOrdered className="text-indigo-600"/> {t('massOrder.title')}</h2>
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 border-gray-100 p-6">
+      <h2 className="text-2xl font-bold text-on-surface flex items-center gap-2"><ListOrdered className="text-indigo-600"/> {t('massOrder.title')}</h2>
+      <div className="bg-surface-container rounded-xl shadow-sm border-outline-variant border-outline-variant p-6">
         <form onSubmit={handleMassOrder} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('massOrder.ordersLabel')}</label>
+            <label className="block text-sm font-medium text-on-surface-variant mb-1">{t('massOrder.ordersLabel')}</label>
             <textarea
               rows={10}
               value={ordersText}
@@ -47,7 +47,7 @@ export default function ClientMassOrder() {
               className="w-full input-field font-mono text-sm"
               placeholder="service_id | link | quantity\nservice_id | link | quantity"
             />
-            <p className="text-xs text-gray-500 mt-2">{t('massOrder.format')}</p>
+            <p className="text-xs text-on-surface-variant mt-2">{t('massOrder.format')}</p>
           </div>
           <button type="submit" className="btn-primary w-full md:w-auto">{t('massOrder.submit')}</button>
         </form>

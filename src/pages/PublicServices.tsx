@@ -70,7 +70,7 @@ export default function PublicServices() {
           value={q}
           onChange={e => setQ(e.target.value)}
           placeholder={t('publicServices.searchPlaceholder')}
-          className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-lg outline-none text-slate-100 focus:border-amber-400/50 text-sm"
+          className="w-full pl-10 pr-4 py-2.5 bg-surface-container/5 border-white/10 rounded-lg outline-none text-slate-100 focus:border-amber-400/50 text-sm"
         />
       </div>
 
@@ -84,7 +84,7 @@ export default function PublicServices() {
         {categories.map(cat => (
           <div key={cat.id}>
             <h2 className="text-lg font-bold text-white mb-3" style={{ fontFamily: "'Manrope', sans-serif" }}>{cat.name}</h2>
-            <div className="overflow-hidden rounded-2xl border border-white/10">
+            <div className="overflow-hidden rounded-xl border-white/10">
               <table className="w-full text-sm">
                 <tbody>
                   {cat.services.slice(0, expanded[cat.id] || q.trim() ? cat.services.length : 30).map((s, i) => (

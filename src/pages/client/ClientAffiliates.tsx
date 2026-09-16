@@ -131,11 +131,11 @@ export default function ClientAffiliates() {
     <div className="space-y-6 max-w-6xl" dir={dir}>
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+          <h2 className="text-2xl font-bold text-on-surface flex items-center gap-2">
             <Users className="text-indigo-600" />
             {t('affiliates.title')}
           </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('affiliates.subtitle')}</p>
+          <p className="text-sm text-on-surface-variant mt-1">{t('affiliates.subtitle')}</p>
         </div>
         <button className="btn-secondary" onClick={() => query.refetch()}>
           <RefreshCw className="w-4 h-4 inline mr-1" />
@@ -144,27 +144,27 @@ export default function ClientAffiliates() {
       </div>
 
       {/* Referral Link */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6">
-        <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-2">{t('affiliates.yourLink')}</h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{t('affiliates.linkHint')}</p>
-        <div className="flex flex-col md:flex-row gap-3">
+      <div className="bg-surface-container rounded-xl border-outline-variant p-6">
+        <h3 className="font-bold text-on-surface mb-2">{t('affiliates.yourLink')}</h3>
+        <p className="text-sm text-on-surface-variant mb-4">{t('affiliates.linkHint')}</p>
+        <div className="flex-col md:flex-row gap-3">
           <input
             readOnly
             value={query.isLoading ? t('common.loading') : refLink || t('affiliates.generating')}
-            className="input-field flex-1 font-mono text-sm bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200"
+            className="input-field flex-1 font-mono text-sm bg-surface-container-low bg-surface-container-high border-outline-variant text-on-surface"
           />
           <button onClick={copy} className="btn-primary">
             <Copy className="w-4 h-4 inline mr-1" />
             {t('affiliates.copyLink')}
           </button>
         </div>
-        <div className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-          {t('affiliates.code')} <span className="font-mono font-bold text-gray-900 dark:text-gray-100">{stats?.referralCode || '—'}</span>
+        <div className="mt-3 text-xs text-on-surface-variant">
+          {t('affiliates.code')} <span className="font-mono font-bold text-on-surface">{stats?.referralCode || '—'}</span>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid-cols-2 lg:grid-cols-5 gap-4">
         {[
           [t('affiliates.clicks'), stats?.clicks || 0, MousePointerClick],
           [t('affiliates.signups'), stats?.signups || 0, UserPlus],
@@ -172,38 +172,38 @@ export default function ClientAffiliates() {
           [t('affiliates.referralDeposits'), `$${Number(stats?.referralDeposits || 0).toFixed(2)}`, Wallet],
           [t('affiliates.earnings'), `$${Number(stats?.totalCommission || 0).toFixed(2)}`, Wallet],
         ].map(([l, v, I]: any) => (
-          <div key={l} className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-gray-200 dark:border-slate-700">
+          <div key={l} className="bg-surface-container p-5 rounded-xl border-outline-variant">
             <I className="w-5 h-5 text-indigo-600 mb-3" />
-            <p className="text-xs text-gray-500 dark:text-gray-400">{l}</p>
-            <p className="text-2xl font-bold mt-1 text-gray-900 dark:text-gray-100">{v}</p>
+            <p className="text-xs text-on-surface-variant">{l}</p>
+            <p className="text-2xl font-bold mt-1 text-on-surface">{v}</p>
           </div>
         ))}
       </div>
 
       {/* Available Affiliate Balance */}
-      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 border border-indigo-200 dark:border-indigo-800 rounded-xl p-6">
-        <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-1">{t('affiliates.availableBalance')}</h3>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">{t('affiliates.availableBalanceHint')}</p>
+      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 border-indigo-200 dark:border-indigo-800 rounded-xl p-6">
+        <h3 className="font-bold text-on-surface mb-1">{t('affiliates.availableBalance')}</h3>
+        <p className="text-xs text-on-surface-variant mb-3">{t('affiliates.availableBalanceHint')}</p>
         <div className="flex items-baseline gap-3">
           <span className="text-4xl font-black text-indigo-700 dark:text-indigo-300">${availableBalance.toFixed(4)}</span>
-          <span className="text-sm text-gray-500 dark:text-gray-400">{config?.currencyCode || 'USD'}</span>
+          <span className="text-sm text-on-surface-variant">{config?.currencyCode || 'USD'}</span>
         </div>
-        <div className="mt-3 grid grid-cols-2 gap-4 text-center">
+        <div className="mt-3 grid-cols-2 gap-4 text-center">
           <div>
-            <span className="text-xs text-gray-500 dark:text-gray-400">{t('affiliates.totalEarnings')}</span>
-            <div className="text-lg font-bold text-gray-900 dark:text-gray-100">${Number(stats?.totalCommission || 0).toFixed(4)}</div>
+            <span className="text-xs text-on-surface-variant">{t('affiliates.totalEarnings')}</span>
+            <div className="text-lg font-bold text-on-surface">${Number(stats?.totalCommission || 0).toFixed(4)}</div>
           </div>
           <div>
-            <span className="text-xs text-gray-500 dark:text-gray-400">{t('affiliates.totalPaidOut')}</span>
-            <div className="text-lg font-bold text-gray-900 dark:text-gray-100">${totalPaid.toFixed(4)}</div>
+            <span className="text-xs text-on-surface-variant">{t('affiliates.totalPaidOut')}</span>
+            <div className="text-lg font-bold text-on-surface">${totalPaid.toFixed(4)}</div>
           </div>
         </div>
       </div>
 
       {/* Withdrawals Section */}
-      <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5">
-        <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-2">{t('affiliates.withdraw')}</h3>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">{t('affiliates.withdrawDesc')}</p>
+      <div className="bg-surface-container border-outline-variant rounded-xl p-5">
+        <h3 className="font-bold text-on-surface mb-2">{t('affiliates.withdraw')}</h3>
+        <p className="text-xs text-on-surface-variant mb-4">{t('affiliates.withdrawDesc')}</p>
 
         {/* Min withdrawal hint */}
         {availableBalance < minWithdrawal && (
@@ -214,7 +214,7 @@ export default function ClientAffiliates() {
 
         <div className="grid md:grid-cols-3 gap-3">
           <input
-            className="input-primary dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200"
+            className="input-primary bg-surface-container-high border-outline-variant text-on-surface"
             type="number"
             min="0"
             step="0.0001"
@@ -223,7 +223,7 @@ export default function ClientAffiliates() {
             onChange={e => setAmount(e.target.value)}
           />
           <select
-            className="input-primary dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200"
+            className="input-primary bg-surface-container-high border-outline-variant text-on-surface"
             value={method}
             onChange={e => setMethod(e.target.value)}
           >
@@ -233,7 +233,7 @@ export default function ClientAffiliates() {
             <option>Other</option>
           </select>
           <input
-            className="input-primary dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200"
+            className="input-primary bg-surface-container-high border-outline-variant text-on-surface"
             placeholder={t('affiliates.withdrawDestination')}
             value={destination}
             onChange={e => setDestination(e.target.value)}
@@ -246,29 +246,29 @@ export default function ClientAffiliates() {
         {/* Withdrawals History */}
         <div className="mt-5 overflow-x-auto">
           <table className="min-w-[600px] w-full">
-            <thead className="bg-gray-50 dark:bg-gray-900">
+            <thead className="bg-surface-container-low dark:bg-gray-900">
               <tr>
                 {['Amount', 'Method', 'Status', 'Date'].map(h => (
-                  <th key={h} className="px-3 py-2 text-left text-xs text-gray-500 dark:text-gray-400 uppercase">
+                  <th key={h} className="px-3 py-2 text-left text-xs text-on-surface-variant uppercase">
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+            <tbody className="divide-y divide-outline-variant">
               {(withdrawals.data || []).length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="p-4 text-center text-xs text-gray-500 dark:text-gray-400">
+                  <td colSpan={4} className="p-4 text-center text-xs text-on-surface-variant">
                     {t('affiliates.noWithdrawals') || 'No withdrawal requests yet.'}
                   </td>
                 </tr>
               ) : (
                 (withdrawals.data || []).map((w: any) => (
                   <tr key={w.id}>
-                    <td className="px-3 py-2 text-gray-900 dark:text-gray-100">${Number(w.amount).toFixed(4)}</td>
-                    <td className="px-3 py-2 text-gray-600 dark:text-gray-400 dark:text-gray-300">{w.method}</td>
-                    <td className="px-3 py-2 text-gray-600 dark:text-gray-400 dark:text-gray-300">{w.status}</td>
-                    <td className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400">{new Date(w.createdAt).toLocaleString()}</td>
+                    <td className="px-3 py-2 text-on-surface">${Number(w.amount).toFixed(4)}</td>
+                    <td className="px-3 py-2 text-on-surface-variant">{w.method}</td>
+                    <td className="px-3 py-2 text-on-surface-variant">{w.status}</td>
+                    <td className="px-3 py-2 text-xs text-on-surface-variant">{new Date(w.createdAt).toLocaleString()}</td>
                   </tr>
                 ))
               )}
@@ -278,33 +278,33 @@ export default function ClientAffiliates() {
       </div>
 
       {/* Commission History */}
-      <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl overflow-x-auto">
-        <div className="p-4 border-b border-gray-200 dark:border-slate-700 font-bold text-gray-900 dark:text-gray-100">
+      <div className="bg-surface-container border-outline-variant rounded-xl overflow-x-auto">
+        <div className="p-4 border-b border-outline-variant font-bold text-on-surface">
           {t('affiliates.commissionHistory')}
         </div>
         <table className="min-w-[700px] w-full">
-          <thead className="bg-gray-50 dark:bg-gray-900">
+          <thead className="bg-surface-container-low dark:bg-gray-900">
             <tr>
               {[t('affiliates.referredUser'), t('affiliates.payment'), t('affiliates.commission'), t('transactions.date')].map(h => (
-                <th key={h} className="px-4 py-3 text-left text-xs text-gray-500 dark:text-gray-400 uppercase">
+                <th key={h} className="px-4 py-3 text-left text-xs text-on-surface-variant uppercase">
                   {h}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+          <tbody className="divide-y divide-outline-variant">
             {stats?.commissions?.length ? (
               stats.commissions.map((c: any) => (
                 <tr key={c.id}>
-                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">{c.referredEmail}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-gray-600 dark:text-gray-400 dark:text-gray-300">{c.paymentId?.slice(0, 8)}</td>
+                  <td className="px-4 py-3 text-sm text-on-surface">{c.referredEmail}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-on-surface-variant">{c.paymentId?.slice(0, 8)}</td>
                   <td className="px-4 py-3 text-emerald-600 font-semibold">${Number(c.amount).toFixed(4)}</td>
-                  <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">{new Date(c.createdAt).toLocaleString()}</td>
+                  <td className="px-4 py-3 text-xs text-on-surface-variant">{new Date(c.createdAt).toLocaleString()}</td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={4} className="p-8 text-center text-gray-500 dark:text-gray-400">
+                <td colSpan={4} className="p-8 text-center text-on-surface-variant">
                   {t('affiliates.noCommissions')}
                 </td>
               </tr>

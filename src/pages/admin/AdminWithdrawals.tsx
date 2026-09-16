@@ -9,9 +9,9 @@ import { useTranslation } from '../../lib/i18n';
 type StatusFilter = 'all' | 'Pending' | 'Approved' | 'Rejected';
 
 const statusColors: Record<string, string> = {
-  Pending: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 border border-yellow-200 dark:border-yellow-800',
-  Approved: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 border border-green-200 dark:border-green-800',
-  Rejected: 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 border border-red-200 dark:border-red-800',
+  Pending: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 border-yellow-200 dark:border-yellow-800',
+  Approved: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 border-green-200 dark:border-green-800',
+  Rejected: 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 border-red-200 dark:border-red-800',
 };
 
 const statusIcons: Record<string, any> = {
@@ -87,12 +87,12 @@ export default function AdminWithdrawals() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 transition-colors">
+    <div className="min-h-screen bg-surface-container text-on-surface transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+        <div className="flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{t('admin.withdrawals.title') || 'Affiliate Withdrawals (سحوبات الأرباح/الإحالات)'}</h1>
-            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{t('admin.withdrawals.subtitle') || 'Manage affiliate commission withdrawal requests. These are strictly for referral/affiliate earnings.'}</p>
+            <h1 className="text-2xl font-bold text-on-surface">{t('admin.withdrawals.title') || 'Affiliate Withdrawals (سحوبات الأرباح/الإحالات)'}</h1>
+            <p className="mt-1 text-sm text-on-surface-variant">{t('admin.withdrawals.subtitle') || 'Manage affiliate commission withdrawal requests. These are strictly for referral/affiliate earnings.'}</p>
           </div>
           <button
             onClick={() => refetch()}
@@ -112,7 +112,7 @@ export default function AdminWithdrawals() {
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                   statusFilter === s
                     ? 'bg-indigo-600 text-white shadow-md'
-                    : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600'
+                    : 'bg-surface-container-high text-on-surface-variant hover:bg-gray-200 dark:hover:bg-slate-600'
                 }`}
               >
                 {s === 'all' ? (t('admin.withdrawals.all') || 'All Statuses') : s}
@@ -121,52 +121,52 @@ export default function AdminWithdrawals() {
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
+        <div className="bg-surface-container rounded-xl shadow-sm border-outline-variant overflow-hidden">
           {withdrawalsData.length === 0 ? (
-            <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+            <div className="p-8 text-center text-on-surface-variant">
               <Wallet className="w-12 h-12 mx-auto mb-3 opacity-50" />
               <p>{t('admin.withdrawals.noRequests') || 'No withdrawal requests found.'}</p>
             </div>
           ) : filtered.length === 0 ? (
-            <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+            <div className="p-8 text-center text-on-surface-variant">
               <p>No withdrawals in this status.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 dark:bg-slate-700 border-b border-gray-200 dark:border-slate-600">
+                <thead className="bg-surface-container-low bg-surface-container-high border-b border-outline-variant">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">{t('admin.withdrawals.user') || 'User'}</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">{t('admin.withdrawals.amount') || 'Amount'}</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">{t('admin.withdrawals.method') || 'Method'}</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">{t('admin.withdrawals.destination') || 'Destination'}</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">{t('admin.withdrawals.status') || 'Status'}</th>
-                    <th	className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">{t('admin.withdrawals.created') || 'Created'}</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Actions</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase">{t('admin.withdrawals.user') || 'User'}</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase">{t('admin.withdrawals.amount') || 'Amount'}</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase">{t('admin.withdrawals.method') || 'Method'}</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase">{t('admin.withdrawals.destination') || 'Destination'}</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase">{t('admin.withdrawals.status') || 'Status'}</th>
+                    <th	className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase">{t('admin.withdrawals.created') || 'Created'}</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-on-surface-variant uppercase">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
+                <tbody className="divide-y divide-outline-variant">
                   {filtered.map((w: any) => {
                     const Icon = statusIcons[w.status] || Clock;
                     return (
-                      <tr key={w.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors">
+                      <tr key={w.id} className="hover:bg-surface-container-low dark:hover:bg-slate-800/50 transition-colors">
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
-                            <UserIcon className="w-4 h-4 text-gray-400" />
-                            <span className="text-sm text-gray-900 dark:text-gray-200">
+                            <UserIcon className="w-4 h-4 text-outline" />
+                            <span className="text-sm text-on-surface">
                               {w.user_name || w.user_email || w.userId || '-'}
                               {w.user_email && w.user_email !== (w.user_name || w.userId) ? ` (${w.user_email})` : ''}
                             </span>
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">${Number(w.amount).toFixed(2)}</span>
+                          <span className="text-sm font-medium text-on-surface">${Number(w.amount).toFixed(2)}</span>
                         </td>
                         <td className="px-4 py-3">
-                          <span className="text-sm text-gray-700 dark:text-gray-300">{w.method}</span>
+                          <span className="text-sm text-on-surface-variant">{w.method}</span>
                         </td>
                         <td className="px-4 py-3">
-                          <span className="text-sm text-gray-700 dark:text-gray-300 max-w-xs truncate" title={w.destination}>
+                          <span className="text-sm text-on-surface-variant max-w-xs truncate" title={w.destination}>
                             {w.destination}
                           </span>
                         </td>
@@ -178,7 +178,7 @@ export default function AdminWithdrawals() {
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          <span className="text-xs text-gray-500 dark:text-gray-400">{new Date(w.createdAt).toLocaleString()}</span>
+                          <span className="text-xs text-on-surface-variant">{new Date(w.createdAt).toLocaleString()}</span>
                         </td>
                         <td className="px-4 py-3 text-right">
                           {w.status === 'Pending' ? (
@@ -199,11 +199,11 @@ export default function AdminWithdrawals() {
                               </button>
                             </div>
                           ) : w.adminNote ? (
-                            <span className="text-xs text-gray-400 dark:text-gray-500" title={w.adminNote}>
+                            <span className="text-xs text-outline" title={w.adminNote}>
                               {w.adminNote.length > 20 ? w.adminNote.substring(0, 20) + '...' : w.adminNote}
                             </span>
                           ) : (
-                            <span className="text-xs text-gray-400 dark:text-gray-500">—</span>
+                            <span className="text-xs text-outline">—</span>
                           )}
                         </td>
                       </tr>

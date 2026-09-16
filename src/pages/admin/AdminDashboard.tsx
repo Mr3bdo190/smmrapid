@@ -101,8 +101,8 @@ export default function AdminDashboard() {
     refetchOrders();
   };
 
-  if (isLoading) return <div className="p-6 text-gray-500 dark:text-gray-400 flex items-center gap-2"><RefreshCw className="w-4 h-4 animate-spin" />{t('admin.dashboard.loading')}</div>;
-  if (isError) return <div className="p-6 rounded-2xl bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 flex items-center justify-between"><span className="flex gap-2"><AlertCircle />{t('admin.dashboard.error')}</span><button onClick={() => refetch()} className="btn-primary">{t('admin.dashboard.retry')}</button></div>;
+  if (isLoading) return <div className="p-6 text-on-surface-variant flex items-center gap-2"><RefreshCw className="w-4 h-4 animate-spin" />{t('admin.dashboard.loading')}</div>;
+  if (isError) return <div className="p-6 rounded-xl bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 flex items-center justify-between"><span className="flex gap-2"><AlertCircle />{t('admin.dashboard.error')}</span><button onClick={() => refetch()} className="btn-primary">{t('admin.dashboard.retry')}</button></div>;
 
   const trend = (current: number, previous: number) => {
     if (previous === 0) return 'noChange';
@@ -135,31 +135,31 @@ export default function AdminDashboard() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">{t('admin.dashboard.analytics')}</h2>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{t('admin.dashboard.subtitle')}</p>
+          <h2 className="text-2xl font-bold text-on-surface tracking-tight">{t('admin.dashboard.analytics')}</h2>
+          <p className="mt-1 text-sm text-on-surface-variant">{t('admin.dashboard.subtitle')}</p>
         </div>
         <div className="flex items-center gap-3">
           {/* Period Selector */}
-          <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-700 rounded-lg p-1">
-            <Calendar className="w-3 h-3 text-gray-500 dark:text-gray-400 ml-1" />
+          <div className="flex items-center gap-1 bg-surface-container-high rounded-lg p-1">
+            <Calendar className="w-3 h-3 text-on-surface-variant ml-1" />
             <button
               onClick={() => setPeriod('7')}
-              className={'px-2 py-1 text-xs font-medium rounded ' + (period === '7' ? 'bg-indigo-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-200')}
+              className={'px-2 py-1 text-xs font-medium rounded ' + (period === '7' ? 'bg-indigo-600 text-white' : 'text-on-surface-variant hover:text-on-surface dark:hover:text-gray-200')}
             >
               {t('admin.dashboard.days7')}
             </button>
             <button
               onClick={() => setPeriod('30')}
-              className={'px-2 py-1 text-xs font-medium rounded ' + (period === '30' ? 'bg-indigo-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-200')}
+              className={'px-2 py-1 text-xs font-medium rounded ' + (period === '30' ? 'bg-indigo-600 text-white' : 'text-on-surface-variant hover:text-on-surface dark:hover:text-gray-200')}
             >
               {t('admin.dashboard.days30')}
             </button>
           </div>
-          <button onClick={handleExport} className="btn-ghost flex items-center gap-2 dark:text-gray-300 dark:hover:bg-gray-700">
+          <button onClick={handleExport} className="btn-ghost flex items-center gap-2 text-on-surface-variant dark:hover:bg-gray-700">
             <Download className="w-4 h-4" />
             {t('admin.dashboard.export')}
           </button>
-          <button onClick={handleRefresh} className="btn-ghost flex items-center gap-2 dark:text-gray-300 dark:hover:bg-gray-700">
+          <button onClick={handleRefresh} className="btn-ghost flex items-center gap-2 text-on-surface-variant dark:hover:bg-gray-700">
             <RefreshCw className={'w-4 h-4' + (isFetching ? ' animate-spin' : '')} />
           {t('admin.dashboard.refresh')}
           </button>
@@ -167,7 +167,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard icon={Users} title={t('admin.dashboard.totalUsers')} value={data.totalUsers} subtitle={data.activeUsers + ' ' + t('admin.dashboard.active')} />
         <StatCard icon={Activity} title={t('admin.dashboard.activeUsers')} value={data.activeUsers} subtitle={t('admin.dashboard.active')} />
         <StatCard icon={ShoppingCart} title={t('admin.dashboard.totalOrders')} value={data.totalOrders} subtitle={data.pendingOrders + ' ' + t('admin.dashboard.pending')} />
@@ -175,7 +175,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Small Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid-cols-2 md:grid-cols-4 gap-3">
         <SmallStat title={t('admin.dashboard.pendingOrders')} value={data.pendingOrders} href="/admin/orders" />
         <SmallStat title={t('admin.dashboard.pendingPayments')} value={data.pendingPayments} href="/admin/payments" />
         <SmallStat title={t('admin.dashboard.openTickets')} value={data.openTickets} href="/admin/tickets" />
@@ -183,10 +183,10 @@ export default function AdminDashboard() {
       </div>
 
       {/* Charts Row 1 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <div className="grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Orders & Revenue Line Chart */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm p-5">
-          <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-4">{t('admin.dashboard.ordersChart')}</h3>
+        <div className="bg-surface-container rounded-xl border-outline-variant shadow-sm p-5">
+          <h3 className="font-bold text-on-surface mb-4">{t('admin.dashboard.ordersChart')}</h3>
           <ResponsiveContainer width="100%" height={260}>
             <LineChart data={ordersData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--grid-color, #e2e8f0)" />
@@ -206,8 +206,8 @@ export default function AdminDashboard() {
         </div>
 
         {/* Order Status Pie Chart */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm p-5">
-          <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-4">{t('admin.dashboard.ordersByStatus')}</h3>
+        <div className="bg-surface-container rounded-xl border-outline-variant shadow-sm p-5">
+          <h3 className="font-bold text-on-surface mb-4">{t('admin.dashboard.ordersByStatus')}</h3>
           <ResponsiveContainer width="100%" height={260}>
             <PieChart>
               <Pie
@@ -233,10 +233,10 @@ export default function AdminDashboard() {
       </div>
 
       {/* Charts Row 2 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <div className="grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Top Services Bar Chart */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm p-5">
-          <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-4">{t('admin.dashboard.topServices')}</h3>
+        <div className="bg-surface-container rounded-xl border-outline-variant shadow-sm p-5">
+          <h3 className="font-bold text-on-surface mb-4">{t('admin.dashboard.topServices')}</h3>
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={servicesData} layout="vertical" margin={{ top: 5, right: 20, left: 80, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--grid-color, #e2e8f0)" horizontal={false} />
@@ -256,15 +256,15 @@ export default function AdminDashboard() {
 
         {/* Today + Platform Status */}
         <div className="space-y-5">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm p-5">
-            <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-4">{t('admin.dashboard.today')}</h3>
-            <div className="grid grid-cols-2 gap-4">
+          <div className="bg-surface-container rounded-xl border-outline-variant shadow-sm p-5">
+            <h3 className="font-bold text-on-surface mb-4">{t('admin.dashboard.today')}</h3>
+            <div className="grid-cols-2 gap-4">
               <Metric label={t('admin.dashboard.ordersToday')} value={data.todayOrders} icon={ShoppingCart} />
               <Metric label={t('admin.dashboard.revenueToday')} value={money(data.todayRevenue)} icon={Wallet} />
             </div>
           </div>
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm p-5">
-            <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-4">{t('admin.dashboard.platformStatus')}</h3>
+          <div className="bg-surface-container rounded-xl border-outline-variant shadow-sm p-5">
+            <h3 className="font-bold text-on-surface mb-4">{t('admin.dashboard.platformStatus')}</h3>
             <div className="space-y-3">
               <StatusLine icon={Server} label={t('admin.dashboard.activeProviders')} value={data.activeProviders} />
               <StatusLine icon={ListOrdered} label={t('admin.dashboard.activeServices')} value={data.activeServices} />
@@ -276,13 +276,13 @@ export default function AdminDashboard() {
       </div>
 
       {/* Quick Management */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm p-5">
-        <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-4">{t('admin.dashboard.quickManagement')}</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Link className="btn-ghost justify-between dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200 dark:hover:bg-gray-600" to="/admin/orders">{t('admin.dashboard.orders')} <ArrowRightIcon /></Link>
-          <Link className="btn-ghost justify-between dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200 dark:hover:bg-gray-600" to="/admin/users">{t('admin.dashboard.users')} <ArrowRightIcon /></Link>
-          <Link className="btn-ghost justify-between dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200 dark:hover:bg-gray-600" to="/admin/providers">{t('admin.dashboard.providers')} <ArrowRightIcon /></Link>
-          <Link className="btn-ghost justify-between dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200 dark:hover:bg-gray-600" to="/admin/reports">{t('admin.dashboard.reports')} <ArrowRightIcon /></Link>
+      <div className="bg-surface-container rounded-xl border-outline-variant shadow-sm p-5">
+        <h3 className="font-bold text-on-surface mb-4">{t('admin.dashboard.quickManagement')}</h3>
+        <div className="grid-cols-2 md:grid-cols-4 gap-3">
+          <Link className="btn-ghost justify-between bg-surface-container-high border-outline-variant text-on-surface dark:hover:bg-gray-600" to="/admin/orders">{t('admin.dashboard.orders')} <ArrowRightIcon /></Link>
+          <Link className="btn-ghost justify-between bg-surface-container-high border-outline-variant text-on-surface dark:hover:bg-gray-600" to="/admin/users">{t('admin.dashboard.users')} <ArrowRightIcon /></Link>
+          <Link className="btn-ghost justify-between bg-surface-container-high border-outline-variant text-on-surface dark:hover:bg-gray-600" to="/admin/providers">{t('admin.dashboard.providers')} <ArrowRightIcon /></Link>
+          <Link className="btn-ghost justify-between bg-surface-container-high border-outline-variant text-on-surface dark:hover:bg-gray-600" to="/admin/reports">{t('admin.dashboard.reports')} <ArrowRightIcon /></Link>
         </div>
       </div>
     </div>
@@ -290,19 +290,19 @@ export default function AdminDashboard() {
 }
 
 function ArrowRightIcon() {
-  return <Activity className="w-4 h-4 text-gray-400 dark:text-gray-500" />;
+  return <Activity className="w-4 h-4 text-outline" />;
 }
 
 function StatCard({ icon: Icon, title, value, subtitle }: { icon: any; title: string; value: any; subtitle?: string }) {
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-gray-200 dark:border-slate-700 flex items-center gap-4">
+    <div className="bg-surface-container rounded-xl p-5 shadow-sm border-outline-variant flex items-center gap-4">
       <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400">
         <Icon className="w-6 h-6" />
       </div>
       <div>
-        <p className="text-sm text-gray-500 dark:text-gray-400">{title}</p>
-        <h3 className="text-2xl font-black text-gray-900 dark:text-gray-100 mt-1">{value}</h3>
-        {subtitle && <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{subtitle}</p>}
+        <p className="text-sm text-on-surface-variant">{title}</p>
+        <h3 className="text-2xl font-black text-on-surface mt-1">{value}</h3>
+        {subtitle && <p className="text-xs text-outline mt-1">{subtitle}</p>}
       </div>
     </div>
   );
@@ -310,33 +310,33 @@ function StatCard({ icon: Icon, title, value, subtitle }: { icon: any; title: st
 
 function SmallStat({ title, value, href }: { title: string; value: any; href: string }) {
   return (
-    <Link to={href} className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4 hover:border-indigo-200 dark:hover:border-indigo-500 transition-colors">
-      <p className="text-xs text-gray-500 dark:text-gray-400">{title}</p>
-      <b className="text-2xl mt-1 block text-gray-900 dark:text-gray-100">{value || 0}</b>
+    <Link to={href} className="bg-surface-container rounded-xl border-outline-variant p-4 hover:border-indigo-200 dark:hover:border-indigo-500 transition-colors">
+      <p className="text-xs text-on-surface-variant">{title}</p>
+      <b className="text-2xl mt-1 block text-on-surface">{value || 0}</b>
     </Link>
   );
 }
 
 function Metric({ label, value, icon: Icon }: { label: string; value: any; icon: any }) {
   return (
-    <div className="rounded-xl bg-slate-50 dark:bg-slate-800 p-4">
-      <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 mb-2">
+    <div className="rounded-xl bg-slate-50 bg-surface-container p-4">
+      <div className="flex items-center gap-2 text-on-surface-variant mb-2">
         <Icon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-        <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
+        <p className="text-xs text-on-surface-variant">{label}</p>
       </div>
-      <b className="text-2xl text-gray-900 dark:text-gray-100">{value}</b>
+      <b className="text-2xl text-on-surface">{value}</b>
     </div>
   );
 }
 
 function StatusLine({ icon: Icon, label, value }: { icon: any; label: string; value: any }) {
   return (
-    <div className="flex items-center justify-between rounded-xl bg-slate-50 dark:bg-slate-800 p-3">
+    <div className="flex items-center justify-between rounded-xl bg-slate-50 bg-surface-container p-3">
       <span className="flex items-center gap-2 text-sm">
         <Icon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
         {label}
       </span>
-      <b className="text-gray-900 dark:text-gray-100">{value || 0}</b>
+      <b className="text-on-surface">{value || 0}</b>
     </div>
   );
 }

@@ -21,57 +21,57 @@ export default function AdminAffiliates() {
   const rows = useMemo(() => (data.affiliates || []).filter((x:any) => `${x.name || ''} ${x.email || ''} ${x.referralCode || ''}`.toLowerCase().includes(q.toLowerCase())), [data.affiliates, q]);
   const s = data.summary || {};
   return <div className="space-y-6">
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <div><h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">Affiliate Control Center</h3><p className="text-sm text-gray-500 dark:text-gray-400">Track referrals, signups, deposits and commissions.</p></div>
+    <div className="flex-wrap items-center justify-between gap-3">
+      <div><h3 className="text-xl font-bold text-on-surface">Affiliate Control Center</h3><p className="text-sm text-on-surface-variant">Track referrals, signups, deposits and commissions.</p></div>
       <button className="btn-secondary" onClick={() => query.refetch()}><RefreshCw className="w-4 h-4 inline mr-1"/>Refresh</button>
     </div>
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      {[['Clicks',s.clicks||0,MousePointerClick],['Signups',s.signups||0,Users],['Referral Deposits',s.deposited||0,TrendingUp],['Commissions',s.commissions||0,Wallet]].map(([label,value,Icon]:any)=><div key={label} className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5 shadow-sm"><Icon className="w-5 h-5 text-indigo-600 dark:text-indigo-400 mb-3"/><p className="text-xs text-gray-500 dark:text-gray-400">{label}</p><p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{label==='Referral Deposits'||label==='Commissions' ? `$${Number(value).toFixed(2)}` : value}</p></div>)}
+    <div className="grid-cols-2 lg:grid-cols-4 gap-4">
+      {[['Clicks',s.clicks||0,MousePointerClick],['Signups',s.signups||0,Users],['Referral Deposits',s.deposited||0,TrendingUp],['Commissions',s.commissions||0,Wallet]].map(([label,value,Icon]:any)=><div key={label} className="bg-surface-container border-outline-variant rounded-xl p-5 shadow-sm"><Icon className="w-5 h-5 text-indigo-600 dark:text-indigo-400 mb-3"/><p className="text-xs text-on-surface-variant">{label}</p><p className="text-2xl font-bold text-on-surface">{label==='Referral Deposits'||label==='Commissions' ? `$${Number(value).toFixed(2)}` : value}</p></div>)}
     </div>
-    <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-4">
+    <div className="bg-surface-container border-outline-variant rounded-xl p-4">
       <div className="relative">
-        <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400 dark:text-gray-500"/>
-        <input className="input-primary pl-9 w-full dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200" placeholder="Search affiliate name, email or referral code..." value={q} onChange={e=>setQ(e.target.value)}/>
+        <Search className="absolute left-3 top-3 w-4 h-4 text-outline"/>
+        <input className="input-primary pl-9 w-full bg-surface-container-high border-outline-variant text-on-surface" placeholder="Search affiliate name, email or referral code..." value={q} onChange={e=>setQ(e.target.value)}/>
       </div>
     </div>
-    <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl overflow-x-auto shadow-sm">
+    <div className="bg-surface-container border-outline-variant rounded-xl overflow-x-auto shadow-sm">
       <table className="min-w-[1050px] w-full">
-        <thead className="bg-gray-50 dark:bg-slate-700/50">
+        <thead className="bg-surface-container-low">
           <tr>
-            {['Affiliate','Referral Code','Clicks','Signups','Paid Referrals','Referral Deposits','Commission','Joined'].map(h=><th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">{h}</th>)}
+            {['Affiliate','Referral Code','Clicks','Signups','Paid Referrals','Referral Deposits','Commission','Joined'].map(h=><th key={h} className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase">{h}</th>)}
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
-          {query.isLoading?<tr><td colSpan={8} className="p-8 text-center text-gray-500 dark:text-gray-400">Loading...</td></tr>
+        <tbody className="divide-y divide-outline-variant">
+          {query.isLoading?<tr><td colSpan={8} className="p-8 text-center text-on-surface-variant">Loading...</td></tr>
           :rows.length?rows.map((r:any)=><tr key={r.id}>
             <td className="px-4 py-3">
-              <div className="font-medium text-gray-900 dark:text-gray-100">{r.name||'Unnamed'}</div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">{r.email}</div>
+              <div className="font-medium text-on-surface">{r.name||'Unnamed'}</div>
+              <div className="text-xs text-on-surface-variant">{r.email}</div>
             </td>
-            <td className="px-4 py-3 font-mono text-xs text-gray-700 dark:text-gray-300">{r.referralCode||'-'}</td>
-            <td className="px-4 py-3 text-gray-700 dark:text-gray-300">{r.clicks}</td>
-            <td className="px-4 py-3 text-gray-700 dark:text-gray-300">{r.signups}</td>
-            <td className="px-4 py-3 text-gray-700 dark:text-gray-300">{r.paidReferrals}</td>
-            <td className="px-4 py-3 text-gray-700 dark:text-gray-300">${Number(r.referralDeposits||0).toFixed(2)}</td>
+            <td className="px-4 py-3 font-mono text-xs text-on-surface-variant">{r.referralCode||'-'}</td>
+            <td className="px-4 py-3 text-on-surface-variant">{r.clicks}</td>
+            <td className="px-4 py-3 text-on-surface-variant">{r.signups}</td>
+            <td className="px-4 py-3 text-on-surface-variant">{r.paidReferrals}</td>
+            <td className="px-4 py-3 text-on-surface-variant">${Number(r.referralDeposits||0).toFixed(2)}</td>
             <td className="px-4 py-3 text-emerald-600 dark:text-emerald-400 font-semibold">${Number(r.totalCommission||0).toFixed(2)}</td>
-            <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400">{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '-'}</td>
-          </tr>):<tr><td colSpan={8} className="p-8 text-center text-gray-500 dark:text-gray-400">No affiliates found.</td></tr>}
+            <td className="px-4 py-3 text-xs text-on-surface-variant">{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '-'}</td>
+          </tr>):<tr><td colSpan={8} className="p-8 text-center text-on-surface-variant">No affiliates found.</td></tr>}
         </tbody>
       </table>
     </div>
-    <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl overflow-x-auto shadow-sm">
-      <div className="p-4 border-b border-gray-200 dark:border-slate-700 font-bold text-gray-900 dark:text-gray-100">Recent Commissions</div>
+    <div className="bg-surface-container border-outline-variant rounded-xl overflow-x-auto shadow-sm">
+      <div className="p-4 border-b border-outline-variant font-bold text-on-surface">Recent Commissions</div>
       <table className="min-w-[800px] w-full">
-        <thead className="bg-gray-50 dark:bg-slate-700/50">
-          <tr>{['Affiliate','Referral','Payment','Amount','Date'].map(h=><th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">{h}</th>)}</tr>
+        <thead className="bg-surface-container-low">
+          <tr>{['Affiliate','Referral','Payment','Amount','Date'].map(h=><th key={h} className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase">{h}</th>)}</tr>
         </thead>
-        <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
+        <tbody className="divide-y divide-outline-variant">
           {(data.recentCommissions||[]).map((c:any)=><tr key={c.id}>
-            <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{c.affiliateEmail}</td>
-            <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{c.referredEmail}</td>
-            <td className="px-4 py-3 font-mono text-xs text-gray-600 dark:text-gray-400">{c.paymentId?.slice(0,8)}</td>
+            <td className="px-4 py-3 text-sm text-on-surface-variant">{c.affiliateEmail}</td>
+            <td className="px-4 py-3 text-sm text-on-surface-variant">{c.referredEmail}</td>
+            <td className="px-4 py-3 font-mono text-xs text-on-surface-variant">{c.paymentId?.slice(0,8)}</td>
             <td className="px-4 py-3 text-emerald-600 dark:text-emerald-400">${Number(c.amount||0).toFixed(4)}</td>
-            <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400">{new Date(c.createdAt).toLocaleString()}</td>
+            <td className="px-4 py-3 text-xs text-on-surface-variant">{new Date(c.createdAt).toLocaleString()}</td>
           </tr>)}
         </tbody>
       </table>

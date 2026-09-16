@@ -62,7 +62,7 @@ export default function ClientGame() {
   return (
     <div className="space-y-6 max-w-4xl mx-auto py-8">
       <div className="flex justify-between items-center mb-8">
-        <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-3"><Gamepad2 className="text-indigo-600 w-8 h-8"/> {t('game.title')}</h2>
+        <h2 className="text-3xl font-bold text-on-surface flex items-center gap-3"><Gamepad2 className="text-indigo-600 w-8 h-8"/> {t('game.title')}</h2>
         <div className="flex gap-4">
           <div className="bg-amber-100 text-amber-800 px-4 py-2 rounded-lg font-bold flex items-center gap-2">
             <Coins className="w-5 h-5"/> {userInfo?.gamePoints || 0} {t('game.points')}
@@ -73,13 +73,13 @@ export default function ClientGame() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 p-8 flex flex-col items-center text-center">
+      <div className="grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="bg-surface-container rounded-xl shadow-sm border-outline-variant p-8 flex-col items-center text-center">
           <div className="w-20 h-20 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mb-6">
             <Coins className="w-10 h-10"/>
           </div>
-          <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">{t('game.dailyClaim')}</h3>
-          <p className="text-gray-500 mb-6">{t('game.dailyClaimDesc')}</p>
+          <h3 className="text-xl font-bold text-on-surface mb-2">{t('game.dailyClaim')}</h3>
+          <p className="text-on-surface-variant mb-6">{t('game.dailyClaimDesc')}</p>
           <div className="text-sm font-semibold text-indigo-600 mb-6">{t('game.currentStreak', { days: userInfo?.currentStreak || 0 })}</div>
           <button
             onClick={() => claimMutation.mutate()}
@@ -90,12 +90,12 @@ export default function ClientGame() {
           </button>
         </div>
 
-        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 p-8 flex flex-col items-center text-center">
+        <div className="bg-surface-container rounded-xl shadow-sm border-outline-variant p-8 flex-col items-center text-center">
           <div className="w-20 h-20 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center mb-6">
             <Key className="w-10 h-10"/>
           </div>
-          <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">{t('game.exchangeShop')}</h3>
-          <p className="text-gray-500 mb-6">{t('game.exchangeShopDesc')}</p>
+          <h3 className="text-xl font-bold text-on-surface mb-2">{t('game.exchangeShop')}</h3>
+          <p className="text-on-surface-variant mb-6">{t('game.exchangeShopDesc')}</p>
           <div className="flex-1"></div>
           <button
             onClick={() => exchangeMutation.mutate()}

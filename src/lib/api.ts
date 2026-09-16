@@ -52,8 +52,7 @@ export async function apiJson<T = any>(path: string, user?: User | null, init: R
   try {
     body = await response.json();
   } catch {
-    // Non-JSON response body
-    body = {};
+    // Non-JSON response body = {};
   }
   if (!response.ok) {
     // Build error from server response or generic message. `code` and `ref` are preserved so the

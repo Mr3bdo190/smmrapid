@@ -40,13 +40,13 @@ export default function ClientMysteryBoxes() {
   });
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto flex flex-col items-center py-10">
-      <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-3"><Gift className="text-indigo-600 dark:text-indigo-400 w-8 h-8"/> {t('mysteryBoxes.title')}</h2>
-      <p className="text-gray-600 dark:text-gray-400 text-center max-w-md">
+    <div className="space-y-6 max-w-4xl mx-auto flex-col items-center py-10">
+      <h2 className="text-3xl font-bold text-on-surface flex items-center gap-3"><Gift className="text-indigo-600 dark:text-indigo-400 w-8 h-8"/> {t('mysteryBoxes.title')}</h2>
+      <p className="text-on-surface-variant text-center max-w-md">
         {t('mysteryBoxes.subtitle', { keys: userInfo?.keys || 0 })}
       </p>
 
-      <div className="mt-12 w-64 h-64 bg-gradient-to-tr from-indigo-500 to-purple-600 rounded-2xl shadow-2xl flex items-center justify-center relative overflow-hidden transform hover:scale-105 transition-transform duration-300">
+      <div className="mt-12 w-64 h-64 bg-gradient-to-tr from-indigo-500 to-purple-600 rounded-xl shadow-2xl flex items-center justify-center relative overflow-hidden transform hover:scale-105 transition-transform duration-300">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-30"></div>
         <Gift className="w-24 h-24 text-white drop-shadow-md z-10" />
       </div>

@@ -49,7 +49,7 @@ const ClientAffiliates = lazy(() => import('./pages/client/ClientAffiliates'));
 const ClientMysteryBoxes = lazy(() => import('./pages/client/ClientMysteryBoxes'));
 const ClientGame = lazy(() => import('./pages/client/ClientGame'));
 
-const Fallback = () => <div className="flex h-screen w-full items-center justify-center bg-gray-50"><div className="h-12 w-12 animate-spin rounded-full border-b-2 border-t-2 border-indigo-500"></div></div>;
+const Fallback = () => <div className="flex h-screen w-full items-center justify-center bg-surface-container-low"><div className="h-12 w-12 animate-spin rounded-full border-b-2 border-t-2 border-indigo-500"></div></div>;
 
 import { useEffect } from 'react';
 

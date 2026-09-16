@@ -21,31 +21,31 @@ export default function AdminTickets() {
 
   return (
     <div className="space-y-6">
-      <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2"><LifeBuoy className="w-5 h-5 text-indigo-600 dark:text-indigo-400"/> {t('admin.tickets.title')}</h3>
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
+      <h3 className="text-xl font-bold text-on-surface flex items-center gap-2"><LifeBuoy className="w-5 h-5 text-indigo-600 dark:text-indigo-400"/> {t('admin.tickets.title')}</h3>
+      <div className="bg-surface-container rounded-xl shadow-sm border-outline-variant overflow-hidden">
         <div className="overflow-x-auto w-full">
-        <table className="min-w-full divide-y divide-gray-100 dark:divide-slate-700">
-          <thead className="bg-gray-50 dark:bg-slate-700/50">
+        <table className="min-w-full divide-y divide-outline-variant">
+          <thead className="bg-surface-container-low">
             <tr>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">{t('common.email')}</th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">{t('tickets.subject')}</th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">{t('common.status')}</th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">{t('common.date')}</th>
-              <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">{t('common.actions')}</th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-on-surface-variant uppercase">{t('common.email')}</th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-on-surface-variant uppercase">{t('tickets.subject')}</th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-on-surface-variant uppercase">{t('common.status')}</th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-on-surface-variant uppercase">{t('common.date')}</th>
+              <th className="px-6 py-4 text-right text-xs font-semibold text-on-surface-variant uppercase">{t('common.actions')}</th>
             </tr>
           </thead>
-          <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-100 dark:divide-slate-700">
+          <tbody className="bg-surface-container divide-y divide-outline-variant">
             {tickets.map((t: any) => (
-              <tr key={t.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/50">
-                <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-200">{t.user?.email}</td>
-                <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-200">{t.subject}</td>
-                <td className="px-6 py-4 text-sm"><span className="px-2 py-1 rounded bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-gray-200">{t.status}</span></td>
-                <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{new Date(t.createdAt).toLocaleString()}</td>
+              <tr key={t.id} className="hover:bg-surface-container-high/60">
+                <td className="px-6 py-4 text-sm font-medium text-on-surface">{t.user?.email}</td>
+                <td className="px-6 py-4 text-sm text-on-surface">{t.subject}</td>
+                <td className="px-6 py-4 text-sm"><span className="px-2 py-1 rounded bg-surface-container-high text-on-surface">{t.status}</span></td>
+                <td className="px-6 py-4 text-sm text-on-surface-variant">{new Date(t.createdAt).toLocaleString()}</td>
                 <td className="px-6 py-4 text-right"><Link to={`/admin/tickets/${t.id}`} className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300"><Eye className="w-4 h-4"/></Link></td>
               </tr>
             ))}
             {tickets.length === 0 && (
-              <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">{t('admin.tickets.noTickets')}</td></tr>
+              <tr><td colSpan={5} className="px-6 py-8 text-center text-on-surface-variant">{t('admin.tickets.noTickets')}</td></tr>
             )}
           </tbody>
         </table>

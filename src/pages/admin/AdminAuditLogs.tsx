@@ -32,7 +32,7 @@ export default function AdminAuditLogs() {
         <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2"><History className="w-5 h-5"/> Audit Logs</h3>
         <button className="btn-secondary" onClick={() => refetch()}><RefreshCw className="w-4 h-4 inline mr-1"/>Refresh</button>
       </div>
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 border-gray-100 overflow-hidden">
         <div className="overflow-x-auto w-full">
         <table className="min-w-full divide-y divide-gray-100">
           <thead className="bg-gray-50">

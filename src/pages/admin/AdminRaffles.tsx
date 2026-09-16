@@ -70,17 +70,17 @@ export default function AdminRaffles() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2"><Ticket className="w-5 h-5"/> Raffles Management</h3>
+        <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2"><Ticket className="w-5 h-5"/> Raffles Management</h3>
         <button onClick={() => setIsModalOpen(true)} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4"/> Create Raffle</button>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 border-gray-100 overflow-hidden">
         {isLoading ? (
           <div className="p-8 text-center text-gray-500">Loading...</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-100">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 dark:bg-slate-700 dark:bg-slate-700">
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Title</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Prize</th>
@@ -94,13 +94,13 @@ export default function AdminRaffles() {
               <tbody className="bg-white divide-y divide-gray-100">
                 {raffles.map((r: any) => (
                   <tr key={r.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{r.title || 'Weekly Raffle'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100 dark:text-gray-100">{r.title || 'Weekly Raffle'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-emerald-600">${Number(r.prizeAmount).toFixed(2)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${Number(r.ticketPrice).toFixed(2)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400 dark:text-gray-400">${Number(r.ticketPrice).toFixed(2)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400 dark:text-gray-400">
                       {r.ticketsCount} {r.maxTickets ? ` / ${r.maxTickets}` : ''}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400 dark:text-gray-400">
                       {new Date(r.endDate).toLocaleString()}
                       {new Date() > new Date(r.endDate) && r.status === 'Open' && (
                         <span className="ml-2 text-xs text-red-500 font-bold">(Ended)</span>
@@ -109,7 +109,7 @@ export default function AdminRaffles() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
                         ${r.status === 'Open' ? 'bg-green-100 text-green-800' : 
-                          r.status === 'Closed' ? 'bg-gray-100 text-gray-800' : 
+                          r.status === 'Closed' ? 'bg-gray-100 dark:bg-slate-700 text-gray-800' : 
                           'bg-indigo-100 text-indigo-800'}`}>
                         {r.status}
                       </span>
@@ -146,39 +146,39 @@ export default function AdminRaffles() {
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
-            <h3 className="text-xl font-bold mb-6 text-gray-900">Create New Raffle</h3>
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md dark:border-slate-600 w-full shadow-2xl">
+            <h3 className="text-xl font-bold mb-6 text-gray-900 dark:text-gray-100 dark:text-gray-100">Create New Raffle</h3>
             <form onSubmit={(e) => { e.preventDefault(); createMutation.mutate(formData); }} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                <input required type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="input-primary" placeholder="e.g. Weekly Jackpot" />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Title</label>
+                <input required type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="input-primary dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200" placeholder="e.g. Weekly Jackpot" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Prize Amount ($)</label>
-                  <input required type="number" step="0.01" min="0.01" value={formData.prizeAmount} onChange={e => setFormData({...formData, prizeAmount: e.target.value})} className="input-primary" />
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Prize Amount ($)</label>
+                  <input required type="number" step="0.01" min="0.01" value={formData.prizeAmount} onChange={e => setFormData({...formData, prizeAmount: e.target.value})} className="input-primary dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ticket Price ($)</label>
-                  <input required type="number" step="0.01" min="0" value={formData.ticketPrice} onChange={e => setFormData({...formData, ticketPrice: e.target.value})} className="input-primary" />
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ticket Price ($)</label>
+                  <input required type="number" step="0.01" min="0" value={formData.ticketPrice} onChange={e => setFormData({...formData, ticketPrice: e.target.value})} className="input-primary dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Max Total Tickets</label>
-                  <input type="number" min="1" placeholder="Optional" value={formData.maxTickets} onChange={e => setFormData({...formData, maxTickets: e.target.value})} className="input-primary" />
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Max Total Tickets</label>
+                  <input type="number" min="1" placeholder="Optional" value={formData.maxTickets} onChange={e => setFormData({...formData, maxTickets: e.target.value})} className="input-primary dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Max Per User</label>
-                  <input type="number" min="1" placeholder="Optional" value={formData.maxTicketsPerUser} onChange={e => setFormData({...formData, maxTicketsPerUser: e.target.value})} className="input-primary" />
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Max Per User</label>
+                  <input type="number" min="1" placeholder="Optional" value={formData.maxTicketsPerUser} onChange={e => setFormData({...formData, maxTicketsPerUser: e.target.value})} className="input-primary dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200" />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                <input required type="datetime-local" value={formData.endDate} onChange={e => setFormData({...formData, endDate: e.target.value})} className="input-primary" />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Date</label>
+                <input required type="datetime-local" value={formData.endDate} onChange={e => setFormData({...formData, endDate: e.target.value})} className="input-primary dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200" />
               </div>
               <div className="flex justify-end gap-3 mt-8">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2 text-gray-600 hover:text-gray-900 font-medium transition-colors">Cancel</button>
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:text-gray-100 font-medium transition-colors">Cancel</button>
                 <button type="submit" disabled={createMutation.isPending} className="btn-primary px-6 py-2">Create Raffle</button>
               </div>
             </form>

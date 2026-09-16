@@ -127,7 +127,7 @@ export default function ClientAddFunds() {
   return (
     <div className="max-w-5xl mx-auto space-y-7">
       <div dir={dir}>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t('addFunds.title')}</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 dark:text-gray-100">{t('addFunds.title')}</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('addFunds.chooseMethod')}</p>
       </div>
 
@@ -137,11 +137,11 @@ export default function ClientAddFunds() {
           className={`rounded-2xl border-2 p-5 text-right ${
             gateway === 'wallet'
               ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20'
-              : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
+              : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800'
           }`}
         >
           <Wallet className="w-6 h-6 text-indigo-600 mb-2" />
-          <b className="text-gray-900 dark:text-white">{t('addFunds.eWallet')}</b>
+          <b className="text-gray-900 dark:text-gray-100 dark:text-gray-100">{t('addFunds.eWallet')}</b>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('addFunds.walletMethods')}</p>
         </button>
 
@@ -150,11 +150,11 @@ export default function ClientAddFunds() {
           className={`rounded-2xl border-2 p-5 text-right ${
             gateway === 'crypto'
               ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-900/20'
-              : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
+              : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800'
           }`}
         >
           <Bitcoin className="w-6 h-6 text-emerald-600 mb-2" />
-          <b className="text-gray-900 dark:text-white">{t('addFunds.crypto')}</b>
+          <b className="text-gray-900 dark:text-gray-100 dark:text-gray-100">{t('addFunds.crypto')}</b>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('addFunds.cryptoDesc')}</p>
         </button>
       </div>
@@ -167,15 +167,15 @@ export default function ClientAddFunds() {
               <p className="text-amber-800 dark:text-amber-300">{t('addFunds.walletUnavailable')}</p>
             </div>
           ) : (
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 space-y-6">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 p-6 space-y-6">
               <div className="rounded-xl bg-indigo-50 dark:bg-indigo-900/20 p-4">
-                <b className="text-gray-900 dark:text-white">{t('addFunds.eWallet')}</b>
+                <b className="text-gray-900 dark:text-gray-100 dark:text-gray-100">{t('addFunds.eWallet')}</b>
                 <p className="text-sm mt-1 text-indigo-700 dark:text-indigo-300">{walletIntro}</p>
                 <p className="text-xs text-indigo-700 dark:text-indigo-300 mt-1">{walletVerification}</p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 dark:text-gray-300 mb-2">
                   {t('addFunds.chooseWallet')}
                 </label>
                 <div className="grid md:grid-cols-3 gap-3">
@@ -189,10 +189,10 @@ export default function ClientAddFunds() {
                         className={`p-4 rounded-xl border-2 text-right ${
                           walletMethod === m.value
                             ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20'
-                            : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
+                            : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800'
                         }`}
                       >
-                        <b className="text-gray-900 dark:text-white">{m.label}</b>
+                        <b className="text-gray-900 dark:text-gray-100 dark:text-gray-100">{m.label}</b>
                         <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{instruction}</div>
                       </button>
                     );
@@ -202,7 +202,7 @@ export default function ClientAddFunds() {
 
               <div className="grid md:grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 dark:text-gray-300 mb-1">
                     {t('addFunds.amountEgp')}
                   </label>
                   <input
@@ -211,7 +211,7 @@ export default function ClientAddFunds() {
                     max={config?.shahnawyMaxAmount || 10000}
                     value={amount}
                     onChange={e => setAmount(e.target.value === '' ? '' : Number(e.target.value))}
-                    className="input-primary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
+                    className="input-primary dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200"
                   />
                   {usdPreview !== null && (
                     <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-2">
@@ -221,7 +221,7 @@ export default function ClientAddFunds() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 dark:text-gray-300 mb-1">
                     {t('addFunds.paymentWallet')}
                   </label>
                   <input
@@ -229,14 +229,14 @@ export default function ClientAddFunds() {
                     maxLength={11}
                     value={phoneNumber}
                     onChange={e => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 11))}
-                    className="input-primary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
+                    className="input-primary dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200"
                     placeholder="01XXXXXXXXX"
                     aria-label={t('addFunds.paymentWallet')}
                   />
                 </div>
               </div>
 
-              <div className="rounded-xl bg-gray-50 dark:bg-gray-700 p-4 text-sm text-gray-700 dark:text-gray-300">
+              <div className="rounded-xl bg-gray-50 dark:bg-slate-700 p-4 text-sm text-gray-700 dark:text-gray-300 dark:text-gray-300">
                 {methodInstruction}
               </div>
 
@@ -270,14 +270,14 @@ export default function ClientAddFunds() {
 
       {/* Crypto Gateway */}
       {gateway === 'crypto' && (
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 space-y-5">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 p-6 space-y-5">
           <div className="rounded-xl bg-emerald-50 dark:bg-emerald-900/20 p-4">
-            <b className="text-gray-900 dark:text-white">{t('addFunds.crypto')}</b>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{cryptoIntro}</p>
+            <b className="text-gray-900 dark:text-gray-100 dark:text-gray-100">{t('addFunds.crypto')}</b>
+            <p className="text-sm text-gray-600 dark:text-gray-400 dark:text-gray-400 mt-1">{cryptoIntro}</p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 dark:text-gray-300 mb-1">
               {t('addFunds.amountUsd')}
             </label>
             <input
@@ -287,7 +287,7 @@ export default function ClientAddFunds() {
               step="0.01"
               value={amount}
               onChange={e => setAmount(e.target.value === '' ? '' : Number(e.target.value))}
-              className="input-primary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
+              className="input-primary dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200"
               placeholder="10"
             />
           </div>

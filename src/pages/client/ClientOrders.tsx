@@ -43,44 +43,43 @@ export default function ClientOrders() {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap justify-between gap-3">
-        <h2 className="text-2xl font-bold">Order History</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 dark:text-gray-100">Order History</h2>
         <div className="flex gap-2">
           <button className="btn-secondary" onClick={() => refetch()}><RefreshCw className="w-4 h-4 inline mr-1" />Refresh</button>
           <button className="btn-secondary" onClick={exportCsv}><Download className="w-4 h-4 inline mr-1" />Export CSV</button>
         </div>
       </div>
-      <div className="bg-white rounded-xl border p-4 flex flex-wrap gap-3">
-        <div className="relative flex-1 min-w-[220px]"><Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" /><input className="input-primary pl-9" placeholder="Search order, service or link" value={q} onChange={e => setQ(e.target.value)} /></div>
-        <select className="input-primary w-auto" value={status} onChange={e => setStatus(e.target.value)}><option value="all">All statuses</option>{['Pending', 'Processing', 'In Progress', 'Completed', 'Partial', 'Canceled', 'Refunded'].map(s => <option key={s}>{s}</option>)}</select>
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4 flex flex-wrap gap-3">
+        <div className="relative flex-1 min-w-[220px]"><Search className="absolute left-3 top-3 w-4 h-4 text-gray-400 dark:text-gray-500" /><input className="input-primary pl-9 dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200" placeholder="Search order, service or link" value={q} onChange={e => setQ(e.target.value)} /></div>
+        <select className="input-primary w-auto dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200" value={status} onChange={e => setStatus(e.target.value)}><option value="all">All statuses</option>{['Pending', 'Processing', 'In Progress', 'Completed', 'Partial', 'Canceled', 'Refunded'].map(s => <option key={s}>{s}</option>)}</select>
       </div>
-      <div className="bg-white rounded-xl border overflow-x-auto">
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-x-auto">
         <table className="min-w-[1250px] w-full text-left">
-          <thead className="bg-gray-50"><tr>{['ID', 'Service', 'Link', 'Quantity', 'Start', 'Remains', 'Charge', 'Status', 'Created', 'Actions'].map(h => <th key={h} className="px-4 py-3 text-xs text-gray-500 uppercase">{h}</th>)}</tr></thead>
-          <tbody className="divide-y">
-            {isLoading ? <tr><td colSpan={10} className="p-8 text-center">Loading...</td></tr> : rows.length ? rows.map((o: any) => {
+          <thead className="bg-gray-50 dark:bg-slate-700/50"><tr>{['ID', 'Service', 'Link', 'Quantity', 'Start', 'Remains', 'Charge', 'Status', 'Created', 'Actions'].map(h => <th key={h} className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400 uppercase">{h}</th>)}</tr></thead>
+          <tbody className="divide-y dark:divide-slate-700">
+            {isLoading ? <tr><td colSpan={10} className="p-8 text-center text-gray-500 dark:text-gray-400">Loading...</td></tr> : rows.length ? rows.map((o: any) => {
               const canRefill = o.service?.refillable && REFILLABLE_STATUSES.includes(o.status);
               const canCancel = o.service?.cancelable && CANCELABLE_STATUSES.includes(o.status) && !o.cancelRequested;
               return (
                 <tr key={o.id}>
-                  <td className="px-4 py-3 font-mono text-xs">{o.id.slice(0, 8)}</td>
-                  <td className="px-4 py-3 text-sm font-medium">{o.service?.name}</td>
-                  <td className="px-4 py-3 text-sm max-w-[200px] truncate">{o.link}</td>
-                  <td className="px-4 py-3 text-sm">{o.quantity}</td>
-                  <td className="px-4 py-3 text-sm">{Number.isFinite(Number(o.startCount)) ? Number(o.startCount).toLocaleString() : '-'}</td>
-                  <td className="px-4 py-3 text-sm">{Number.isFinite(Number(o.remains)) ? Number(o.remains).toLocaleString() : '-'}</td>
-                  <td className="px-4 py-3 text-sm font-semibold">${Number(o.charge).toFixed(4)}</td>
-                  <td className="px-4 py-3 text-sm"><span className="px-2 py-1 rounded-full bg-gray-100">{o.status}</span>{o.cancelRequested && <span className="ml-1 text-xs text-amber-600">(cancel pending)</span>}</td>
-                  <td className="px-4 py-3 text-xs text-gray-500">{o.createdAt ? new Date(o.createdAt).toLocaleString() : '-'}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-gray-900 dark:text-gray-100 dark:text-gray-200">{o.id.slice(0, 8)}</td>
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100 dark:text-gray-200">{o.service?.name}</td>
+                  <td className="px-4 py-3 text-sm max-w-[200px] truncate text-gray-700 dark:text-gray-300 dark:text-gray-300">{o.link}</td>
+                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 dark:text-gray-200">{o.quantity}</td>
+                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 dark:text-gray-200">{Number.isFinite(Number(o.startCount)) ? Number(o.startCount).toLocaleString() : '-'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 dark:text-gray-200">{Number.isFinite(Number(o.remains)) ? Number(o.remains).toLocaleString() : '-'}</td>
+                  <td className="px-4 py-3 text-sm font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-200">${Number(o.charge).toFixed(4)}</td>
+                  <td className="px-4 py-3 text-sm"><span className={`px-2 py-1 rounded-full ${o.status === 'Pending' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200' : o.status === 'Processing' || o.status === 'In Progress' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200' : o.status === 'Completed' || o.status === 'Partial' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200' : o.status === 'Canceled' || o.status === 'Refunded' ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200' : 'bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-gray-200'}`}>{o.status}</span>{o.cancelRequested && <span className="ml-1 text-xs text-amber-600 dark:text-amber-400">(cancel pending)</span>}</td>
+                  <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">{o.createdAt ? new Date(o.createdAt).toLocaleString() : '-'}</td>
                   <td className="px-4 py-3 text-xs whitespace-nowrap">
-                    {o.providerOrderId && ['Pending', 'Processing', 'In Progress'].includes(o.status) && <button disabled={refreshOrder.isPending} onClick={() => refreshOrder.mutate(o.id)} className="text-gray-600 hover:text-gray-900 mr-3" title="Refresh order status"><RefreshCw className="w-4 h-4 inline mr-1" />Update status</button>}
-                    {canRefill && <button disabled={refill.isPending} onClick={() => refill.mutate(o.id)} className="text-indigo-600 hover:text-indigo-900 mr-3" title="Request refill"><RotateCcw className="w-4 h-4 inline mr-1" />Refill</button>}
-                    {canCancel && <button disabled={cancel.isPending} onClick={() => confirm('Cancel this order and refund it to your wallet?') && cancel.mutate(o.id)} className="text-red-600 hover:text-red-900" title="Cancel order"><XCircle className="w-4 h-4 inline mr-1" />Cancel</button>}
-                    {!canRefill && !canCancel && <span className="text-gray-300">-</span>}
+                    {o.providerOrderId && ['Pending', 'Processing', 'In Progress'].includes(o.status) && <button disabled={refreshOrder.isPending} onClick={() => refreshOrder.mutate(o.id)} className="text-gray-600 dark:text-gray-400 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 mr-3" title="Refresh order status"><RefreshCw className="w-4 h-4 inline mr-1" />Update status</button>}
+                    {canRefill && <button disabled={refill.isPending} onClick={() => refill.mutate(o.id)} className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 mr-3" title="Request refill"><RotateCcw className="w-4 h-4 inline mr-1" />Refill</button>}
+                    {canCancel && <button disabled={cancel.isPending} onClick={() => confirm('Cancel this order and refund it to your wallet?') && cancel.mutate(o.id)} className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300" title="Cancel order"><XCircle className="w-4 h-4 inline mr-1" />Cancel</button>}
+                    {!canRefill && !canCancel && <span className="text-gray-300 dark:text-gray-600 dark:text-gray-400 dark:text-gray-400">-</span>}
                   </td>
                 </tr>
               );
-            }) : <tr><td colSpan={10} className="p-8 text-center text-gray-500">No matching orders.</td></tr>}
-          </tbody>
+            }) : <tr><td colSpan={10} className="p-8 text-center text-gray-500 dark:text-gray-400">No matching orders.</td></tr>}</tbody>
         </table>
       </div>
     </div>

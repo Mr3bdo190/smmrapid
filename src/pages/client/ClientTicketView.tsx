@@ -55,16 +55,16 @@ export default function ClientTicketView() {
   return (
     <div className="space-y-6 max-w-4xl mx-auto flex flex-col h-[calc(100vh-8rem)]">
       <div className="flex items-center gap-4">
-        <Link to="/dashboard/tickets" className="text-gray-500 hover:text-gray-900"><ArrowLeft className="w-5 h-5"/></Link>
-        <h2 className="text-2xl font-bold text-gray-900">{ticketData.ticket.subject}</h2>
-        <span className="px-2.5 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-medium ml-auto">{ticketData.ticket.status}</span>
+        <Link to="/dashboard/tickets" className="text-gray-500 hover:text-gray-900 dark:text-gray-100 dark:text-gray-100"><ArrowLeft className="w-5 h-5"/></Link>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 dark:text-gray-100">{ticketData.ticket.subject}</h2>
+        <span className="px-2.5 py-1 bg-gray-100 dark:bg-slate-700 text-gray-800 rounded-full text-xs font-medium ml-auto">{ticketData.ticket.status}</span>
       </div>
 
       <div className="flex-1 overflow-y-auto bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-6 flex flex-col-reverse">
         <div className="space-y-6">
           {ticketData.messages.map((m: any) => (
             <div key={m.id} className={`flex flex-col ${m.isAdmin ? 'items-start' : 'items-end'}`}>
-              <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${m.isAdmin ? 'bg-gray-100 text-gray-900' : 'bg-indigo-600 text-white'}`}>
+              <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${m.isAdmin ? 'bg-gray-100 dark:bg-slate-700 text-gray-900' : 'bg-indigo-600 text-white'}`}>
                 <p className="text-sm whitespace-pre-wrap">{m.message}</p>
               </div>
               <span className="text-xs text-gray-400 mt-1">{new Date(m.createdAt).toLocaleString()}</span>

@@ -259,7 +259,7 @@ export default function LandingPage() {
                   <Sparkles size={12} className="text-violet-600 dark:text-violet-400" />
                   {text.badge}
                 </div>
-                <h1 className="mt-6 text-4xl font-black tracking-tight text-slate-900 dark:text-white sm:text-5xl leading-tight">
+                <h1 className="mt-6 text-4xl font-black tracking-tight text-slate-900 dark:text-gray-100 sm:text-5xl leading-tight">
                   {text.title}
                 </h1>
                 <p className="mt-6 text-lg text-slate-600 dark:text-gray-300 leading-relaxed">
@@ -288,7 +288,7 @@ export default function LandingPage() {
                   <div className="mb-4 flex items-center justify-between">
                     <div>
                       <small className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">SMM Rapid</small>
-                      <h3 className="text-lg font-black text-slate-900 dark:text-white">{text.how}</h3>
+                      <h3 className="text-lg font-black text-slate-900 dark:text-gray-100">{text.how}</h3>
                     </div>
                     <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-black text-emerald-600 dark:text-emerald-400">● {text.live}</span>
                   </div>
@@ -301,11 +301,11 @@ export default function LandingPage() {
 
                   <div className="mb-4 rounded-xl bg-slate-50 dark:bg-slate-700/50 p-3">
                     <small className="text-xs font-bold text-slate-500 dark:text-slate-400">{ar ? '1 — الفئة' : '1 — Category'}</small>
-                    <div className="mt-1 text-sm font-medium text-slate-900 dark:text-white">Instagram</div>
+                    <div className="mt-1 text-sm font-medium text-slate-900 dark:text-gray-100">Instagram</div>
                   </div>
                   <div className="rounded-xl bg-slate-50 dark:bg-slate-700/50 p-3">
                     <small className="text-xs font-bold text-slate-500 dark:text-slate-400">{ar ? '2 — الخدمة' : '2 — Service'}</small>
-                    <div className="mt-1 text-sm font-medium text-slate-900 dark:text-white">{ar ? 'متابعين إنستجرام' : 'Instagram Followers'}</div>
+                    <div className="mt-1 text-sm font-medium text-slate-900 dark:text-gray-100">{ar ? 'متابعين إنستجرام' : 'Instagram Followers'}</div>
                     <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{ar ? 'جودة عالية • تسليم مباشر' : 'High quality • Direct delivery'}</div>
                   </div>
                   <div className="mt-4 rounded-xl bg-violet-50 dark:bg-violet-900/20 p-3 text-xs text-violet-700 dark:text-violet-300">
@@ -333,7 +333,7 @@ export default function LandingPage() {
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400">
                       <Icon size={20} />
                     </div>
-                    <b className="text-2xl font-black text-slate-900 dark:text-white md:text-3xl">{stat.value}</b>
+                    <b className="text-2xl font-black text-slate-900 dark:text-gray-100 md:text-3xl">{stat.value}</b>
                     <span className="text-sm font-medium text-slate-600 dark:text-gray-400">{stat.label}</span>
                   </div>
                 );
@@ -347,7 +347,7 @@ export default function LandingPage() {
           <div className="mx-auto max-w-[1240px] px-4 sm:px-6">
             <div className="text-center">
               <p className="mb-2 text-xs font-black tracking-[.16em] text-violet-600 dark:text-violet-400">{ar ? 'المميزات' : 'FEATURES'}</p>
-              <h2 className="text-3xl font-black text-slate-900 dark:text-white">{text.featuresTitle}</h2>
+              <h2 className="text-3xl font-black text-slate-900 dark:text-gray-100">{text.featuresTitle}</h2>
               <p className="mx-auto mt-3 max-w-2xl text-slate-600 dark:text-gray-400">{text.featuresCopy}</p>
             </div>
             <div className="mt-12 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
@@ -356,7 +356,7 @@ export default function LandingPage() {
                   <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400">
                     <Icon size={24} />
                   </div>
-                  <h3 className="mb-2 text-lg font-black text-slate-900 dark:text-white">{title}</h3>
+                  <h3 className="mb-2 text-lg font-black text-slate-900 dark:text-gray-100">{title}</h3>
                   <p className="text-sm text-slate-600 dark:text-gray-400 leading-relaxed">{desc}</p>
                 </div>
               ); })}
@@ -369,7 +369,7 @@ export default function LandingPage() {
           <div className="mx-auto max-w-[1240px] px-4 sm:px-6">
             <div className="text-center">
               <p className="mb-2 text-xs font-black tracking-[.16em] text-violet-600 dark:text-violet-400">{text.how}</p>
-              <h2 className="text-3xl font-black text-slate-900 dark:text-white">{text.howCopy}</h2>
+              <h2 className="text-3xl font-black text-slate-900 dark:text-gray-100">{text.howCopy}</h2>
             </div>
             <div className="mt-12 grid gap-8 md:grid-cols-3">
               {text.steps.map((step) => (
@@ -377,7 +377,7 @@ export default function LandingPage() {
                   <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400">
                     <span className="text-xl font-black">{step.step}</span>
                   </div>
-                  <h3 className="mb-3 text-xl font-black text-slate-900 dark:text-white">{step.title}</h3>
+                  <h3 className="mb-3 text-xl font-black text-slate-900 dark:text-gray-100">{step.title}</h3>
                   <p className="text-slate-600 dark:text-gray-400">{step.desc}</p>
                 </div>
               ))}
@@ -394,7 +394,7 @@ export default function LandingPage() {
                   <div className="inline-flex items-center gap-2 mb-4 px-3 py-1.5 bg-violet-100 dark:bg-violet-900/30 rounded-full text-xs font-bold text-violet-700 dark:text-violet-300">
                     <ShieldCheck size={14} /> {text.guarantee}
                   </div>
-                  <h2 className="mb-4 text-2xl font-black text-slate-900 dark:text-white md:text-3xl">{text.trust}</h2>
+                  <h2 className="mb-4 text-2xl font-black text-slate-900 dark:text-gray-100 md:text-3xl">{text.trust}</h2>
                   <p className="mb-6 text-slate-600 dark:text-gray-400">{text.trustCopy}</p>
                   <div className="space-y-3">
                     {[
@@ -434,14 +434,14 @@ export default function LandingPage() {
           <div className="mx-auto max-w-[1240px] px-4 sm:px-6">
             <div className="mx-auto max-w-3xl text-center">
               <p className="mb-2 text-xs font-black tracking-[.16em] text-violet-600 dark:text-violet-400">FAQ</p>
-              <h2 className="text-3xl font-black text-slate-900 dark:text-white">{text.faqTitle}</h2>
+              <h2 className="text-3xl font-black text-slate-900 dark:text-gray-100">{text.faqTitle}</h2>
               <p className="mx-auto mt-3 max-w-xl text-slate-600 dark:text-gray-400">{text.faqCopy}</p>
             </div>
             <div className="mx-auto mt-8 max-w-3xl rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
               {faqs.map(([q, a], i) => (
                 <div key={q} className="border-b border-slate-100 dark:border-slate-700 last:border-0">
                   <button onClick={() => setFaq(faq === i ? -1 : i)} className="flex w-full items-center justify-between gap-4 px-6 py-4 text-left">
-                    <span className="font-medium text-slate-900 dark:text-white">{q}</span>
+                    <span className="font-medium text-slate-900 dark:text-gray-100">{q}</span>
                     <ChevronDown size={18} className={`shrink-0 text-slate-400 transition-transform ${faq === i ? 'rotate-180' : ''}`} />
                   </button>
                   {faq === i && (
@@ -479,7 +479,7 @@ export default function LandingPage() {
             <div className="mb-6 flex items-start justify-between">
               <div>
                 <span className="brand-mark">R</span>
-                <h2 className="mt-4 text-2xl font-black text-slate-900 dark:text-white">{auth === 'register' ? text.registerTitle : text.loginTitle}</h2>
+                <h2 className="mt-4 text-2xl font-black text-slate-900 dark:text-gray-100">{auth === 'register' ? text.registerTitle : text.loginTitle}</h2>
               </div>
               <button className="rounded-xl bg-slate-100 dark:bg-slate-700 dark:text-gray-200 p-2" onClick={() => setAuth(null)} aria-label={text.close}>
                 <X size={18} />
@@ -489,18 +489,18 @@ export default function LandingPage() {
               {auth === 'register' && (
                 <div>
                   <label className="label-primary dark:text-gray-300">{text.name}</label>
-                  <input className="input-primary dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-gray-500"
+                  <input className="input-primary dark:bg-slate-700 dark:border-slate-600 dark:text-gray-100 dark:placeholder-gray-500"
                     value={name} onChange={e => setName(e.target.value)} required />
                 </div>
               )}
               <div>
                 <label className="label-primary dark:text-gray-300">{text.email}</label>
-                <input className="input-primary dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-gray-500"
+                <input className="input-primary dark:bg-slate-700 dark:border-slate-600 dark:text-gray-100 dark:placeholder-gray-500"
                   type="email" value={email} onChange={e => setEmail(e.target.value)} required />
               </div>
               <div>
                 <label className="label-primary dark:text-gray-300">{text.password}</label>
-                <input className="input-primary dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-gray-500"
+                <input className="input-primary dark:bg-slate-700 dark:border-slate-600 dark:text-gray-100 dark:placeholder-gray-500"
                   type="password" minLength={8} value={password} onChange={e => setPassword(e.target.value)} required />
               </div>
               {auth === 'login' && (
@@ -511,7 +511,7 @@ export default function LandingPage() {
               {auth === 'register' && (
                 <div>
                   <label className="label-primary dark:text-gray-300">{text.ref} <span className="font-normal text-slate-400 dark:text-slate-500">({text.optional})</span></label>
-                  <input className="input-primary dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-gray-500"
+                  <input className="input-primary dark:bg-slate-700 dark:border-slate-600 dark:text-gray-100 dark:placeholder-gray-500"
                     value={referralCode} disabled={!!referralFromUrl}
                     onChange={e => setReferralCode(e.target.value.toUpperCase())} placeholder="REF123" />
                   {referralFromUrl && (

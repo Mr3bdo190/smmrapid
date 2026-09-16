@@ -43,13 +43,13 @@ export default function AdminShortlinks() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2"><Link2 className="w-5 h-5"/> Shortlinks</h3>
+        <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2"><Link2 className="w-5 h-5"/> Shortlinks</h3>
         <button onClick={() => setIsModalOpen(true)} className="btn-primary"><Plus className="w-4 h-4 mr-2" /> Add Link</button>
       </div>
       <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden w-full">
         <div className="overflow-x-auto w-full">
         <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+          <thead className="bg-gray-50 dark:bg-slate-700 dark:bg-slate-700">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">URL</th>
@@ -61,7 +61,7 @@ export default function AdminShortlinks() {
           <tbody className="divide-y divide-gray-200">
             {shortlinks.map((s: any) => (
               <tr key={s.id}>
-                <td className="px-6 py-4 text-sm font-medium text-gray-900">{s.name}</td>
+                <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100 dark:text-gray-100">{s.name}</td>
                 <td className="px-6 py-4 text-sm text-gray-500 truncate max-w-[200px]">{s.url}</td>
                 <td className="px-6 py-4 text-sm font-bold text-emerald-600">${Number(s.rewardAmount).toFixed(4)}</td>
                 <td className="px-6 py-4 text-sm"><span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">{s.status}</span></td>
@@ -75,7 +75,7 @@ export default function AdminShortlinks() {
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl">
+          <div className="bg-white dark:bg-slate-800 rounded-lg p-6 max-w-md dark:border-slate-600 dark:text-gray-200 w-full shadow-xl">
             <h3 className="text-lg font-bold mb-4">Add Shortlink</h3>
             <form onSubmit={(e) => { e.preventDefault(); saveMutation.mutate(formData); }} className="space-y-4">
               <input required type="text" placeholder="Provider / Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="input-primary" />

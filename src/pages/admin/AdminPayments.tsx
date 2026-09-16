@@ -60,7 +60,7 @@ export default function AdminPayments() {
     <div className="space-y-6">
       <div className="flex justify-between gap-3 flex-wrap"><h3 className="text-xl font-bold text-gray-900 tracking-tight">Transactions & Payments</h3><button className="btn-secondary" onClick={()=>queryClient.invalidateQueries({queryKey:['admin-payments']})}><RefreshCw className="w-4 h-4 inline mr-1"/>Refresh</button></div><div className="bg-white border rounded-xl p-4 flex flex-wrap gap-3"><div className="relative flex-1 min-w-[220px]"><Search className="absolute left-3 top-3 w-4 h-4 text-gray-400"/><input className="input-primary pl-9" placeholder="Search this page: email, method or transaction ID" value={q} onChange={e=>setQ(e.target.value)}/></div><select className="input-primary w-auto" value={status} onChange={e=>setStatus(e.target.value)}><option value="all">All statuses</option><option>Pending</option><option>Approved</option><option>Rejected</option></select></div>
       {isError && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{(error as Error)?.message || 'Failed to load payments'}</div>}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden w-full">
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 border-gray-100 overflow-hidden w-full">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-100">
             <thead className="bg-gray-50"><tr>

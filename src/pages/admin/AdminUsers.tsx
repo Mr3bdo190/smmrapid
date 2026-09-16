@@ -25,7 +25,7 @@ function UserDetailsModal({ userId, onClose }: { userId: string, onClose: () => 
 
   if (isLoading) return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg p-6 max-w-4xl w-full shadow-xl">{t('common.loading')}</div>
+      <div className="bg-white dark:bg-slate-800 rounded-lg p-6 max-w-4xl dark:border-slate-600 w-full shadow-xl">{t('common.loading')}</div>
     </div>
   );
   if (!data) return null;
@@ -37,10 +37,10 @@ function UserDetailsModal({ userId, onClose }: { userId: string, onClose: () => 
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-      <div className="bg-white rounded-lg max-w-5xl w-full shadow-xl my-8 flex flex-col max-h-[90vh]">
-        <div className="flex justify-between items-center p-6 border-b border-gray-100">
-          <h2 className="text-2xl font-bold text-gray-900">{t('admin.users.details')}: {u.email}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-6 h-6"/></button>
+      <div className="bg-white dark:bg-slate-800 rounded-lg max-w-5xl dark:border-slate-600 w-full shadow-xl my-8 flex flex-col max-h-[90vh]">
+        <div className="flex justify-between items-center p-6 border-b border-gray-100 dark:border-slate-700">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 dark:text-gray-100">{t('admin.users.details')}: {u.email}</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:text-gray-400 dark:text-gray-400"><X className="w-6 h-6"/></button>
         </div>
         
         <div className="p-6 overflow-y-auto flex-1 space-y-8">
@@ -64,7 +64,7 @@ function UserDetailsModal({ userId, onClose }: { userId: string, onClose: () => 
           </div>
 
           <div className="space-y-4">
-            <h3 className="text-lg font-bold text-gray-900 border-b pb-2">{t('admin.users.recentOrders')}</h3>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 border-b pb-2">{t('admin.users.recentOrders')}</h3>
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead><tr><th className="text-left py-2 text-gray-500">{t('orders.service')}</th><th className="text-left py-2 text-gray-500">{t('newOrder.quantity')}</th><th className="text-left py-2 text-gray-500">{t('orders.charge')}</th><th className="text-left py-2 text-gray-500">{t('common.status')}</th></tr></thead>
@@ -79,7 +79,7 @@ function UserDetailsModal({ userId, onClose }: { userId: string, onClose: () => 
           </div>
 
           <div className="space-y-4">
-            <h3 className="text-lg font-bold text-gray-900 border-b pb-2">{t('admin.users.recentPayments')}</h3>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 border-b pb-2">{t('admin.users.recentPayments')}</h3>
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead><tr><th className="text-left py-2 text-gray-500">{t('common.date')}</th><th className="text-left py-2 text-gray-500">{t('common.type')}</th><th className="text-left py-2 text-gray-500">{t('common.amount')}</th><th className="text-left py-2 text-gray-500">{t('common.status')}</th></tr></thead>
@@ -219,13 +219,13 @@ export default function AdminUsers() {
   };
 
   if (isLoading) return <div className="p-6 text-center text-slate-500">{t('common.loading')}</div>;
-  if (isError) return <div className="bg-white border rounded-xl p-6"><p className="font-bold text-red-600">{t('admin.users.loadError')}</p><p className="text-sm text-slate-500 mt-2">{String((error as any)?.message || '')}</p><button className="btn-primary mt-4" onClick={() => refetch()}>{t('common.refresh')}</button></div>;
+  if (isError) return <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-6"><p className="font-bold text-red-600">{t('admin.users.loadError')}</p><p className="text-sm text-slate-500 mt-2">{String((error as any)?.message || '')}</p><button className="btn-primary mt-4" onClick={() => refetch()}>{t('common.refresh')}</button></div>;
 
   return (
     <div className="space-y-6" dir={dir}>
       <div className="flex justify-between flex-wrap gap-3">
         <div>
-          <h3 className="text-xl font-bold text-gray-900 tracking-tight">{t('admin.users.title')}</h3>
+          <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">{t('admin.users.title')}</h3>
           <p className="text-sm text-slate-500 mt-1">{t('admin.users.subtitle')}</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -260,7 +260,7 @@ export default function AdminUsers() {
         </div>
       )}
 
-      <div className="bg-white border rounded-xl p-4 flex gap-3 flex-wrap">
+      <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-4 flex gap-3 flex-wrap">
         <div className="relative flex-1 min-w-[220px]">
           <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400"/>
           <input className="input-primary pl-9" placeholder={t('admin.users.search')} value={qInput} onChange={e => setQInput(e.target.value)}/>
@@ -273,10 +273,10 @@ export default function AdminUsers() {
         </select>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden w-full">
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden w-full">
         <div className="overflow-x-auto w-full">
           <table className="min-w-full divide-y divide-gray-100">
-            <thead className="bg-gray-50">
+            <thead className="bg-gray-50 dark:bg-slate-700 dark:bg-slate-700">
               <tr>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   <input
@@ -299,7 +299,7 @@ export default function AdminUsers() {
             <tbody className="bg-white divide-y divide-gray-100">
               {rows.length === 0 && <tr><td colSpan={7} className="px-6 py-10 text-center text-gray-500">{t('admin.users.noUsers')}</td></tr>}
               {rows.map((u: any) => (
-                <tr key={u.id} className="hover:bg-gray-50/50">
+                <tr key={u.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <input
                       type="checkbox"
@@ -312,10 +312,10 @@ export default function AdminUsers() {
                       }}
                     />
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">{u.email}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{u.name || '-'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 font-medium">{u.email}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 dark:text-gray-300 dark:text-gray-300">{u.name || '-'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">{u.role}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${Number(u.balance).toFixed(4)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-gray-100 dark:text-gray-100">${Number(u.balance).toFixed(4)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium
                       ${u.status === 'active' ? 'bg-emerald-100 text-emerald-800' : ''}
@@ -344,13 +344,13 @@ export default function AdminUsers() {
       
       {balanceModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 max-w-sm w-full shadow-xl">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">{t('admin.users.editBalanceFor', { name: balanceModal.email })}</h3>
+          <div className="bg-white dark:bg-slate-800 rounded-lg p-6 max-w-sm dark:border-slate-600 w-full shadow-xl">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">{t('admin.users.editBalanceFor', { name: balanceModal.email })}</h3>
             <form onSubmit={handleAddBalanceSubmit}>
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.users.balanceAmount')}</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('admin.users.balanceAmount')}</label>
                 <input type="number" step="0.01" value={balanceAmount} onChange={e => setBalanceAmount(e.target.value)} placeholder="50 or -10" className="input-primary w-full" required />
-                <p className="text-xs text-gray-500 mt-2">{t('admin.users.balanceHint')}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{t('admin.users.balanceHint')}</p>
               </div>
               <div className="flex justify-end gap-3">
                 <button type="button" onClick={() => setBalanceModal(null)} className="px-4 py-2 border rounded-md">{t('common.cancel')}</button>

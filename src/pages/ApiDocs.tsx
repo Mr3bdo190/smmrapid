@@ -203,7 +203,7 @@ print(response.json())`;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-200">
-      <header className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+      <header className="border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
         <div className="mx-auto max-w-[1100px] flex h-[72px] items-center justify-between px-4 sm:px-6">
           <Link to="/" className="flex items-center gap-3">
             <span className="brand-mark">R</span>
@@ -214,7 +214,7 @@ print(response.json())`;
               <Link to="/" className="text-gray-700 dark:text-gray-300 hover:text-violet-600 dark:hover:text-violet-400">Home</Link>
               <Link to="/services" className="text-gray-700 dark:text-gray-300 hover:text-violet-600 dark:hover:text-violet-400">Services</Link>
             </nav>
-            <LanguageSwitcher className="border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" />
+            <LanguageSwitcher className="border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" />
             <ThemeToggle />
           </div>
         </div>
@@ -234,13 +234,13 @@ print(response.json())`;
           </p>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 mb-8">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm p-6 mb-8">
           <div className="flex items-center gap-3 mb-3">
             <Key className="w-5 h-5 text-violet-600 dark:text-violet-400" />
             <h2 className="font-bold text-lg text-gray-900 dark:text-gray-100">{t('api.docKey')}</h2>
           </div>
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{t('api.docKeyDesc')}</p>
-          <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 font-mono text-sm text-gray-800 dark:text-gray-300 break-all">
+          <div className="bg-gray-50 dark:bg-slate-700 rounded-xl p-4 font-mono text-sm text-gray-800 dark:text-gray-300 break-all">
             {baseUrl}?key=YOUR_API_KEY&action=services
           </div>
         </div>
@@ -248,8 +248,8 @@ print(response.json())`;
         <div className="space-y-8">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">{t('api.docActions')}</h2>
           {actions.map((action) => (
-            <div key={action.key} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-              <div className={`flex items-center gap-4 p-6 ${action.bgColor} border-b border-gray-200 dark:border-gray-700`}>
+            <div key={action.key} className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden">
+              <div className={`flex items-center gap-4 p-6 ${action.bgColor} border-b border-gray-200 dark:border-slate-700`}>
                 <div className={`p-3 rounded-xl ${action.bgColor}`}>
                   <action.icon className={`w-6 h-6 ${action.color}`} />
                 </div>
@@ -263,7 +263,7 @@ print(response.json())`;
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm text-left">
                     <thead>
-                      <tr className="border-b border-gray-200 dark:border-gray-700">
+                      <tr className="border-b border-gray-200 dark:border-slate-700">
                         <th className="pb-3 text-gray-700 dark:text-gray-300 font-semibold">{t('api.paramKey')}</th>
                         <th className="pb-3 text-gray-700 dark:text-gray-300 font-semibold">{t('api.paramType')}</th>
                         <th className="pb-3 text-gray-700 dark:text-gray-300 font-semibold">{t('api.paramRequired')}</th>
@@ -272,11 +272,11 @@ print(response.json())`;
                     </thead>
                     <tbody>
                       {action.params.map((param) => (
-                        <tr key={param.name} className="border-b border-gray-100 dark:border-gray-700">
+                        <tr key={param.name} className="border-b border-gray-100 dark:border-slate-700">
                           <td className="py-3 font-mono text-sm text-violet-600 dark:text-violet-400">{param.name}</td>
                           <td className="py-3 text-gray-600 dark:text-gray-400">{param.type}</td>
                           <td className="py-3">
-                            <span className={`inline-flex px-2 py-1 text-xs rounded-full ${param.required ? 'bg-rose-100 dark:bg-rose-900/20 text-rose-700 dark:text-rose-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}`}>
+                            <span className={`inline-flex px-2 py-1 text-xs rounded-full ${param.required ? 'bg-rose-100 dark:bg-rose-900/20 text-rose-700 dark:text-rose-300' : 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-400'}`}>
                               {param.required ? t('api.paramRequired') : t('api.paramOptional')}
                             </span>
                           </td>
@@ -303,7 +303,7 @@ print(response.json())`;
                     const labelMap: Record<string, string> = { curl: 'cURL', php: 'PHP', python: 'Python' };
                     const exampleMap = { curl: curlExample, php: phpExample, python: pythonExample };
                     return (
-                      <div key={lang} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                      <div key={lang} className="bg-gray-50 dark:bg-slate-700 rounded-lg p-4">
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2">
                             <Icon className="w-4 h-4 text-gray-600 dark:text-gray-300" />

@@ -70,13 +70,13 @@ export default function AdminTicketView() {
   return (
     <div className="space-y-6 max-w-4xl mx-auto flex flex-col h-[calc(100vh-8rem)]">
       <div className="flex items-center gap-4">
-        <Link to="/admin/tickets" className="text-gray-500 hover:text-gray-900"><ArrowLeft className="w-5 h-5"/></Link>
+        <Link to="/admin/tickets" className="text-gray-500 hover:text-gray-900 dark:text-gray-100 dark:text-gray-100"><ArrowLeft className="w-5 h-5"/></Link>
         <div>
-          <h2 className="text-xl font-bold text-gray-900">{ticketData.ticket.subject}</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 dark:text-gray-100">{ticketData.ticket.subject}</h2>
           <p className="text-sm text-gray-500">User: {ticketData.ticket.user?.email}</p>
         </div>
         <div className="ml-auto flex items-center gap-3">
-          <span className="px-2.5 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-medium">{ticketData.ticket.status}</span>
+          <span className="px-2.5 py-1 bg-gray-100 dark:bg-slate-700 text-gray-800 rounded-full text-xs font-medium">{ticketData.ticket.status}</span>
           {ticketData.ticket.status !== 'Closed' ? (
             <button onClick={() => statusMutation.mutate('Closed')} className="btn-secondary flex items-center gap-2"><CheckCircle className="w-4 h-4"/> Close Ticket</button>
           ) : (
@@ -89,7 +89,7 @@ export default function AdminTicketView() {
         <div className="space-y-6">
           {ticketData.messages.map((m: any) => (
             <div key={m.id} className={`flex flex-col ${!m.isAdmin ? 'items-start' : 'items-end'}`}>
-              <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${!m.isAdmin ? 'bg-gray-100 text-gray-900' : 'bg-indigo-600 text-white'}`}>
+              <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${!m.isAdmin ? 'bg-gray-100 dark:bg-slate-700 text-gray-900' : 'bg-indigo-600 text-white'}`}>
                 <p className="text-sm whitespace-pre-wrap">{m.message}</p>
               </div>
               <span className="text-xs text-gray-400 mt-1">{new Date(m.createdAt).toLocaleString()}</span>

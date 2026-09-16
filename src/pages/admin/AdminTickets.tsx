@@ -19,11 +19,11 @@ export default function AdminTickets() {
 
   return (
     <div className="space-y-6">
-      <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2"><LifeBuoy className="w-5 h-5"/> Support Tickets</h3>
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2"><LifeBuoy className="w-5 h-5"/> Support Tickets</h3>
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">
         <div className="overflow-x-auto w-full">
         <table className="min-w-full divide-y divide-gray-100">
-          <thead className="bg-gray-50">
+          <thead className="bg-gray-50 dark:bg-slate-700 dark:bg-slate-700">
             <tr>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">User</th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Subject</th>
@@ -34,9 +34,9 @@ export default function AdminTickets() {
           </thead>
           <tbody className="bg-white divide-y divide-gray-100">
             {tickets.map((t: any) => (
-              <tr key={t.id} className="hover:bg-gray-50/50">
-                <td className="px-6 py-4 text-sm font-medium text-gray-900">{t.user?.email}</td>
-                <td className="px-6 py-4 text-sm text-gray-900">{t.subject}</td>
+              <tr key={t.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/50">
+                <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100 dark:text-gray-100">{t.user?.email}</td>
+                <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100 dark:text-gray-100">{t.subject}</td>
                 <td className="px-6 py-4 text-sm"><span className="px-2 py-1 rounded bg-gray-100">{t.status}</span></td>
                 <td className="px-6 py-4 text-sm text-gray-500">{new Date(t.createdAt).toLocaleString()}</td>
                 <td className="px-6 py-4 text-right"><Link to={`/admin/tickets/${t.id}`} className="text-indigo-600 hover:text-indigo-900"><Eye className="w-4 h-4"/></Link></td>

@@ -35,11 +35,11 @@ export default function ClientMassOrder() {
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><ListOrdered className="text-indigo-600"/> {t('massOrder.title')}</h2>
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2"><ListOrdered className="text-indigo-600"/> {t('massOrder.title')}</h2>
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 border-gray-100 p-6">
         <form onSubmit={handleMassOrder} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('massOrder.ordersLabel')}</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('massOrder.ordersLabel')}</label>
             <textarea
               rows={10}
               value={ordersText}

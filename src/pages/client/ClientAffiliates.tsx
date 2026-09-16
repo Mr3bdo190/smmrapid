@@ -131,7 +131,7 @@ export default function ClientAffiliates() {
     <div className="space-y-6 max-w-6xl" dir={dir}>
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 dark:text-gray-100 flex items-center gap-2">
             <Users className="text-indigo-600" />
             {t('affiliates.title')}
           </h2>
@@ -144,14 +144,14 @@ export default function ClientAffiliates() {
       </div>
 
       {/* Referral Link */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-        <h3 className="font-bold text-gray-900 dark:text-white mb-2">{t('affiliates.yourLink')}</h3>
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6">
+        <h3 className="font-bold text-gray-900 dark:text-gray-100 dark:text-gray-100 mb-2">{t('affiliates.yourLink')}</h3>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{t('affiliates.linkHint')}</p>
         <div className="flex flex-col md:flex-row gap-3">
           <input
             readOnly
             value={query.isLoading ? t('common.loading') : refLink || t('affiliates.generating')}
-            className="input-field flex-1 font-mono text-sm bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
+            className="input-field flex-1 font-mono text-sm bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200"
           />
           <button onClick={copy} className="btn-primary">
             <Copy className="w-4 h-4 inline mr-1" />
@@ -159,7 +159,7 @@ export default function ClientAffiliates() {
           </button>
         </div>
         <div className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-          {t('affiliates.code')} <span className="font-mono font-bold text-gray-900 dark:text-white">{stats?.referralCode || '—'}</span>
+          {t('affiliates.code')} <span className="font-mono font-bold text-gray-900 dark:text-gray-100 dark:text-gray-100">{stats?.referralCode || '—'}</span>
         </div>
       </div>
 
@@ -172,17 +172,17 @@ export default function ClientAffiliates() {
           [t('affiliates.referralDeposits'), `$${Number(stats?.referralDeposits || 0).toFixed(2)}`, Wallet],
           [t('affiliates.earnings'), `$${Number(stats?.totalCommission || 0).toFixed(2)}`, Wallet],
         ].map(([l, v, I]: any) => (
-          <div key={l} className="bg-white dark:bg-gray-800 p-5 rounded-xl border border-gray-200 dark:border-gray-700">
+          <div key={l} className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-gray-200 dark:border-slate-700">
             <I className="w-5 h-5 text-indigo-600 mb-3" />
             <p className="text-xs text-gray-500 dark:text-gray-400">{l}</p>
-            <p className="text-2xl font-bold mt-1 text-gray-900 dark:text-white">{v}</p>
+            <p className="text-2xl font-bold mt-1 text-gray-900 dark:text-gray-100 dark:text-gray-100">{v}</p>
           </div>
         ))}
       </div>
 
       {/* Available Affiliate Balance */}
       <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 border border-indigo-200 dark:border-indigo-800 rounded-xl p-6">
-        <h3 className="font-bold text-gray-900 dark:text-white mb-1">{t('affiliates.availableBalance')}</h3>
+        <h3 className="font-bold text-gray-900 dark:text-gray-100 dark:text-gray-100 mb-1">{t('affiliates.availableBalance')}</h3>
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">{t('affiliates.availableBalanceHint')}</p>
         <div className="flex items-baseline gap-3">
           <span className="text-4xl font-black text-indigo-700 dark:text-indigo-300">${availableBalance.toFixed(4)}</span>
@@ -191,18 +191,18 @@ export default function ClientAffiliates() {
         <div className="mt-3 grid grid-cols-2 gap-4 text-center">
           <div>
             <span className="text-xs text-gray-500 dark:text-gray-400">{t('affiliates.totalEarnings')}</span>
-            <div className="text-lg font-bold text-gray-900 dark:text-white">${Number(stats?.totalCommission || 0).toFixed(4)}</div>
+            <div className="text-lg font-bold text-gray-900 dark:text-gray-100 dark:text-gray-100">${Number(stats?.totalCommission || 0).toFixed(4)}</div>
           </div>
           <div>
             <span className="text-xs text-gray-500 dark:text-gray-400">{t('affiliates.totalPaidOut')}</span>
-            <div className="text-lg font-bold text-gray-900 dark:text-white">${totalPaid.toFixed(4)}</div>
+            <div className="text-lg font-bold text-gray-900 dark:text-gray-100 dark:text-gray-100">${totalPaid.toFixed(4)}</div>
           </div>
         </div>
       </div>
 
       {/* Withdrawals Section */}
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5">
-        <h3 className="font-bold text-gray-900 dark:text-white mb-2">{t('affiliates.withdraw')}</h3>
+      <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5">
+        <h3 className="font-bold text-gray-900 dark:text-gray-100 dark:text-gray-100 mb-2">{t('affiliates.withdraw')}</h3>
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">{t('affiliates.withdrawDesc')}</p>
 
         {/* Min withdrawal hint */}
@@ -214,7 +214,7 @@ export default function ClientAffiliates() {
 
         <div className="grid md:grid-cols-3 gap-3">
           <input
-            className="input-primary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
+            className="input-primary dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200"
             type="number"
             min="0"
             step="0.0001"
@@ -223,7 +223,7 @@ export default function ClientAffiliates() {
             onChange={e => setAmount(e.target.value)}
           />
           <select
-            className="input-primary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
+            className="input-primary dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200"
             value={method}
             onChange={e => setMethod(e.target.value)}
           >
@@ -233,7 +233,7 @@ export default function ClientAffiliates() {
             <option>Other</option>
           </select>
           <input
-            className="input-primary dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
+            className="input-primary dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200"
             placeholder={t('affiliates.withdrawDestination')}
             value={destination}
             onChange={e => setDestination(e.target.value)}
@@ -265,9 +265,9 @@ export default function ClientAffiliates() {
               ) : (
                 (withdrawals.data || []).map((w: any) => (
                   <tr key={w.id}>
-                    <td className="px-3 py-2 text-gray-900 dark:text-white">${Number(w.amount).toFixed(4)}</td>
-                    <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{w.method}</td>
-                    <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{w.status}</td>
+                    <td className="px-3 py-2 text-gray-900 dark:text-gray-100 dark:text-gray-100">${Number(w.amount).toFixed(4)}</td>
+                    <td className="px-3 py-2 text-gray-600 dark:text-gray-400 dark:text-gray-300">{w.method}</td>
+                    <td className="px-3 py-2 text-gray-600 dark:text-gray-400 dark:text-gray-300">{w.status}</td>
                     <td className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400">{new Date(w.createdAt).toLocaleString()}</td>
                   </tr>
                 ))
@@ -278,8 +278,8 @@ export default function ClientAffiliates() {
       </div>
 
       {/* Commission History */}
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-x-auto">
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700 font-bold text-gray-900 dark:text-white">
+      <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl overflow-x-auto">
+        <div className="p-4 border-b border-gray-200 dark:border-slate-700 font-bold text-gray-900 dark:text-gray-100 dark:text-gray-100">
           {t('affiliates.commissionHistory')}
         </div>
         <table className="min-w-[700px] w-full">
@@ -296,8 +296,8 @@ export default function ClientAffiliates() {
             {stats?.commissions?.length ? (
               stats.commissions.map((c: any) => (
                 <tr key={c.id}>
-                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{c.referredEmail}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-gray-600 dark:text-gray-300">{c.paymentId?.slice(0, 8)}</td>
+                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 dark:text-gray-100">{c.referredEmail}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-gray-600 dark:text-gray-400 dark:text-gray-300">{c.paymentId?.slice(0, 8)}</td>
                   <td className="px-4 py-3 text-emerald-600 font-semibold">${Number(c.amount).toFixed(4)}</td>
                   <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">{new Date(c.createdAt).toLocaleString()}</td>
                 </tr>

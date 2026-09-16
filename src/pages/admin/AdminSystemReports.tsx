@@ -100,7 +100,7 @@ export default function AdminSystemReports() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
             <ShieldAlert className="w-5 h-5" />
             {t('admin.settings.systemReports')}
           </h3>
@@ -113,7 +113,7 @@ export default function AdminSystemReports() {
       </div>
 
       {/* Tab Navigation */}
-      <div className="border-b border-gray-200 dark:border-gray-700">
+      <div className="border-b border-gray-200 dark:border-slate-700">
         <nav className="flex gap-6">
           <button
             onClick={() => setActiveTab('reports')}
@@ -141,18 +141,18 @@ export default function AdminSystemReports() {
       {/* Reports Tab */}
       {activeTab === 'reports' && (
         <>
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex flex-wrap gap-3">
+          <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-4 flex flex-wrap gap-3">
             <div className="relative flex-1 min-w-[220px]">
               <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400 dark:text-gray-500" />
               <input
-                className="input-primary pl-9 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
+                className="input-primary pl-9 dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200"
                 placeholder="Search this page: action, location or error"
                 value={q}
                 onChange={e => setQ(e.target.value)}
               />
             </div>
             <select
-              className="input-primary w-auto dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
+              className="input-primary w-auto dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200"
               value={status}
               onChange={e => setStatus(e.target.value)}
             >
@@ -162,7 +162,7 @@ export default function AdminSystemReports() {
             </select>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-x-auto">
+          <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl overflow-x-auto">
             <table className="min-w-[1000px] w-full">
               <thead className="bg-gray-50 dark:bg-gray-900">
                 <tr>
@@ -184,7 +184,7 @@ export default function AdminSystemReports() {
                       <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">
                         {new Date(r.createdAt).toLocaleString()}
                       </td>
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">{r.action}</td>
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">{r.action}</td>
                       <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{r.location}</td>
                       <td className="px-4 py-3 text-sm text-red-600">{r.errorReason}</td>
                       <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{r.status}</td>
@@ -228,19 +228,19 @@ export default function AdminSystemReports() {
       {/* System Logs Tab */}
       {activeTab === 'logs' && (
         <>
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex flex-wrap gap-3 items-center justify-between">
+          <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-4 flex flex-wrap gap-3 items-center justify-between">
             <div className="flex flex-wrap gap-3 items-center">
               <div className="relative flex-1 min-w-[220px]">
                 <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400 dark:text-gray-500" />
                 <input
-                  className="input-primary pl-9 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
+                  className="input-primary pl-9 dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200"
                   placeholder={t('settings.filterByLevel')}
                   value={q}
                   onChange={e => setQ(e.target.value)}
                 />
               </div>
               <select
-                className="input-primary w-auto dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
+                className="input-primary w-auto dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200"
                 value={logLevel}
                 onChange={e => setLogLevel(e.target.value)}
               >
@@ -268,7 +268,7 @@ export default function AdminSystemReports() {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-x-auto">
+          <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl overflow-x-auto">
             <table className="min-w-[1000px] w-full">
               <thead className="bg-gray-50 dark:bg-gray-900">
                 <tr>
@@ -312,7 +312,7 @@ export default function AdminSystemReports() {
                               {r.level}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{r.message}</td>
+                          <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">{r.message}</td>
                           <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 max-w-xs truncate">
                             {r.details || '-'}
                           </td>

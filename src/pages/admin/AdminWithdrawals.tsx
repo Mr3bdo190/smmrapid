@@ -91,7 +91,7 @@ export default function AdminWithdrawals() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('admin.withdrawals.title') || 'Affiliate Withdrawals (سحوبات الأرباح/الإحالات)'}</h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{t('admin.withdrawals.title') || 'Affiliate Withdrawals (سحوبات الأرباح/الإحالات)'}</h1>
             <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{t('admin.withdrawals.subtitle') || 'Manage affiliate commission withdrawal requests. These are strictly for referral/affiliate earnings.'}</p>
           </div>
           <button
@@ -160,7 +160,7 @@ export default function AdminWithdrawals() {
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <span className="text-sm font-medium text-gray-900 dark:text-white">${Number(w.amount).toFixed(2)}</span>
+                          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">${Number(w.amount).toFixed(2)}</span>
                         </td>
                         <td className="px-4 py-3">
                           <span className="text-sm text-gray-700 dark:text-gray-300">{w.method}</span>

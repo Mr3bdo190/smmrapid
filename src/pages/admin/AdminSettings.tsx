@@ -195,7 +195,7 @@ export default function AdminSettings() {
       </div>
 
       {/* Tab Content */}
-      <div className="bg-surface-container rounded-b-xl shadow-sm border-outline-variant p-6 min-h-[400px]">
+      <div className="bg-surface-container rounded-b-xl shadow-sm border border-outline-variant p-6 min-h-[400px]">
         {/* General Settings Tab */}
         {activeTab === 'general' && (
           <div className="space-y-6" dir="ltr">
@@ -286,7 +286,7 @@ export default function AdminSettings() {
             <h4 className="text-lg font-semibold text-on-surface flex items-center gap-2">
               <Key className="w-5 h-5" /> {t('admin.settings.apiSettings')}
             </h4>
-            <div className="rounded-xl bg-surface-container-low bg-surface-container-high border-outline-variant p-5 space-y-4">
+            <div className="rounded-xl bg-surface-container-low bg-surface-container-high border border-outline-variant p-5 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-on-surface-variant mb-1">{t('admin.settings.sha7nawyPublic')}</label>
                 <input value={shahnawyPublicKey} onChange={e => setShahnawyPublicKey(e.target.value)}
@@ -331,7 +331,7 @@ export default function AdminSettings() {
             </h4>
 
             {/* Sha7nawy Gate */}
-            <div className="rounded-xl border-indigo-100 dark:border-indigo-900 bg-indigo-50 dark:bg-indigo-900/20 p-5 space-y-4">
+            <div className="rounded-xl border border-indigo-100 dark:border-indigo-900 bg-indigo-50 dark:bg-indigo-900/20 p-5 space-y-4">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <h5 className="font-bold text-on-surface flex items-center gap-2">
@@ -354,7 +354,7 @@ export default function AdminSettings() {
                   {shahnawyEnabled ? 'Enabled' : 'Disabled'}
                 </button>
               </div>
-              <div className="rounded-xl bg-surface-container border-outline-variant p-4 text-xs text-on-surface-variant space-y-2">
+              <div className="rounded-xl bg-surface-container border border-outline-variant p-4 text-xs text-on-surface-variant space-y-2">
                 <p><strong>{t('admin.settings.webhook')}:</strong> <code className="bg-surface-container-high px-1 rounded">/api/shahnawy/webhook</code> — {t('admin.settings.webhookDesc')}</p>
                 <p><strong>{t('admin.settings.security')}:</strong> {t('admin.settings.securityDesc')}</p>
               </div>

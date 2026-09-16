@@ -48,7 +48,7 @@ export default function ClientApi() {
       <h2 className="text-2xl font-bold text-on-surface flex items-center gap-2"><Code className="text-indigo-600 dark:text-indigo-400"/> {t('api.title')}</h2>
       <p className="text-sm text-on-surface-variant -mt-4">{t('api.subtitle')}</p>
 
-      <div className="bg-surface-container rounded-xl shadow-sm border-outline-variant p-6">
+      <div className="bg-surface-container rounded-xl shadow-sm border border-outline-variant p-6">
         <h3 className="font-bold text-lg text-on-surface mb-4 flex items-center gap-2"><Key className="w-5 h-5"/> {t('api.yourKey')}</h3>
         {newApiKey ? (
           <div className="flex items-center gap-4">
@@ -74,7 +74,7 @@ export default function ClientApi() {
         )}
       </div>
 
-      <div className="bg-surface-container rounded-xl shadow-sm border-outline-variant p-6 space-y-4">
+      <div className="bg-surface-container rounded-xl shadow-sm border border-outline-variant p-6 space-y-4">
         <h3 className="font-bold text-lg text-on-surface">{t('api.usage')}</h3>
         <p className="text-sm text-on-surface-variant">{t('api.usageDesc')}</p>
 

@@ -62,17 +62,17 @@ export default function AdminPayments() {
         <h3 className="text-xl font-bold text-on-surface tracking-tight">Transactions & Payments</h3>
         <button className="btn-secondary" onClick={()=>queryClient.invalidateQueries({queryKey:['admin-payments']})}><RefreshCw className="w-4 h-4 inline mr-1"/>Refresh</button>
       </div>
-      <div className="bg-surface-container border-outline-variant rounded-xl p-4 flex-wrap gap-3">
+      <div className="bg-surface-container border border-outline-variant rounded-xl p-4 flex-wrap gap-3">
         <div className="relative flex-1 min-w-[220px]">
           <Search className="absolute left-3 top-3 w-4 h-4 text-outline"/>
-          <input className="input-primary pl-9 bg-surface-container-high border-outline-variant text-on-surface" placeholder="Search this page: email, method or transaction ID" value={q} onChange={e=>setQ(e.target.value)}/>
+          <input className="input-primary pl-9 bg-surface-container-high border border-outline-variant text-on-surface" placeholder="Search this page: email, method or transaction ID" value={q} onChange={e=>setQ(e.target.value)}/>
         </div>
-        <select className="input-primary w-auto bg-surface-container-high border-outline-variant text-on-surface" value={status} onChange={e=>setStatus(e.target.value)}>
+        <select className="input-primary w-auto bg-surface-container-high border border-outline-variant text-on-surface" value={status} onChange={e=>setStatus(e.target.value)}>
           <option value="all">All statuses</option><option>Pending</option><option>Approved</option><option>Rejected</option>
         </select>
       </div>
-      {isError && <div className="rounded-xl border-red-200 bg-red-50 p-4 text-sm text-red-700">{(error as Error)?.message || 'Failed to load payments'}</div>}
-      <div className="bg-surface-container rounded-xl shadow-sm border-outline-variant overflow-hidden w-full">
+      {isError && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{(error as Error)?.message || 'Failed to load payments'}</div>}
+      <div className="bg-surface-container rounded-xl shadow-sm border border-outline-variant overflow-hidden w-full">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-outline-variant">
             <thead className="bg-surface-container-low">

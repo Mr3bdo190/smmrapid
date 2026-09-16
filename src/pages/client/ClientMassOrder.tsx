@@ -36,7 +36,7 @@ export default function ClientMassOrder() {
   return (
     <div className="space-y-6 max-w-4xl">
       <h2 className="text-2xl font-bold text-on-surface flex items-center gap-2"><ListOrdered className="text-indigo-600"/> {t('massOrder.title')}</h2>
-      <div className="bg-surface-container rounded-xl shadow-sm border-outline-variant border-outline-variant p-6">
+      <div className="bg-surface-container rounded-xl shadow-sm border border-outline-variant p-6">
         <form onSubmit={handleMassOrder} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-on-surface-variant mb-1">{t('massOrder.ordersLabel')}</label>

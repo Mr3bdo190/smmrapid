@@ -394,6 +394,10 @@ export const translations: Dict = {
   'affiliates.title': { en: 'Affiliate Center', ar: 'مركز الإحالة' },
   'affiliates.referralLink': { en: 'Referral Link', ar: 'رابط الإحالة' },
   'affiliates.referredUsers': { en: 'Referred Users', ar: 'المستخدمون المُحالون' },
+  'affiliates.commissionDate': { en: 'Date', ar: 'التاريخ' },
+  'affiliates.commissionAmount': { en: 'Commission', ar: 'العمولة' },
+  'affiliates.commissionHistoryEmpty': { en: 'No commissions yet — they appear here as soon as a referred user makes a deposit.', ar: 'لا توجد عمولات بعد — تظهر هنا بمجرد أن يودع أحد المستخدمين المُحالين.' },
+  'affiliates.referredUsersEmpty': { en: 'No sign-ups from your referral link yet.', ar: 'لا يوجد مسجلون من رابط الإحالة الخاص بك بعد.' },
 
   // Mass Order
   'massOrder.title': { en: 'Mass Order', ar: 'طلبات جماعية' },

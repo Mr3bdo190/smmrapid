@@ -60,7 +60,7 @@ export default function ClientTicketView() {
         <span className="px-2.5 py-1 bg-surface-container-high text-on-surface rounded-full text-xs font-medium ml-auto">{ticketData.ticket.status}</span>
       </div>
 
-      <div className="flex-1 overflow-y-auto bg-surface-container rounded-xl shadow-sm border-outline-variant p-6 space-y-6 flex-col-reverse">
+      <div className="flex-1 overflow-y-auto bg-surface-container rounded-xl shadow-sm border border-outline-variant p-6 space-y-6 flex-col-reverse">
         <div className="space-y-6">
           {ticketData.messages.map((m: any) => (
             <div key={m.id} className={`flex-col ${m.isAdmin ? 'items-start' : 'items-end'}`}>

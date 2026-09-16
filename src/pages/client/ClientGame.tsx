@@ -74,7 +74,7 @@ export default function ClientGame() {
       </div>
 
       <div className="grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="bg-surface-container rounded-xl shadow-sm border-outline-variant p-8 flex-col items-center text-center">
+        <div className="bg-surface-container rounded-xl shadow-sm border border-outline-variant p-8 flex-col items-center text-center">
           <div className="w-20 h-20 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mb-6">
             <Coins className="w-10 h-10"/>
           </div>
@@ -90,7 +90,7 @@ export default function ClientGame() {
           </button>
         </div>
 
-        <div className="bg-surface-container rounded-xl shadow-sm border-outline-variant p-8 flex-col items-center text-center">
+        <div className="bg-surface-container rounded-xl shadow-sm border border-outline-variant p-8 flex-col items-center text-center">
           <div className="w-20 h-20 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center mb-6">
             <Key className="w-10 h-10"/>
           </div>

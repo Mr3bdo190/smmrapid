@@ -1,4 +1,7 @@
-// import type { User } from 'firebase/auth';
+// `firebase/auth` ships without type declarations in this project (it resolves to
+// dist/cjs/lucide-style JS), so the SDK's User type is aliased locally instead of
+// leaving an unresolved identifier in three signatures.
+type User = any;
 
 // Mutex for token refresh to prevent race conditions
 let refreshPromise: Promise<string> | null = null;

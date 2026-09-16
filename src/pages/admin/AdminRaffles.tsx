@@ -74,7 +74,7 @@ export default function AdminRaffles() {
         <button onClick={() => setIsModalOpen(true)} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4"/> Create Raffle</button>
       </div>
 
-      <div className="bg-surface-container rounded-xl shadow-sm border-outline-variant overflow-hidden">
+      <div className="bg-surface-container rounded-xl shadow-sm border border-outline-variant overflow-hidden">
         {isLoading ? (
           <div className="p-8 text-center text-on-surface-variant">Loading...</div>
         ) : (
@@ -146,36 +146,36 @@ export default function AdminRaffles() {
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-surface-container rounded-xl border-outline-variant p-6 max-w-md w-full shadow-2xl">
+          <div className="bg-surface-container rounded-xl border border-outline-variant p-6 max-w-md w-full shadow-2xl">
             <h3 className="text-xl font-bold mb-6 text-on-surface">Create New Raffle</h3>
             <form onSubmit={(e) => { e.preventDefault(); createMutation.mutate(formData); }} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-on-surface-variant mb-1">Title</label>
-                <input required type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="input-primary bg-surface-container-high border-outline-variant text-on-surface" placeholder="e.g. Weekly Jackpot" />
+                <input required type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="input-primary bg-surface-container-high border border-outline-variant text-on-surface" placeholder="e.g. Weekly Jackpot" />
               </div>
               <div className="grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-on-surface-variant mb-1">Prize Amount ($)</label>
-                  <input required type="number" step="0.01" min="0.01" value={formData.prizeAmount} onChange={e => setFormData({...formData, prizeAmount: e.target.value})} className="input-primary bg-surface-container-high border-outline-variant text-on-surface" />
+                  <input required type="number" step="0.01" min="0.01" value={formData.prizeAmount} onChange={e => setFormData({...formData, prizeAmount: e.target.value})} className="input-primary bg-surface-container-high border border-outline-variant text-on-surface" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-on-surface-variant mb-1">Ticket Price ($)</label>
-                  <input required type="number" step="0.01" min="0" value={formData.ticketPrice} onChange={e => setFormData({...formData, ticketPrice: e.target.value})} className="input-primary bg-surface-container-high border-outline-variant text-on-surface" />
+                  <input required type="number" step="0.01" min="0" value={formData.ticketPrice} onChange={e => setFormData({...formData, ticketPrice: e.target.value})} className="input-primary bg-surface-container-high border border-outline-variant text-on-surface" />
                 </div>
               </div>
               <div className="grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-on-surface-variant mb-1">Max Total Tickets</label>
-                  <input type="number" min="1" placeholder="Optional" value={formData.maxTickets} onChange={e => setFormData({...formData, maxTickets: e.target.value})} className="input-primary bg-surface-container-high border-outline-variant text-on-surface" />
+                  <input type="number" min="1" placeholder="Optional" value={formData.maxTickets} onChange={e => setFormData({...formData, maxTickets: e.target.value})} className="input-primary bg-surface-container-high border border-outline-variant text-on-surface" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-on-surface-variant mb-1">Max Per User</label>
-                  <input type="number" min="1" placeholder="Optional" value={formData.maxTicketsPerUser} onChange={e => setFormData({...formData, maxTicketsPerUser: e.target.value})} className="input-primary bg-surface-container-high border-outline-variant text-on-surface" />
+                  <input type="number" min="1" placeholder="Optional" value={formData.maxTicketsPerUser} onChange={e => setFormData({...formData, maxTicketsPerUser: e.target.value})} className="input-primary bg-surface-container-high border border-outline-variant text-on-surface" />
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-on-surface-variant mb-1">End Date</label>
-                <input required type="datetime-local" value={formData.endDate} onChange={e => setFormData({...formData, endDate: e.target.value})} className="input-primary bg-surface-container-high border-outline-variant text-on-surface" />
+                <input required type="datetime-local" value={formData.endDate} onChange={e => setFormData({...formData, endDate: e.target.value})} className="input-primary bg-surface-container-high border border-outline-variant text-on-surface" />
               </div>
               <div className="flex justify-end gap-3 mt-8">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2 text-on-surface-variant hover:text-on-surface dark:hover:text-gray-200 font-medium transition-colors">Cancel</button>

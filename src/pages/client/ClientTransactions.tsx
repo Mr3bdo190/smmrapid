@@ -22,7 +22,7 @@ export default function ClientTransactions() {
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-on-surface">{t('nav.transactions')}</h2>
       <p className="text-sm text-on-surface-variant -mt-4">{t('transactions.subtitle')}</p>
-      <div className="bg-surface-container rounded-xl shadow-sm border-outline-variant overflow-hidden w-full">
+      <div className="bg-surface-container rounded-xl shadow-sm border border-outline-variant overflow-hidden w-full">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-outline-variant">
             <thead className="bg-surface-container-low">

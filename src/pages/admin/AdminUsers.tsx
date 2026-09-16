@@ -25,7 +25,7 @@ function UserDetailsModal({ userId, onClose }: { userId: string, onClose: () => 
 
   if (isLoading) return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-surface-container rounded-lg p-6 max-w-4xl border-outline-variant w-full shadow-xl">{t('common.loading')}</div>
+      <div className="bg-surface-container rounded-lg p-6 max-w-4xl border border-outline-variant w-full shadow-xl">{t('common.loading')}</div>
     </div>
   );
   if (!data) return null;
@@ -37,7 +37,7 @@ function UserDetailsModal({ userId, onClose }: { userId: string, onClose: () => 
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-      <div className="bg-surface-container rounded-lg max-w-5xl border-outline-variant w-full shadow-xl my-8 flex-col max-h-[90vh]">
+      <div className="bg-surface-container rounded-lg max-w-5xl border border-outline-variant w-full shadow-xl my-8 flex-col max-h-[90vh]">
         <div className="flex justify-between items-center p-6 border-b border-outline-variant">
           <h2 className="text-2xl font-bold text-on-surface">{t('admin.users.details')}: {u.email}</h2>
           <button onClick={onClose} className="text-outline hover:text-on-surface-variant dark:hover:text-gray-200"><X className="w-6 h-6"/></button>
@@ -45,19 +45,19 @@ function UserDetailsModal({ userId, onClose }: { userId: string, onClose: () => 
         
         <div className="p-6 overflow-y-auto flex-1 space-y-8">
           <div className="grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-indigo-50 p-4 rounded-xl border-indigo-100">
+            <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
               <p className="text-sm font-medium text-indigo-800">{t('common.currentBalance')}</p>
               <p className="text-2xl font-bold text-indigo-900">${Number(u.balance).toFixed(4)}</p>
             </div>
-            <div className="bg-emerald-50 p-4 rounded-xl border-emerald-100">
+            <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100">
               <p className="text-sm font-medium text-emerald-800">{t('admin.users.totalSpent')}</p>
               <p className="text-2xl font-bold text-emerald-900">${totalSpent.toFixed(4)}</p>
             </div>
-            <div className="bg-amber-50 p-4 rounded-xl border-amber-100">
+            <div className="bg-amber-50 p-4 rounded-xl border border-amber-100">
               <p className="text-sm font-medium text-amber-800">{t('admin.users.totalOrders')}</p>
               <p className="text-2xl font-bold text-amber-900">{orders.length}</p>
             </div>
-            <div className="bg-blue-50 p-4 rounded-xl border-blue-100">
+            <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
               <p className="text-sm font-medium text-blue-800">{t('admin.users.completedOrders')}</p>
               <p className="text-2xl font-bold text-blue-900">{completedOrders}</p>
             </div>
@@ -219,7 +219,7 @@ export default function AdminUsers() {
   };
 
   if (isLoading) return <div className="p-6 text-center text-slate-500">{t('common.loading')}</div>;
-  if (isError) return <div className="bg-surface-container border-outline-variant rounded-xl p-6"><p className="font-bold text-red-600">{t('admin.users.loadError')}</p><p className="text-sm text-slate-500 mt-2">{String((error as any)?.message || '')}</p><button className="btn-primary mt-4" onClick={() => refetch()}>{t('common.refresh')}</button></div>;
+  if (isError) return <div className="bg-surface-container border border-outline-variant rounded-xl p-6"><p className="font-bold text-red-600">{t('admin.users.loadError')}</p><p className="text-sm text-slate-500 mt-2">{String((error as any)?.message || '')}</p><button className="btn-primary mt-4" onClick={() => refetch()}>{t('common.refresh')}</button></div>;
 
   return (
     <div className="space-y-6" dir={dir}>
@@ -243,7 +243,7 @@ export default function AdminUsers() {
 
       {/* Bulk Actions Bar */}
       {selected.size > 0 && (
-        <div className="bg-indigo-50 border-indigo-200 rounded-xl p-4 flex-wrap gap-3 items-center">
+        <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 flex-wrap gap-3 items-center">
           <span className="text-sm font-medium text-indigo-900">{t('common.selected', { count: selected.size })}</span>
           <select className="input-primary w-auto" value={bulkStatus} onChange={e => setBulkStatus(e.target.value)}>
             <option value="">{t('admin.users.selectStatus')}</option>
@@ -260,7 +260,7 @@ export default function AdminUsers() {
         </div>
       )}
 
-      <div className="bg-surface-container border-outline-variant rounded-xl p-4 flex gap-3 flex-wrap">
+      <div className="bg-surface-container border border-outline-variant rounded-xl p-4 flex gap-3 flex-wrap">
         <div className="relative flex-1 min-w-[220px]">
           <Search className="absolute left-3 top-3 w-4 h-4 text-outline"/>
           <input className="input-primary pl-9" placeholder={t('admin.users.search')} value={qInput} onChange={e => setQInput(e.target.value)}/>
@@ -273,7 +273,7 @@ export default function AdminUsers() {
         </select>
       </div>
 
-      <div className="bg-surface-container rounded-xl shadow-sm border-outline-variant overflow-hidden w-full">
+      <div className="bg-surface-container rounded-xl shadow-sm border border-outline-variant overflow-hidden w-full">
         <div className="overflow-x-auto w-full">
           <table className="min-w-full divide-y divide-outline-variant">
             <thead className="bg-surface-container-low bg-surface-container-high">
@@ -344,7 +344,7 @@ export default function AdminUsers() {
       
       {balanceModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-surface-container border-outline-variant border-outline-variant rounded-lg p-6 max-w-sm w-full shadow-xl">
+          <div className="bg-surface-container border border-outline-variant rounded-lg p-6 max-w-sm w-full shadow-xl">
             <h3 className="text-lg font-bold text-on-surface mb-4">{t('admin.users.editBalanceFor', { name: balanceModal.email })}</h3>
             <form onSubmit={handleAddBalanceSubmit}>
               <div className="mb-4">
@@ -353,7 +353,7 @@ export default function AdminUsers() {
                 <p className="text-xs text-on-surface-variant mt-2">{t('admin.users.balanceHint')}</p>
               </div>
               <div className="flex justify-end gap-3">
-                <button type="button" onClick={() => setBalanceModal(null)} className="px-4 py-2 border-gray-300 border-outline-variant rounded-md text-on-surface-variant">{t('common.cancel')}</button>
+                <button type="button" onClick={() => setBalanceModal(null)} className="px-4 py-2 border border-outline-variant rounded-md text-on-surface-variant">{t('common.cancel')}</button>
                 <button type="submit" className="btn-primary">{t('admin.users.saveBalance')}</button>
               </div>
             </form>

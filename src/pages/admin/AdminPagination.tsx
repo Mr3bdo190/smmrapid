@@ -12,13 +12,13 @@ export default function AdminPagination({ page, pageSize, total, onPageChange }:
         <button
           disabled={page <= 1}
           onClick={() => onPageChange(page - 1)}
-          className="p-1.5 rounded-md border-gray-300 border-outline-variant disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-slate-600 dark:hover:text-gray-200"
+          className="p-1.5 rounded-md border border-outline-variant disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-slate-600 dark:hover:text-gray-200"
         ><ChevronLeft className="w-4 h-4" /></button>
         <span className="text-on-surface-variant">Page {page} of {totalPages}</span>
         <button
           disabled={page >= totalPages}
           onClick={() => onPageChange(page + 1)}
-          className="p-1.5 rounded-md border-gray-300 border-outline-variant disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-slate-600 dark:hover:text-gray-200"
+          className="p-1.5 rounded-md border border-outline-variant disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-slate-600 dark:hover:text-gray-200"
         ><ChevronRight className="w-4 h-4" /></button>
       </div>
     </div>

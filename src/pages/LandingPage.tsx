@@ -205,13 +205,13 @@ export default function LandingPage() {
       />
 
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-slate-200 border-outline-variant bg-surface-container/95 bg-surface-container-low/95 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 border-b border-outline-variant bg-surface-container/95 bg-surface-container-low/95 backdrop-blur-xl">
         <div className="mx-auto flex h-[72px] max-w-[1240px] items-center justify-between px-4 sm:px-6">
           <Link to="/" className="flex items-center gap-3" onClick={() => setMenu(false)}>
             <span className="brand-mark">R</span>
             <span className="text-xl font-black tracking-tight">SMM<span className="text-violet-600">Rapid</span></span>
           </Link>
-          <nav className="hidden items-center gap-7 text-sm font-bold text-slate-600 text-on-surface-variant md:flex">
+          <nav className="hidden items-center gap-7 text-sm font-bold text-on-surface-variant md:flex">
             <Link className="landing-nav-link" to="/services">{text.navServices}</Link>
             <a className="landing-nav-link" href="#how" onClick={scrollHow}>{text.navHow}</a>
             <Link className="landing-nav-link" to="/blog">{text.navBlog}</Link>
@@ -224,12 +224,12 @@ export default function LandingPage() {
                 <button className="btn-primary" onClick={() => setAuth('register')}>{text.start}<ArrowRight size={15} className={ar ? 'mr-1 rotate-180' : 'ml-1'} /></button></>}
             <ThemeToggle className="ml-2" />
           </div>
-          <button className="rounded-xl bg-slate-100 bg-surface-container-high p-2 md:hidden" onClick={() => setMenu(!menu)} aria-label="menu">
+          <button className="rounded-xl bg-surface-container-high p-2 md:hidden" onClick={() => setMenu(!menu)} aria-label="menu">
             {menu ? <X /> : <Menu />}
           </button>
         </div>
         {menu && (
-          <div className="border-t border-slate-200 border-outline-variant bg-surface-container p-4 md:hidden">
+          <div className="border-t border-outline-variant bg-surface-container p-4 md:hidden">
             <div className="mx-auto flex max-w-md flex-col gap-2">
               <Link onClick={() => setMenu(false)} className="mobile-nav" to="/services">{text.navServices}</Link>
               <a onClick={scrollHow} className="mobile-nav" href="#how">{text.navHow}</a>
@@ -259,10 +259,10 @@ export default function LandingPage() {
                   <Sparkles size={12} className="text-violet-600 dark:text-violet-400" />
                   {text.badge}
                 </div>
-                <h1 className="mt-6 text-4xl font-black tracking-tight text-slate-900 text-on-surface sm:text-5xl leading-tight">
+                <h1 className="mt-6 text-4xl font-black tracking-tight text-on-surface sm:text-5xl leading-tight">
                   {text.title}
                 </h1>
-                <p className="mt-6 text-lg text-slate-600 text-on-surface-variant leading-relaxed">
+                <p className="mt-6 text-lg text-on-surface-variant leading-relaxed">
                   {text.copy}
                 </p>
                 <div className="mt-8 flex-col gap-3 sm:flex-row">
@@ -275,7 +275,7 @@ export default function LandingPage() {
                 </div>
                 <div className="mt-6 flex-wrap gap-4">
                   {text.proof.map((item: string) => (
-                    <span key={item} className="flex items-center gap-1 text-sm font-medium text-slate-600 text-on-surface-variant">
+                    <span key={item} className="flex items-center gap-1 text-sm font-medium text-on-surface-variant">
                       <Check size={14} className="text-violet-600 dark:text-violet-400" />{item}
                     </span>
                   ))}
@@ -284,28 +284,28 @@ export default function LandingPage() {
 
               {/* Service Catalog Preview Card */}
               <div className="relative">
-                <div className="rounded-xl border-slate-200 border-outline-variant bg-surface-container p-6 shadow-2xl shadow-slate-200 dark:shadow-slate-900/50">
+                <div className="rounded-xl border border-outline-variant bg-surface-container p-6 shadow-2xl shadow-slate-200 dark:shadow-slate-900/50">
                   <div className="mb-4 flex items-center justify-between">
                     <div>
                       <small className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">SMM Rapid</small>
-                      <h3 className="text-lg font-black text-slate-900 text-on-surface">{text.how}</h3>
+                      <h3 className="text-lg font-black text-on-surface">{text.how}</h3>
                     </div>
                     <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-black text-emerald-600 dark:text-emerald-400">● {text.live}</span>
                   </div>
 
                   {/* Feature Highlight */}
-                  <div className="mb-6 rounded-xl bg-slate-50 bg-surface-container-high/50 p-4 text-center">
+                  <div className="mb-6 rounded-xl bg-surface-container-high/50 p-4 text-center">
                     <div className="text-3xl font-black text-violet-600 dark:text-violet-400 mb-1">+{serviceCount || 0}</div>
                     <p className="text-xs text-slate-500 dark:text-slate-400">{ar ? 'خدمة متاحة مباشرة' : 'Services available direct'}</p>
                   </div>
 
-                  <div className="mb-4 rounded-xl bg-slate-50 bg-surface-container-high/50 p-3">
+                  <div className="mb-4 rounded-xl bg-surface-container-high/50 p-3">
                     <small className="text-xs font-bold text-slate-500 dark:text-slate-400">{ar ? '1 — الفئة' : '1 — Category'}</small>
-                    <div className="mt-1 text-sm font-medium text-slate-900 text-on-surface">Instagram</div>
+                    <div className="mt-1 text-sm font-medium text-on-surface">Instagram</div>
                   </div>
-                  <div className="rounded-xl bg-slate-50 bg-surface-container-high/50 p-3">
+                  <div className="rounded-xl bg-surface-container-high/50 p-3">
                     <small className="text-xs font-bold text-slate-500 dark:text-slate-400">{ar ? '2 — الخدمة' : '2 — Service'}</small>
-                    <div className="mt-1 text-sm font-medium text-slate-900 text-on-surface">{ar ? 'متابعين إنستجرام' : 'Instagram Followers'}</div>
+                    <div className="mt-1 text-sm font-medium text-on-surface">{ar ? 'متابعين إنستجرام' : 'Instagram Followers'}</div>
                     <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{ar ? 'جودة عالية • تسليم مباشر' : 'High quality • Direct delivery'}</div>
                   </div>
                   <div className="mt-4 rounded-xl bg-violet-50 dark:bg-violet-900/20 p-3 text-xs text-violet-700 dark:text-violet-300">
@@ -318,7 +318,7 @@ export default function LandingPage() {
         </section>
 
         {/* Live Statistics Bar */}
-        <section className="border-y border-slate-200 border-outline-variant bg-slate-50 bg-surface-container/50 py-12">
+        <section className="border-y border-outline-variant bg-surface-container/50 py-12">
           <div className="mx-auto max-w-[1240px] px-4 sm:px-6">
             <div className="grid-cols-2 gap-8 md:grid-cols-4 md:gap-0 md:text-center">
               {[
@@ -333,8 +333,8 @@ export default function LandingPage() {
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400">
                       <Icon size={20} />
                     </div>
-                    <b className="text-2xl font-black text-slate-900 text-on-surface md:text-3xl">{stat.value}</b>
-                    <span className="text-sm font-medium text-slate-600 text-on-surface-variant">{stat.label}</span>
+                    <b className="text-2xl font-black text-on-surface md:text-3xl">{stat.value}</b>
+                    <span className="text-sm font-medium text-on-surface-variant">{stat.label}</span>
                   </div>
                 );
               })}
@@ -347,17 +347,17 @@ export default function LandingPage() {
           <div className="mx-auto max-w-[1240px] px-4 sm:px-6">
             <div className="text-center">
               <p className="mb-2 text-xs font-black tracking-[.16em] text-violet-600 dark:text-violet-400">{ar ? 'المميزات' : 'FEATURES'}</p>
-              <h2 className="text-3xl font-black text-slate-900 text-on-surface">{text.featuresTitle}</h2>
-              <p className="mx-auto mt-3 max-w-2xl text-slate-600 text-on-surface-variant">{text.featuresCopy}</p>
+              <h2 className="text-3xl font-black text-on-surface">{text.featuresTitle}</h2>
+              <p className="mx-auto mt-3 max-w-2xl text-on-surface-variant">{text.featuresCopy}</p>
             </div>
             <div className="mt-12 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
               {text.features.map((f: any, i: number) => { const [title, desc, Icon] = f; return (
-                <div key={i} className="flex-col rounded-xl border-slate-200 border-outline-variant bg-surface-container p-6 transition-all hover:shadow-xl">
+                <div key={i} className="flex-col rounded-xl border border-outline-variant bg-surface-container p-6 transition-all hover:shadow-xl">
                   <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400">
                     <Icon size={24} />
                   </div>
-                  <h3 className="mb-2 text-lg font-black text-slate-900 text-on-surface">{title}</h3>
-                  <p className="text-sm text-slate-600 text-on-surface-variant leading-relaxed">{desc}</p>
+                  <h3 className="mb-2 text-lg font-black text-on-surface">{title}</h3>
+                  <p className="text-sm text-on-surface-variant leading-relaxed">{desc}</p>
                 </div>
               ); })}
             </div>
@@ -365,20 +365,20 @@ export default function LandingPage() {
         </section>
 
         {/* How It Works */}
-        <section id="how" className="py-20 bg-slate-50 bg-surface-container/30">
+        <section id="how" className="py-20 bg-surface-container/30">
           <div className="mx-auto max-w-[1240px] px-4 sm:px-6">
             <div className="text-center">
               <p className="mb-2 text-xs font-black tracking-[.16em] text-violet-600 dark:text-violet-400">{text.how}</p>
-              <h2 className="text-3xl font-black text-slate-900 text-on-surface">{text.howCopy}</h2>
+              <h2 className="text-3xl font-black text-on-surface">{text.howCopy}</h2>
             </div>
             <div className="mt-12 grid gap-8 md:grid-cols-3">
               {text.steps.map((step) => (
-                <div key={step.step} className="relative rounded-xl border-slate-200 border-outline-variant bg-surface-container p-8 text-center transition-all hover:shadow-xl">
+                <div key={step.step} className="relative rounded-xl border border-outline-variant bg-surface-container p-8 text-center transition-all hover:shadow-xl">
                   <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400">
                     <span className="text-xl font-black">{step.step}</span>
                   </div>
-                  <h3 className="mb-3 text-xl font-black text-slate-900 text-on-surface">{step.title}</h3>
-                  <p className="text-slate-600 text-on-surface-variant">{step.desc}</p>
+                  <h3 className="mb-3 text-xl font-black text-on-surface">{step.title}</h3>
+                  <p className="text-on-surface-variant">{step.desc}</p>
                 </div>
               ))}
             </div>
@@ -388,14 +388,14 @@ export default function LandingPage() {
         {/* Our Guarantee */}
         <section className="py-16 bg-surface-container">
           <div className="mx-auto max-w-[1240px] px-4 sm:px-6">
-            <div className="overflow-hidden rounded-xl border-slate-200 border-outline-variant bg-slate-50 bg-surface-container">
+            <div className="overflow-hidden rounded-xl border border-outline-variant bg-surface-container">
               <div className="grid gap-8 p-8 md:grid-cols-2 md:p-12">
                 <div>
                   <div className="inline-flex items-center gap-2 mb-4 px-3 py-1.5 bg-violet-100 dark:bg-violet-900/30 rounded-full text-xs font-bold text-violet-700 dark:text-violet-300">
                     <ShieldCheck size={14} /> {text.guarantee}
                   </div>
-                  <h2 className="mb-4 text-2xl font-black text-slate-900 text-on-surface md:text-3xl">{text.trust}</h2>
-                  <p className="mb-6 text-slate-600 text-on-surface-variant">{text.trustCopy}</p>
+                  <h2 className="mb-4 text-2xl font-black text-on-surface md:text-3xl">{text.trust}</h2>
+                  <p className="mb-6 text-on-surface-variant">{text.trustCopy}</p>
                   <div className="space-y-3">
                     {[
                       ar ? 'إعادة تعبئة أو استبدال أي طلب غير راضٍ عن الجودة' : 'Re-fill or replace any order not meeting quality standards',
@@ -404,7 +404,7 @@ export default function LandingPage() {
                     ].map((item, i) => (
                       <div key={i} className="flex items-center gap-2">
                         <Check size={16} className="text-violet-600 dark:text-violet-400" />
-                        <span className="text-sm text-slate-700 text-on-surface-variant">{item}</span>
+                        <span className="text-sm text-on-surface-variant">{item}</span>
                       </div>
                     ))}
                   </div>
@@ -417,7 +417,7 @@ export default function LandingPage() {
                       { label: ar ? 'جودة مضمونة' : 'Quality guaranteed', value: '100%' },
                       { label: ar ? 'دعم 24/7' : '24/7 support', value: 'مستمر' }
                     ].map((item, i) => (
-                      <div key={i} className="rounded-xl bg-surface-container p-4 text-center border-slate-200 border-outline-variant">
+                      <div key={i} className="rounded-xl bg-surface-container p-4 text-center border border-outline-variant">
                         <div className="text-2xl font-black text-violet-600 dark:text-violet-400">{item.value}</div>
                         <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">{item.label}</div>
                       </div>
@@ -434,20 +434,20 @@ export default function LandingPage() {
           <div className="mx-auto max-w-[1240px] px-4 sm:px-6">
             <div className="mx-auto max-w-3xl text-center">
               <p className="mb-2 text-xs font-black tracking-[.16em] text-violet-600 dark:text-violet-400">FAQ</p>
-              <h2 className="text-3xl font-black text-slate-900 text-on-surface">{text.faqTitle}</h2>
-              <p className="mx-auto mt-3 max-w-xl text-slate-600 text-on-surface-variant">{text.faqCopy}</p>
+              <h2 className="text-3xl font-black text-on-surface">{text.faqTitle}</h2>
+              <p className="mx-auto mt-3 max-w-xl text-on-surface-variant">{text.faqCopy}</p>
             </div>
-            <div className="mx-auto mt-8 max-w-3xl rounded-xl border-slate-200 border-outline-variant bg-surface-container shadow-sm">
+            <div className="mx-auto mt-8 max-w-3xl rounded-xl border border-outline-variant bg-surface-container shadow-sm">
               {faqs.map(([q, a], i) => (
-                <div key={q} className="border-b border-slate-100 border-outline-variant last:border-0">
+                <div key={q} className="border-b border-outline-variant last:border-0">
                   <button onClick={() => setFaq(faq === i ? -1 : i)} className="flex w-full items-center justify-between gap-4 px-6 py-4 text-left">
-                    <span className="font-medium text-slate-900 text-on-surface">{q}</span>
+                    <span className="font-medium text-on-surface">{q}</span>
                     <ChevronDown size={18} className={`shrink-0 text-slate-400 transition-transform ${faq === i ? 'rotate-180' : ''}`} />
                   </button>
                   {faq === i && (
                     <div className="px-6 pb-4">
-                      <p className="text-sm text-slate-600 text-on-surface-variant mb-2">{a}</p>
-                      {faqs[i][2] && <p className="text-sm text-slate-500 text-outline">{faqs[i][2]}</p>}
+                      <p className="text-sm text-on-surface-variant mb-2">{a}</p>
+                      {faqs[i][2] && <p className="text-sm text-outline">{faqs[i][2]}</p>}
                     </div>
                   )}
                 </div>
@@ -479,9 +479,9 @@ export default function LandingPage() {
             <div className="mb-6 flex items-start justify-between">
               <div>
                 <span className="brand-mark">R</span>
-                <h2 className="mt-4 text-2xl font-black text-slate-900 text-on-surface">{auth === 'register' ? text.registerTitle : text.loginTitle}</h2>
+                <h2 className="mt-4 text-2xl font-black text-on-surface">{auth === 'register' ? text.registerTitle : text.loginTitle}</h2>
               </div>
-              <button className="rounded-xl bg-slate-100 bg-surface-container-high text-on-surface p-2" onClick={() => setAuth(null)} aria-label={text.close}>
+              <button className="rounded-xl bg-surface-container-high text-on-surface p-2" onClick={() => setAuth(null)} aria-label={text.close}>
                 <X size={18} />
               </button>
             </div>
@@ -489,18 +489,18 @@ export default function LandingPage() {
               {auth === 'register' && (
                 <div>
                   <label className="label-primary text-on-surface-variant">{text.name}</label>
-                  <input className="input-primary bg-surface-container-high border-outline-variant text-on-surface placeholder:text-outline"
+                  <input className="input-primary bg-surface-container-high border border-outline-variant text-on-surface placeholder:text-outline"
                     value={name} onChange={e => setName(e.target.value)} required />
                 </div>
               )}
               <div>
                 <label className="label-primary text-on-surface-variant">{text.email}</label>
-                <input className="input-primary bg-surface-container-high border-outline-variant text-on-surface placeholder:text-outline"
+                <input className="input-primary bg-surface-container-high border border-outline-variant text-on-surface placeholder:text-outline"
                   type="email" value={email} onChange={e => setEmail(e.target.value)} required />
               </div>
               <div>
                 <label className="label-primary text-on-surface-variant">{text.password}</label>
-                <input className="input-primary bg-surface-container-high border-outline-variant text-on-surface placeholder:text-outline"
+                <input className="input-primary bg-surface-container-high border border-outline-variant text-on-surface placeholder:text-outline"
                   type="password" minLength={8} value={password} onChange={e => setPassword(e.target.value)} required />
               </div>
               {auth === 'login' && (
@@ -511,7 +511,7 @@ export default function LandingPage() {
               {auth === 'register' && (
                 <div>
                   <label className="label-primary text-on-surface-variant">{text.ref} <span className="font-normal text-slate-400 dark:text-slate-500">({text.optional})</span></label>
-                  <input className="input-primary bg-surface-container-high border-outline-variant text-on-surface placeholder:text-outline"
+                  <input className="input-primary bg-surface-container-high border border-outline-variant text-on-surface placeholder:text-outline"
                     value={referralCode} disabled={!!referralFromUrl}
                     onChange={e => setReferralCode(e.target.value.toUpperCase())} placeholder="REF123" />
                   {referralFromUrl && (
@@ -522,7 +522,7 @@ export default function LandingPage() {
                 </div>
               )}
               <button className="btn-primary w-full">{auth === 'register' ? text.submitRegister : text.submitLogin}</button>
-              <div className="mt-4 text-center text-sm text-slate-500 text-on-surface-variant">
+              <div className="mt-4 text-center text-sm text-on-surface-variant">
                 {auth === 'register' ? (
                   <>
                     {text.already}
@@ -541,14 +541,14 @@ export default function LandingPage() {
       )}
 
       {/* Footer */}
-      <footer className="border-t border-slate-200 border-outline-variant bg-surface-container py-8">
+      <footer className="border-t border-outline-variant bg-surface-container py-8">
         <div className="mx-auto max-w-[1240px] px-4 sm:px-6">
           <div className="flex-col items-center justify-between gap-6 md:flex-row">
             <div className="flex items-center gap-3">
               <span className="brand-mark">R</span>
               <span className="text-xl font-black">SMM<span className="text-violet-600">Rapid</span></span>
             </div>
-            <div className="flex-wrap items-center justify-center gap-6 text-sm text-slate-600 text-on-surface-variant">
+            <div className="flex-wrap items-center justify-center gap-6 text-sm text-on-surface-variant">
               <Link to="/terms" className="hover:text-violet-600 dark:hover:text-violet-400">{ar ? 'الشروط' : 'Terms'}</Link>
               <Link to="/privacy" className="hover:text-violet-600 dark:hover:text-violet-400">{ar ? 'الخصوصية' : 'Privacy'}</Link>
               <Link to="/refund-policy" className="hover:text-violet-600 dark:hover:text-violet-400">{ar ? 'الاسترجاع' : 'Refunds'}</Link>

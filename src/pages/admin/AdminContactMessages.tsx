@@ -40,7 +40,7 @@ export default function AdminContactMessages() {
     <div className="space-y-6">
       <h3 className="text-xl font-bold text-on-surface flex items-center gap-2"><Mail className="w-5 h-5" /> Contact Messages</h3>
       <p className="text-sm text-on-surface-variant">Messages sent through the public Contact page by visitors who don't have an account yet.</p>
-      <div className="bg-surface-container rounded-xl shadow-sm border-outline-variant border-outline-variant overflow-hidden divide-y divide-outline-variant">
+      <div className="bg-surface-container rounded-xl shadow-sm border border-outline-variant overflow-hidden divide-y divide-outline-variant">
         {messages.map((m) => (
           <div key={m.id}>
             <button onClick={() => open(m)} className="w-full text-left px-6 py-4 hover:bg-surface-container-low/50 flex items-center justify-between gap-4">

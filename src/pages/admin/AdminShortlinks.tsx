@@ -48,7 +48,7 @@ export default function AdminShortlinks() {
         <h3 className="text-xl font-bold text-on-surface flex items-center gap-2"><Link2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400"/> Shortlinks</h3>
         <button onClick={() => setIsModalOpen(true)} className="btn-primary"><Plus className="w-4 h-4 mr-2" /> Add Link</button>
       </div>
-      <div className="bg-surface-container rounded-xl shadow-sm border-outline-variant overflow-hidden w-full">
+      <div className="bg-surface-container rounded-xl shadow-sm border border-outline-variant overflow-hidden w-full">
         <div className="overflow-x-auto w-full">
         <table className="min-w-full divide-y divide-outline-variant">
           <thead className="bg-surface-container-low">
@@ -80,14 +80,14 @@ export default function AdminShortlinks() {
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-surface-container border-outline-variant border-outline-variant rounded-lg p-6 max-w-md w-full shadow-xl">
+          <div className="bg-surface-container border border-outline-variant rounded-lg p-6 max-w-md w-full shadow-xl">
             <h3 className="text-lg font-bold text-on-surface mb-4">Add Shortlink</h3>
             <form onSubmit={(e) => { e.preventDefault(); saveMutation.mutate(formData); }} className="space-y-4">
-              <input required type="text" placeholder="Provider / Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="input-primary bg-surface-container-high border-outline-variant text-on-surface" />
-              <input required type="url" placeholder="URL" value={formData.url} onChange={e => setFormData({...formData, url: e.target.value})} className="input-primary bg-surface-container-high border-outline-variant text-on-surface" />
-              <input required type="number" step="0.0001" placeholder="Reward Amount ($)" value={formData.rewardAmount} onChange={e => setFormData({...formData, rewardAmount: e.target.value})} className="input-primary bg-surface-container-high border-outline-variant text-on-surface" />
+              <input required type="text" placeholder="Provider / Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="input-primary bg-surface-container-high border border-outline-variant text-on-surface" />
+              <input required type="url" placeholder="URL" value={formData.url} onChange={e => setFormData({...formData, url: e.target.value})} className="input-primary bg-surface-container-high border border-outline-variant text-on-surface" />
+              <input required type="number" step="0.0001" placeholder="Reward Amount ($)" value={formData.rewardAmount} onChange={e => setFormData({...formData, rewardAmount: e.target.value})} className="input-primary bg-surface-container-high border border-outline-variant text-on-surface" />
               <div className="flex justify-end gap-3 mt-6">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 border-gray-300 border-outline-variant rounded-md text-on-surface-variant">Cancel</button>
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 border border-outline-variant rounded-md text-on-surface-variant">Cancel</button>
                 <button type="submit" className="btn-primary">Save</button>
               </div>
             </form>

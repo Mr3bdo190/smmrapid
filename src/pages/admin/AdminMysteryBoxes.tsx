@@ -48,7 +48,7 @@ export default function AdminMysteryBoxes() {
         <h3 className="text-xl font-bold text-on-surface flex items-center gap-2"><Gift className="w-5 h-5 text-indigo-600 dark:text-indigo-400"/> Mystery Box Tiers</h3>
         <button onClick={() => setIsModalOpen(true)} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4"/> Add Tier</button>
       </div>
-      <div className="bg-surface-container rounded-xl shadow-sm border-outline-variant overflow-hidden">
+      <div className="bg-surface-container rounded-xl shadow-sm border border-outline-variant overflow-hidden">
         <div className="overflow-x-auto w-full">
         <table className="min-w-full divide-y divide-outline-variant">
           <thead className="bg-surface-container-low">
@@ -78,29 +78,29 @@ export default function AdminMysteryBoxes() {
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-surface-container border-outline-variant rounded-lg p-6 max-w-md w-full shadow-xl">
+          <div className="bg-surface-container border border-outline-variant rounded-lg p-6 max-w-md w-full shadow-xl">
             <h3 className="text-lg font-bold text-on-surface mb-4">Add Mystery Box Tier</h3>
             <form onSubmit={(e) => { e.preventDefault(); createMutation.mutate(formData); }} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-on-surface-variant mb-1">Tier Name (e.g. Bronze, Gold)</label>
-                <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="input-primary bg-surface-container-high border-outline-variant text-on-surface" />
+                <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="input-primary bg-surface-container-high border border-outline-variant text-on-surface" />
               </div>
               <div className="flex gap-4">
                 <div className="flex-1">
                   <label className="block text-sm font-medium text-on-surface-variant mb-1">Min Amount ($)</label>
-                  <input required type="number" step="0.01" value={formData.minAmount} onChange={e => setFormData({...formData, minAmount: e.target.value})} className="input-primary bg-surface-container-high border-outline-variant text-on-surface" />
+                  <input required type="number" step="0.01" value={formData.minAmount} onChange={e => setFormData({...formData, minAmount: e.target.value})} className="input-primary bg-surface-container-high border border-outline-variant text-on-surface" />
                 </div>
                 <div className="flex-1">
                   <label className="block text-sm font-medium text-on-surface-variant mb-1">Max Amount ($)</label>
-                  <input required type="number" step="0.01" value={formData.maxAmount} onChange={e => setFormData({...formData, maxAmount: e.target.value})} className="input-primary bg-surface-container-high border-outline-variant text-on-surface" />
+                  <input required type="number" step="0.01" value={formData.maxAmount} onChange={e => setFormData({...formData, maxAmount: e.target.value})} className="input-primary bg-surface-container-high border border-outline-variant text-on-surface" />
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-on-surface-variant mb-1">Probability Weight (e.g. 50)</label>
-                <input required type="number" value={formData.probability} onChange={e => setFormData({...formData, probability: e.target.value})} className="input-primary bg-surface-container-high border-outline-variant text-on-surface" />
+                <input required type="number" value={formData.probability} onChange={e => setFormData({...formData, probability: e.target.value})} className="input-primary bg-surface-container-high border border-outline-variant text-on-surface" />
               </div>
               <div className="flex justify-end gap-3 mt-6">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 border-gray-300 border-outline-variant rounded-md text-on-surface-variant">Cancel</button>
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 border border-outline-variant rounded-md text-on-surface-variant">Cancel</button>
                 <button type="submit" disabled={createMutation.isPending} className="btn-primary">Create</button>
               </div>
             </form>

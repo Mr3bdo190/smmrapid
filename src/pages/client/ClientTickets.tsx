@@ -56,7 +56,7 @@ export default function ClientTickets() {
         <h2 className="text-2xl font-bold text-on-surface flex items-center gap-2"><LifeBuoy className="text-indigo-600 dark:text-indigo-400"/> {t('nav.tickets')}</h2>
         <button onClick={() => setIsModalOpen(true)} className="btn-primary">{t('tickets.newTicket')}</button>
       </div>
-      <div className="bg-surface-container rounded-xl shadow-sm border-outline-variant overflow-hidden">
+      <div className="bg-surface-container rounded-xl shadow-sm border border-outline-variant overflow-hidden">
         <div className="overflow-x-auto w-full">
         <table className="min-w-full divide-y divide-outline-variant">
           <thead className="bg-surface-container-low">
@@ -86,19 +86,19 @@ export default function ClientTickets() {
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-surface-container border-outline-variant border-outline-variant rounded-lg p-6 max-w-md w-full shadow-xl">
+          <div className="bg-surface-container border border-outline-variant rounded-lg p-6 max-w-md w-full shadow-xl">
             <h3 className="text-lg font-bold text-on-surface mb-4">{t('tickets.createNew')}</h3>
             <form onSubmit={(e) => { e.preventDefault(); createMutation.mutate(); }} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-on-surface-variant mb-1">{t('tickets.subject')}</label>
-                <input required type="text" value={subject} onChange={e => setSubject(e.target.value)} className="input-primary bg-surface-container-high border-outline-variant text-on-surface" />
+                <input required type="text" value={subject} onChange={e => setSubject(e.target.value)} className="input-primary bg-surface-container-high border border-outline-variant text-on-surface" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-on-surface-variant mb-1">{t('tickets.message')}</label>
-                <textarea required rows={4} value={message} onChange={e => setMessage(e.target.value)} className="input-primary bg-surface-container-high border-outline-variant text-on-surface"></textarea>
+                <textarea required rows={4} value={message} onChange={e => setMessage(e.target.value)} className="input-primary bg-surface-container-high border border-outline-variant text-on-surface"></textarea>
               </div>
               <div className="flex justify-end gap-3 mt-6">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 border-gray-300 border-outline-variant rounded-md text-on-surface-variant">{t('common.cancel')}</button>
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 border border-outline-variant rounded-md text-on-surface-variant">{t('common.cancel')}</button>
                 <button type="submit" disabled={createMutation.isPending} className="btn-primary">{t('tickets.submit')}</button>
               </div>
             </form>

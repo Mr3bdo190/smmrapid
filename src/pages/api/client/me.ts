@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import crypto from 'node:crypto';
 import { db } from '../../src/db/index';
 import { users } from '../../src/db/schema';

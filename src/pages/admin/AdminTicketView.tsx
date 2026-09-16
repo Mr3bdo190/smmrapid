@@ -85,7 +85,7 @@ export default function AdminTicketView() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto bg-surface-container rounded-xl shadow-sm border-outline-variant p-6 space-y-6 flex-col-reverse">
+      <div className="flex-1 overflow-y-auto bg-surface-container rounded-xl shadow-sm border border-outline-variant p-6 space-y-6 flex-col-reverse">
         <div className="space-y-6">
           {ticketData.messages.map((m: any) => (
             <div key={m.id} className={`flex-col ${!m.isAdmin ? 'items-start' : 'items-end'}`}>
@@ -105,7 +105,7 @@ export default function AdminTicketView() {
           value={message} 
           onChange={e => setMessage(e.target.value)} 
           placeholder="Type admin reply..." 
-          className="input-primary flex-1 bg-surface-container-high border-outline-variant text-on-surface"
+          className="input-primary flex-1 bg-surface-container-high border border-outline-variant text-on-surface"
           disabled={ticketData.ticket.status === 'Closed' || replyMutation.isPending}
         />
         <button 

@@ -105,7 +105,7 @@ export default function ClientLottery() {
               </div>
 
               {r.status === 'Drawn' && r.winnerEmail ? (
-                <div className="mt-4 p-4 bg-indigo-100 rounded-xl border-indigo-200 flex items-center justify-center gap-3">
+                <div className="mt-4 p-4 bg-indigo-100 rounded-xl border border-indigo-200 flex items-center justify-center gap-3">
                   <Trophy className="w-6 h-6 text-indigo-600" />
                   <div>
                     <p className="text-sm text-indigo-900 font-bold">{t('lottery.winnerAnnounced')}</p>
@@ -141,8 +141,8 @@ export default function ClientLottery() {
           );
         })}
         {raffles.length === 0 && (
-          <div className="col-span-2 text-center p-12 bg-surface-container rounded-xl border-outline-variant shadow-sm">
-            <Ticket className="w-12 h-12 text-gray-300 text-outline mx-auto mb-4" />
+          <div className="col-span-2 text-center p-12 bg-surface-container rounded-xl border border-outline-variant shadow-sm">
+            <Ticket className="w-12 h-12 text-outline mx-auto mb-4" />
             <h3 className="text-lg font-bold text-on-surface">{t('lottery.noActiveRaffles')}</h3>
             <p className="text-on-surface-variant mt-2">{t('lottery.checkBackLater')}</p>
           </div>

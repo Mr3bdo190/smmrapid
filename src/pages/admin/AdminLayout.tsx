@@ -103,7 +103,7 @@ export default function AdminLayout() {
             </div>
             <ArrowLeft className="h-4 w-4 text-primary rtl:rotate-180" />
           </Link>
-          <LanguageSwitcher className="w-full justify-center border-slate-700 text-slate-400 hover:bg-slate-800" />
+          <LanguageSwitcher className="w-full justify-center border border-slate-700 text-slate-400 hover:bg-slate-800" />
           <div className="flex items-center justify-center"><ThemeToggle className="flex h-10 w-full items-center justify-center rounded-xl bg-surface-container text-on-surface-variant hover:bg-surface-container-high" /></div>
           <button onClick={logOut} className="rapid-nav-item w-full justify-start"><LogOut className="h-[18px] w-[18px]" /> {t('common.signOut')}</button>
         </div>

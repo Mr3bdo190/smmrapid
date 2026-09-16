@@ -141,18 +141,18 @@ export default function AdminSystemReports() {
       {/* Reports Tab */}
       {activeTab === 'reports' && (
         <>
-          <div className="bg-surface-container border-outline-variant rounded-xl p-4 flex-wrap gap-3">
+          <div className="bg-surface-container border border-outline-variant rounded-xl p-4 flex-wrap gap-3">
             <div className="relative flex-1 min-w-[220px]">
               <Search className="absolute left-3 top-3 w-4 h-4 text-outline" />
               <input
-                className="input-primary pl-9 bg-surface-container-high border-outline-variant text-on-surface"
+                className="input-primary pl-9 bg-surface-container-high border border-outline-variant text-on-surface"
                 placeholder="Search this page: action, location or error"
                 value={q}
                 onChange={e => setQ(e.target.value)}
               />
             </div>
             <select
-              className="input-primary w-auto bg-surface-container-high border-outline-variant text-on-surface"
+              className="input-primary w-auto bg-surface-container-high border border-outline-variant text-on-surface"
               value={status}
               onChange={e => setStatus(e.target.value)}
             >
@@ -162,7 +162,7 @@ export default function AdminSystemReports() {
             </select>
           </div>
 
-          <div className="bg-surface-container border-outline-variant rounded-xl overflow-x-auto">
+          <div className="bg-surface-container border border-outline-variant rounded-xl overflow-x-auto">
             <table className="min-w-[1000px] w-full">
               <thead className="bg-surface-container-low dark:bg-gray-900">
                 <tr>
@@ -214,11 +214,11 @@ export default function AdminSystemReports() {
             </table>
           </div>
 
-          {total > PAGE_SIZE && (
+          {reportTotal > PAGE_SIZE && (
             <AdminPagination
               page={page}
               pageSize={PAGE_SIZE}
-              total={total}
+              total={reportTotal}
               onPageChange={setPage}
             />
           )}
@@ -228,19 +228,19 @@ export default function AdminSystemReports() {
       {/* System Logs Tab */}
       {activeTab === 'logs' && (
         <>
-          <div className="bg-surface-container border-outline-variant rounded-xl p-4 flex-wrap gap-3 items-center justify-between">
+          <div className="bg-surface-container border border-outline-variant rounded-xl p-4 flex-wrap gap-3 items-center justify-between">
             <div className="flex-wrap gap-3 items-center">
               <div className="relative flex-1 min-w-[220px]">
                 <Search className="absolute left-3 top-3 w-4 h-4 text-outline" />
                 <input
-                  className="input-primary pl-9 bg-surface-container-high border-outline-variant text-on-surface"
+                  className="input-primary pl-9 bg-surface-container-high border border-outline-variant text-on-surface"
                   placeholder={t('settings.filterByLevel')}
                   value={q}
                   onChange={e => setQ(e.target.value)}
                 />
               </div>
               <select
-                className="input-primary w-auto bg-surface-container-high border-outline-variant text-on-surface"
+                className="input-primary w-auto bg-surface-container-high border border-outline-variant text-on-surface"
                 value={logLevel}
                 onChange={e => setLogLevel(e.target.value)}
               >
@@ -268,7 +268,7 @@ export default function AdminSystemReports() {
             </div>
           </div>
 
-          <div className="bg-surface-container border-outline-variant rounded-xl overflow-x-auto">
+          <div className="bg-surface-container border border-outline-variant rounded-xl overflow-x-auto">
             <table className="min-w-[1000px] w-full">
               <thead className="bg-surface-container-low dark:bg-gray-900">
                 <tr>

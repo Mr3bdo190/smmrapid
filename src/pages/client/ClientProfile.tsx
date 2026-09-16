@@ -31,31 +31,31 @@ export default function ClientProfile() {
       </h2>
       <p className="text-sm text-on-surface-variant -mt-6">{t('profile.subtitle')}</p>
       <div className="grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-surface-container rounded-xl shadow-sm border-outline-variant p-5">
+        <div className="bg-surface-container rounded-xl shadow-sm border border-outline-variant p-5">
           <p className="text-xs text-on-surface-variant uppercase font-semibold">{t('profile.accountId')}</p>
           <p className="text-on-surface font-medium truncate">{dbUser.id.substring(0,8)}</p>
         </div>
-        <div className="bg-surface-container rounded-xl shadow-sm border-outline-variant p-5">
+        <div className="bg-surface-container rounded-xl shadow-sm border border-outline-variant p-5">
           <p className="text-xs text-on-surface-variant uppercase font-semibold">{t('common.status')}</p>
           <p className="text-on-surface font-medium capitalize">{dbUser.status}</p>
         </div>
-        <div className="bg-surface-container rounded-xl shadow-sm border-outline-variant p-5">
+        <div className="bg-surface-container rounded-xl shadow-sm border border-outline-variant p-5">
           <p className="text-xs text-on-surface-variant uppercase font-semibold">{t('profile.memberSince')}</p>
           <p className="text-on-surface font-medium">{new Date(dbUser.createdAt).toLocaleDateString()}</p>
         </div>
-        <div className="bg-surface-container rounded-xl shadow-sm border-outline-variant p-5">
+        <div className="bg-surface-container rounded-xl shadow-sm border border-outline-variant p-5">
           <p className="text-xs text-on-surface-variant uppercase font-semibold">{t('common.balance')}</p>
           <p className="text-on-surface font-medium">${Number(dbUser.balance).toFixed(4)}</p>
         </div>
       </div>
-      <div className="bg-surface-container rounded-xl shadow-sm border-outline-variant p-6">
+      <div className="bg-surface-container rounded-xl shadow-sm border border-outline-variant p-6">
         <h3 className="font-semibold text-on-surface mb-4">{t('profile.name')}</h3>
         <div className="flex gap-3">
           <input 
             type="text" 
             value={name} 
             onChange={e => setName(e.target.value)} 
-            className="input-primary flex-1 bg-surface-container-high border-outline-variant text-on-surface"
+            className="input-primary flex-1 bg-surface-container-high border border-outline-variant text-on-surface"
             placeholder={t('common.namePlaceholder')}
             maxLength={50}
           />
@@ -69,9 +69,9 @@ export default function ClientProfile() {
         </div>
         {dbUser.name && <p className="text-xs text-on-surface-variant mt-2">{t('profile.currentName', { name: dbUser.name })}</p>}
       </div>
-      <div className="bg-surface-container rounded-xl shadow-sm border-outline-variant p-6">
+      <div className="bg-surface-container rounded-xl shadow-sm border border-outline-variant p-6">
         <h3 className="font-semibold text-on-surface mb-4">{t('profile.email')}</h3>
-        <input type="text" readOnly value={dbUser.email} className="input-primary w-full bg-surface-container-low bg-surface-container-high border-outline-variant text-on-surface" />
+        <input type="text" readOnly value={dbUser.email} className="input-primary w-full bg-surface-container-low bg-surface-container-high border border-outline-variant text-on-surface" />
       </div>
     </div>
   );

@@ -26,15 +26,15 @@ export default function AdminAffiliates() {
       <button className="btn-secondary" onClick={() => query.refetch()}><RefreshCw className="w-4 h-4 inline mr-1"/>Refresh</button>
     </div>
     <div className="grid-cols-2 lg:grid-cols-4 gap-4">
-      {[['Clicks',s.clicks||0,MousePointerClick],['Signups',s.signups||0,Users],['Referral Deposits',s.deposited||0,TrendingUp],['Commissions',s.commissions||0,Wallet]].map(([label,value,Icon]:any)=><div key={label} className="bg-surface-container border-outline-variant rounded-xl p-5 shadow-sm"><Icon className="w-5 h-5 text-indigo-600 dark:text-indigo-400 mb-3"/><p className="text-xs text-on-surface-variant">{label}</p><p className="text-2xl font-bold text-on-surface">{label==='Referral Deposits'||label==='Commissions' ? `$${Number(value).toFixed(2)}` : value}</p></div>)}
+      {[['Clicks',s.clicks||0,MousePointerClick],['Signups',s.signups||0,Users],['Referral Deposits',s.deposited||0,TrendingUp],['Commissions',s.commissions||0,Wallet]].map(([label,value,Icon]:any)=><div key={label} className="bg-surface-container border border-outline-variant rounded-xl p-5 shadow-sm"><Icon className="w-5 h-5 text-indigo-600 dark:text-indigo-400 mb-3"/><p className="text-xs text-on-surface-variant">{label}</p><p className="text-2xl font-bold text-on-surface">{label==='Referral Deposits'||label==='Commissions' ? `$${Number(value).toFixed(2)}` : value}</p></div>)}
     </div>
-    <div className="bg-surface-container border-outline-variant rounded-xl p-4">
+    <div className="bg-surface-container border border-outline-variant rounded-xl p-4">
       <div className="relative">
         <Search className="absolute left-3 top-3 w-4 h-4 text-outline"/>
-        <input className="input-primary pl-9 w-full bg-surface-container-high border-outline-variant text-on-surface" placeholder="Search affiliate name, email or referral code..." value={q} onChange={e=>setQ(e.target.value)}/>
+        <input className="input-primary pl-9 w-full bg-surface-container-high border border-outline-variant text-on-surface" placeholder="Search affiliate name, email or referral code..." value={q} onChange={e=>setQ(e.target.value)}/>
       </div>
     </div>
-    <div className="bg-surface-container border-outline-variant rounded-xl overflow-x-auto shadow-sm">
+    <div className="bg-surface-container border border-outline-variant rounded-xl overflow-x-auto shadow-sm">
       <table className="min-w-[1050px] w-full">
         <thead className="bg-surface-container-low">
           <tr>
@@ -59,7 +59,7 @@ export default function AdminAffiliates() {
         </tbody>
       </table>
     </div>
-    <div className="bg-surface-container border-outline-variant rounded-xl overflow-x-auto shadow-sm">
+    <div className="bg-surface-container border border-outline-variant rounded-xl overflow-x-auto shadow-sm">
       <div className="p-4 border-b border-outline-variant font-bold text-on-surface">Recent Commissions</div>
       <table className="min-w-[800px] w-full">
         <thead className="bg-surface-container-low">

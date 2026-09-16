@@ -214,7 +214,7 @@ print(response.json())`;
               <Link to="/" className="text-on-surface-variant hover:text-violet-600 dark:hover:text-violet-400">Home</Link>
               <Link to="/services" className="text-on-surface-variant hover:text-violet-600 dark:hover:text-violet-400">Services</Link>
             </nav>
-            <LanguageSwitcher className="border-gray-300 border-outline-variant text-on-surface-variant hover:bg-surface-container-high/60" />
+            <LanguageSwitcher className="border border-outline-variant text-on-surface-variant hover:bg-surface-container-high/60" />
             <ThemeToggle />
           </div>
         </div>
@@ -234,7 +234,7 @@ print(response.json())`;
           </p>
         </div>
 
-        <div className="bg-surface-container rounded-xl border-outline-variant shadow-sm p-6 mb-8">
+        <div className="bg-surface-container rounded-xl border border-outline-variant shadow-sm p-6 mb-8">
           <div className="flex items-center gap-3 mb-3">
             <Key className="w-5 h-5 text-violet-600 dark:text-violet-400" />
             <h2 className="font-bold text-lg text-on-surface">{t('api.docKey')}</h2>
@@ -248,7 +248,7 @@ print(response.json())`;
         <div className="space-y-8">
           <h2 className="text-2xl font-bold text-on-surface mb-6">{t('api.docActions')}</h2>
           {actions.map((action) => (
-            <div key={action.key} className="bg-surface-container rounded-xl border-outline-variant shadow-sm overflow-hidden">
+            <div key={action.key} className="bg-surface-container rounded-xl border border-outline-variant shadow-sm overflow-hidden">
               <div className={`flex items-center gap-4 p-6 ${action.bgColor} border-b border-outline-variant`}>
                 <div className={`p-3 rounded-xl ${action.bgColor}`}>
                   <action.icon className={`w-6 h-6 ${action.color}`} />
@@ -328,7 +328,7 @@ print(response.json())`;
           ))}
         </div>
 
-        <div className="mt-12 bg-violet-50 dark:bg-violet-900/20 rounded-xl border-violet-200 dark:border-violet-700 p-6 text-center">
+        <div className="mt-12 bg-violet-50 dark:bg-violet-900/20 rounded-xl border border-violet-200 dark:border-violet-700 p-6 text-center">
           <h3 className="font-bold text-lg text-violet-900 dark:text-violet-300 mb-2">{t('api.docKey')}</h3>
           <p className="text-sm text-violet-800 dark:text-violet-400 mb-4">
             {t('api.docKeyDesc')}

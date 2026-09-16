@@ -144,14 +144,14 @@ export default function ClientAffiliates() {
       </div>
 
       {/* Referral Link */}
-      <div className="bg-surface-container rounded-xl border-outline-variant p-6">
+      <div className="bg-surface-container rounded-xl border border-outline-variant p-6">
         <h3 className="font-bold text-on-surface mb-2">{t('affiliates.yourLink')}</h3>
         <p className="text-sm text-on-surface-variant mb-4">{t('affiliates.linkHint')}</p>
         <div className="flex-col md:flex-row gap-3">
           <input
             readOnly
             value={query.isLoading ? t('common.loading') : refLink || t('affiliates.generating')}
-            className="input-field flex-1 font-mono text-sm bg-surface-container-low bg-surface-container-high border-outline-variant text-on-surface"
+            className="input-field flex-1 font-mono text-sm bg-surface-container-low bg-surface-container-high border border-outline-variant text-on-surface"
           />
           <button onClick={copy} className="btn-primary">
             <Copy className="w-4 h-4 inline mr-1" />
@@ -172,7 +172,7 @@ export default function ClientAffiliates() {
           [t('affiliates.referralDeposits'), `$${Number(stats?.referralDeposits || 0).toFixed(2)}`, Wallet],
           [t('affiliates.earnings'), `$${Number(stats?.totalCommission || 0).toFixed(2)}`, Wallet],
         ].map(([l, v, I]: any) => (
-          <div key={l} className="bg-surface-container p-5 rounded-xl border-outline-variant">
+          <div key={l} className="bg-surface-container p-5 rounded-xl border border-outline-variant">
             <I className="w-5 h-5 text-indigo-600 mb-3" />
             <p className="text-xs text-on-surface-variant">{l}</p>
             <p className="text-2xl font-bold mt-1 text-on-surface">{v}</p>
@@ -181,14 +181,14 @@ export default function ClientAffiliates() {
       </div>
 
       {/* Available Affiliate Balance */}
-      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 border-indigo-200 dark:border-indigo-800 rounded-xl p-6">
+      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 border border-indigo-200 dark:border-indigo-800 rounded-xl p-6">
         <h3 className="font-bold text-on-surface mb-1">{t('affiliates.availableBalance')}</h3>
         <p className="text-xs text-on-surface-variant mb-3">{t('affiliates.availableBalanceHint')}</p>
         <div className="flex items-baseline gap-3">
           <span className="text-4xl font-black text-indigo-700 dark:text-indigo-300">${availableBalance.toFixed(4)}</span>
           <span className="text-sm text-on-surface-variant">{config?.currencyCode || 'USD'}</span>
         </div>
-        <div className="mt-3 grid-cols-2 gap-4 text-center">
+        <div className="mt-3 grid grid-cols-2 gap-4 text-center">
           <div>
             <span className="text-xs text-on-surface-variant">{t('affiliates.totalEarnings')}</span>
             <div className="text-lg font-bold text-on-surface">${Number(stats?.totalCommission || 0).toFixed(4)}</div>
@@ -200,8 +200,66 @@ export default function ClientAffiliates() {
         </div>
       </div>
 
+      {/* Commission History — real rows from /api/client/affiliates/stats */}
+      <div className="bg-surface-container border border-outline-variant rounded-xl p-5">
+        <h3 className="font-bold text-on-surface mb-3">{t('affiliates.commissionHistory')}</h3>
+        {(stats?.commissions || []).length === 0 ? (
+          <p className="text-sm text-on-surface-variant">{t('affiliates.commissionHistoryEmpty')}</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-full text-start">
+              <thead className="bg-surface-container-low">
+                <tr>
+                  <th className="px-4 py-3 text-start font-mono text-label-sm uppercase tracking-wider text-on-surface-variant">{t('affiliates.commissionDate')}</th>
+                  <th className="px-4 py-3 text-start font-mono text-label-sm uppercase tracking-wider text-on-surface-variant">{t('affiliates.referredUser')}</th>
+                  <th className="px-4 py-3 text-end font-mono text-label-sm uppercase tracking-wider text-on-surface-variant">{t('affiliates.commissionAmount')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.commissions.map((c: any) => (
+                  <tr key={c.id} className="h-11 border-b border-outline-variant/60 transition-colors last:border-0 hover:bg-primary/[0.04]">
+                    <td className="px-4 font-mono text-code-xs text-on-surface-variant">{c.createdAt ? new Date(c.createdAt).toLocaleString() : '—'}</td>
+                    <td className="px-4 text-sm text-on-surface"><span className="block max-w-[220px] truncate">{c.referredEmail || '—'}</span></td>
+                    <td className="px-4 text-end font-mono text-code-sm tabular-nums text-tertiary">+${Number(c.amount || 0).toFixed(4)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Referred Users — real rows from /api/client/affiliates/stats */}
+      <div className="bg-surface-container border border-outline-variant rounded-xl p-5">
+        <h3 className="font-bold text-on-surface mb-3">{t('affiliates.referredUsers')}</h3>
+        {(stats?.referred || []).length === 0 ? (
+          <p className="text-sm text-on-surface-variant">{t('affiliates.referredUsersEmpty')}</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-full text-start">
+              <thead className="bg-surface-container-low">
+                <tr>
+                  <th className="px-4 py-3 text-start font-mono text-label-sm uppercase tracking-wider text-on-surface-variant">{t('affiliates.referredUser')}</th>
+                  <th className="px-4 py-3 text-start font-mono text-label-sm uppercase tracking-wider text-on-surface-variant">{t('admin.users.headers.status')}</th>
+                  <th className="px-4 py-3 text-start font-mono text-label-sm uppercase tracking-wider text-on-surface-variant">{t('affiliates.commissionDate')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.referred.map((r: any) => (
+                  <tr key={r.id} className="h-11 border-b border-outline-variant/60 transition-colors last:border-0 hover:bg-primary/[0.04]">
+                    <td className="px-4 text-sm text-on-surface"><span className="block max-w-[240px] truncate">{r.email || '—'}</span></td>
+                    <td className="px-4 text-sm text-on-surface-variant">{r.status || '—'}</td>
+                    <td className="px-4 font-mono text-code-xs text-on-surface-variant">{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       {/* Withdrawals Section */}
-      <div className="bg-surface-container border-outline-variant rounded-xl p-5">
+      <div className="bg-surface-container border border-outline-variant rounded-xl p-5">
         <h3 className="font-bold text-on-surface mb-2">{t('affiliates.withdraw')}</h3>
         <p className="text-xs text-on-surface-variant mb-4">{t('affiliates.withdrawDesc')}</p>
 
@@ -214,7 +272,7 @@ export default function ClientAffiliates() {
 
         <div className="grid md:grid-cols-3 gap-3">
           <input
-            className="input-primary bg-surface-container-high border-outline-variant text-on-surface"
+            className="input-primary bg-surface-container-high border border-outline-variant text-on-surface"
             type="number"
             min="0"
             step="0.0001"
@@ -223,7 +281,7 @@ export default function ClientAffiliates() {
             onChange={e => setAmount(e.target.value)}
           />
           <select
-            className="input-primary bg-surface-container-high border-outline-variant text-on-surface"
+            className="input-primary bg-surface-container-high border border-outline-variant text-on-surface"
             value={method}
             onChange={e => setMethod(e.target.value)}
           >
@@ -233,7 +291,7 @@ export default function ClientAffiliates() {
             <option>Other</option>
           </select>
           <input
-            className="input-primary bg-surface-container-high border-outline-variant text-on-surface"
+            className="input-primary bg-surface-container-high border border-outline-variant text-on-surface"
             placeholder={t('affiliates.withdrawDestination')}
             value={destination}
             onChange={e => setDestination(e.target.value)}
@@ -278,7 +336,7 @@ export default function ClientAffiliates() {
       </div>
 
       {/* Commission History */}
-      <div className="bg-surface-container border-outline-variant rounded-xl overflow-x-auto">
+      <div className="bg-surface-container border border-outline-variant rounded-xl overflow-x-auto">
         <div className="p-4 border-b border-outline-variant font-bold text-on-surface">
           {t('affiliates.commissionHistory')}
         </div>

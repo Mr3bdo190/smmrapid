@@ -121,7 +121,7 @@ export default function AdminWithdrawals() {
           </div>
         </div>
 
-        <div className="bg-surface-container rounded-xl shadow-sm border-outline-variant overflow-hidden">
+        <div className="bg-surface-container rounded-xl shadow-sm border border-outline-variant overflow-hidden">
           {withdrawalsData.length === 0 ? (
             <div className="p-8 text-center text-on-surface-variant">
               <Wallet className="w-12 h-12 mx-auto mb-3 opacity-50" />

@@ -22,7 +22,7 @@ export default function AdminTickets() {
   return (
     <div className="space-y-6">
       <h3 className="text-xl font-bold text-on-surface flex items-center gap-2"><LifeBuoy className="w-5 h-5 text-indigo-600 dark:text-indigo-400"/> {t('admin.tickets.title')}</h3>
-      <div className="bg-surface-container rounded-xl shadow-sm border-outline-variant overflow-hidden">
+      <div className="bg-surface-container rounded-xl shadow-sm border border-outline-variant overflow-hidden">
         <div className="overflow-x-auto w-full">
         <table className="min-w-full divide-y divide-outline-variant">
           <thead className="bg-surface-container-low">

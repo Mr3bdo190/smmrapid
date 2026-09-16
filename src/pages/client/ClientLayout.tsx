@@ -205,7 +205,7 @@ export default function ClientLayout() {
               ? <BadgeCheck className="h-6 w-6 shrink-0 text-primary dark:text-primary" />
               : <Award className="h-6 w-6 shrink-0 text-primary dark:text-primary" />}
           </div>
-          <LanguageSwitcher className="w-full justify-center border-outline-variant text-on-surface-variant hover:bg-surface-container-high dark:border-outline-variant dark:text-on-surface-variant dark:hover:bg-surface-container-high" />
+          <LanguageSwitcher className="w-full justify-center border border-outline-variant text-on-surface-variant hover:bg-surface-container-high dark:border-outline-variant dark:text-on-surface-variant dark:hover:bg-surface-container-high" />
           <button onClick={logOut} className="rapid-nav-item w-full justify-start"><LogOut className="h-[18px] w-[18px]" /> {t('common.signOut')}</button>
         </div>
       </aside>

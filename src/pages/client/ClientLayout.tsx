@@ -1,36 +1,56 @@
 import { useState } from 'react';
-import { useLocation, Link, Outlet, Navigate } from 'react-router-dom';
+import { useLocation, Link, Outlet, Navigate, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
-import { useTranslation, LanguageSwitcher, ThemeToggle } from '../../lib/i18n';
-import { LayoutDashboard, ShoppingCart, ListOrdered, Wallet, LogOut, Menu, X, User, Ticket, LifeBuoy, Tags, Link2, Code, Users, Gift, Gamepad2, RefreshCw, Bell, Plus } from 'lucide-react';
+import { useTranslation, LanguageSwitcher, ThemeToggle, translations } from '../../lib/i18n';
+import {
+  LayoutDashboard, ShoppingCart, ListOrdered, Wallet, LogOut, Menu, X, User, Ticket,
+  LifeBuoy, Tags, Link2, Code, Users, Gift, Gamepad2, RefreshCw, Layers, Receipt, ShieldCheck,
+} from 'lucide-react';
+import { BrandLogo } from '../../components/BrandLogo';
 import { cn } from '../../lib/utils';
 
-const navItems = [
-  { key: 'nav.dashboard', href: '/dashboard', icon: LayoutDashboard, group: 'main' },
-  { key: 'nav.newOrder', href: '/dashboard/new-order', icon: ShoppingCart, group: 'main' },
-  { key: 'nav.orderHistory', href: '/dashboard/orders', icon: ListOrdered, group: 'orders' },
-  { key: 'nav.massOrder', href: '/dashboard/mass-order', icon: ListOrdered, group: 'orders' },
-  { key: 'nav.services', href: '/dashboard/services', icon: Tags, group: 'orders' },
-  { key: 'nav.addFunds', href: '/dashboard/add-funds', icon: Wallet, group: 'wallet' },
-  { key: 'nav.transactions', href: '/dashboard/transactions', icon: Wallet, group: 'wallet' },
-  { key: 'nav.earnMoney', href: '/dashboard/earn', icon: Link2, group: 'growth' },
-  { key: 'nav.affiliates', href: '/dashboard/affiliates', icon: Users, group: 'growth' },
-  { key: 'nav.api', href: '/dashboard/api', icon: Code, group: 'tools' },
-  { key: 'nav.tickets', href: '/dashboard/tickets', icon: LifeBuoy, group: 'tools' },
-  { key: 'nav.profile', href: '/dashboard/profile', icon: User, group: 'account' },
-  { key: 'nav.lottery', href: '/dashboard/lottery', icon: Ticket, group: 'extras' },
-  { key: 'nav.mysteryBoxes', href: '/dashboard/mystery-boxes', icon: Gift, group: 'extras' },
-  { key: 'nav.game', href: '/dashboard/game', icon: Gamepad2, group: 'extras' },
+type NavItem = {
+  key: string;
+  href: string;
+  icon: any;
+  group: 'operations' | 'integration' | 'system';
+  badge?: 'api' | 'dot';
+};
+
+const navItems: NavItem[] = [
+  { key: 'nav.dashboard', href: '/dashboard', icon: LayoutDashboard, group: 'operations' },
+  { key: 'nav.newOrder', href: '/dashboard/new-order', icon: ShoppingCart, group: 'operations' },
+  { key: 'nav.orderHistory', href: '/dashboard/orders', icon: ListOrdered, group: 'operations' },
+  { key: 'nav.massOrder', href: '/dashboard/mass-order', icon: Layers, group: 'operations' },
+  { key: 'nav.services', href: '/dashboard/services', icon: Tags, group: 'operations' },
+  { key: 'nav.addFunds', href: '/dashboard/add-funds', icon: Wallet, group: 'operations' },
+  { key: 'nav.transactions', href: '/dashboard/transactions', icon: Receipt, group: 'operations' },
+  { key: 'nav.api', href: '/dashboard/api', icon: Code, group: 'integration', badge: 'api' },
+  { key: 'nav.earnMoney', href: '/dashboard/earn', icon: Link2, group: 'integration' },
+  { key: 'nav.affiliates', href: '/dashboard/affiliates', icon: Users, group: 'integration' },
+  { key: 'nav.tickets', href: '/dashboard/tickets', icon: LifeBuoy, group: 'system' },
+  { key: 'nav.profile', href: '/dashboard/profile', icon: User, group: 'system' },
+  { key: 'nav.lottery', href: '/dashboard/lottery', icon: Ticket, group: 'system' },
+  { key: 'nav.mysteryBoxes', href: '/dashboard/mystery-boxes', icon: Gift, group: 'system' },
+  { key: 'nav.game', href: '/dashboard/game', icon: Gamepad2, group: 'system' },
 ];
+
+const GROUP_LABEL: Record<NavItem['group'], { en: string; ar: string }> = {
+  operations: { en: 'Operations', ar: 'العمليات' },
+  integration: { en: 'Integration', ar: 'الربط والتكامل' },
+  system: { en: 'System Control', ar: 'التحكم بالنظام' },
+};
 
 export default function ClientLayout() {
   const { user, dbUser, loading, authError, logOut } = useAuth();
   const location = useLocation();
-  const { t, dir } = useTranslation();
+  const navigate = useNavigate();
+  const { t, dir, lang } = useTranslation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [search, setSearch] = useState('');
 
   const { data: config } = useQuery({
     queryKey: ['client-config'],
@@ -38,6 +58,15 @@ export default function ClientLayout() {
       const res = await apiFetch('/api/client/config', user);
       return res.ok ? res.json() : {};
     }
+  });
+
+  const { data: health } = useQuery({
+    queryKey: ['api-health'],
+    queryFn: async () => {
+      const res = await apiFetch('/api/health', user);
+      return res.ok ? res.json() : { ok: false };
+    },
+    refetchInterval: 60_000,
   });
 
   const { data: notificationData, refetch: refetchNotifications } = useQuery({
@@ -60,16 +89,25 @@ export default function ClientLayout() {
     refetchInterval: 30_000,
   });
 
-  if (loading) return <div className="rapid-auth-screen"><div className="rapid-auth-loader"><span className="brand-mark">R</span><div className="rapid-spinner"/><strong>{t('common.loading')}</strong><small>Securing your session…</small></div></div>;
+  /** Secondary-language subtitle, mirroring the bilingual rail in the design. */
+  const alt = (key: string) => {
+    const entry = (translations as any)[key];
+    if (!entry) return '';
+    return lang === 'ar' ? entry.en : entry.ar;
+  };
+
+  const account = freshUser || dbUser;
+
+  if (loading) return <div className="rapid-auth-screen"><div className="rapid-auth-loader"><BrandLogo size={40} /><div className="rapid-spinner"/><strong>{t('common.loading')}</strong><small>Securing your session…</small></div></div>;
   if (!user) return <Navigate to="/" replace />;
   if (!dbUser) {
     return (
       <div className="rapid-auth-screen p-4">
         <div className="rapid-auth-loader rapid-auth-error">
-          <div className="brand-mark mx-auto mb-5">R</div>
-          <h1 className="text-2xl font-black text-slate-900">Finishing your secure session</h1>
-          <p className="mt-2 text-sm leading-6 text-slate-500">Your login is valid. We’re reconnecting your account data. Nothing has been changed.</p>
-          {user && authError?.code && <p className="mt-3 text-xs text-amber-600">Temporary sync code: {authError.code}</p>}
+          <div className="mb-5 flex justify-center"><BrandLogo size={40} /></div>
+          <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-slate-200">Finishing your secure session</h1>
+          <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">Your login is valid. We’re reconnecting your account data. Nothing has been changed.</p>
+          {user && authError?.code && <p className="mt-3 font-mono text-xs text-amber-600 dark:text-amber-400">Temporary sync code: {authError.code}</p>}
           <div className="mt-6 flex gap-3 justify-center">
             {user ? <button onClick={() => window.location.reload()} className="btn-primary"><RefreshCw className="h-4 w-4"/> Retry</button> : <Link to="/" className="btn-primary">Return home</Link>}
             {user && <button onClick={logOut} className="btn-ghost">Sign out</button>}
@@ -79,67 +117,192 @@ export default function ClientLayout() {
     );
   }
 
+  const submitSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const term = search.trim();
+    setIsMobileMenuOpen(false);
+    navigate(term ? `/dashboard/services?q=${encodeURIComponent(term)}` : '/dashboard/services');
+  };
+
+  const activeItem = navItems.find(i => i.href === location.pathname);
+
   return (
     <div className="rapid-app-shell">
-      {isMobileMenuOpen && <div className="fixed inset-0 z-20 bg-black/50 md:hidden" onClick={() => setIsMobileMenuOpen(false)} />}
+      {isMobileMenuOpen && <div className="fixed inset-0 z-20 bg-black/60 md:hidden" onClick={() => setIsMobileMenuOpen(false)} />}
+
+      {/* ─── Rail ─────────────────────────────────────────────────────────── */}
       <aside className={cn(
-        "rapid-sidebar fixed inset-y-0 z-30 w-[280px] flex flex-col transform transition-transform duration-200 ease-in-out md:relative md:translate-x-0",
+        "rapid-sidebar fixed inset-y-0 z-40 flex w-64 flex-col justify-between transform transition-transform duration-200 ease-in-out md:relative md:translate-x-0",
         dir === 'rtl' ? "right-0 border-l" : "left-0 border-r",
         isMobileMenuOpen ? "translate-x-0" : (dir === 'rtl' ? "translate-x-full" : "-translate-x-full")
       )}>
-        <div className="rapid-sidebar-head h-[76px] flex items-center justify-between px-5">
-          <Link to="/dashboard" className="flex items-center gap-3"><span className="brand-mark h-9 w-9 text-sm">R</span><span className="text-lg font-black tracking-tight text-slate-900">Rapid<span className="text-violet-600">SMM</span></span></Link>
-          <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden text-gray-400 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"><X className="w-6 h-6" /></button>
-        </div>
-        <nav className="rapid-sidebar-nav flex-1 overflow-y-auto py-5">
-          <div className="px-4 pb-3"><div className="rapid-nav-label">Workspace</div></div>
-          <ul className="space-y-1 px-3">
-            {navItems.filter(i => i.group === 'main').map((item) => (
-              <li key={item.key}><Link to={item.href} onClick={() => setIsMobileMenuOpen(false)} className={cn("rapid-nav-item flex items-center gap-3 px-3 py-3 rounded-2xl text-sm font-bold", location.pathname === item.href ? "is-active" : "")}>
-                <span className="rapid-nav-icon"><item.icon className="w-4 h-4" /></span><span>{t(item.key)}</span>{item.href === '/dashboard/new-order' && <span className="rapid-nav-hot">Fast</span>}
-              </Link></li>
+        <div className="flex min-h-0 flex-1 flex-col">
+          {/* Brand head */}
+          <div className="rapid-sidebar-head flex h-16 shrink-0 items-center gap-2 px-gutter">
+            <BrandLogo size={32} showTagline />
+            <button onClick={() => setIsMobileMenuOpen(false)} className="ms-auto text-slate-400 hover:text-slate-100 md:hidden"><X className="h-5 w-5" /></button>
+          </div>
+
+          {/* API engine status */}
+          <div className="px-gutter-sm py-space-sm">
+            <div className="flex items-center justify-between rounded-xl bg-surface-container px-space-md py-space-sm dark:bg-surface-container">
+              <div className="flex items-center gap-1">
+                <span className="material-symbols-outlined text-[18px] text-tertiary">terminal</span>
+                <span className="font-mono text-label-sm uppercase tracking-wider text-on-surface-variant dark:text-on-surface-variant">API Engine</span>
+              </div>
+              <span className="flex items-center gap-1 font-mono text-code-xs text-tertiary dark:text-tertiary">
+                <span className={cn("pulse-dot", health?.ok ? "bg-tertiary" : "bg-critical", health?.ok && "animate-pulse")} />
+                {health?.ok ? 'Live' : 'Offline'}
+              </span>
+            </div>
+          </div>
+
+          {/* Navigation */}
+          <nav className="rapid-sidebar-nav flex-1 space-y-0.5 overflow-y-auto px-gutter-sm">
+            {(['operations', 'integration', 'system'] as const).map(group => (
+              <div key={group}>
+                <div className="rapid-nav-label px-space-md pb-0.5 pt-space-md">{GROUP_LABEL[group][lang === 'ar' ? 'ar' : 'en']}</div>
+                {navItems.filter(i => i.group === group).map(item => {
+                  const isActive = location.pathname === item.href;
+                  return (
+                    <Link
+                      key={item.key}
+                      to={item.href}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={cn("rapid-nav-item justify-between", isActive && "is-active")}
+                    >
+                      <span className="flex items-center gap-space-md">
+                        <item.icon className="h-[18px] w-[18px]" />
+                        <span>{t(item.key)}</span>
+                      </span>
+                      {item.badge === 'api' ? (
+                        <span className="rapid-nav-hot">v2.4</span>
+                      ) : (
+                        <span className="hidden truncate font-mono text-code-xs opacity-70 lg:inline">{alt(item.key)}</span>
+                      )}
+                    </Link>
+                  );
+                })}
+                {group === 'system' && dbUser.isAdmin && (
+                  <Link to="/admin" onClick={() => setIsMobileMenuOpen(false)} className="rapid-nav-item justify-between">
+                    <span className="flex items-center gap-space-md">
+                      <ShieldCheck className="h-[18px] w-[18px]" />
+                      <span>Admin Switcher</span>
+                    </span>
+                    <span className="h-2 w-2 rounded-full bg-secondary" />
+                  </Link>
+                )}
+              </div>
             ))}
-          </ul>
-          {(['orders','wallet','growth','tools','account','extras'] as const).map(group => {
-            const labels:any={orders:t('nav.orderHistory'),wallet:t('nav.addFunds'),growth:t('nav.earnMoney'),tools:t('nav.tickets')+' & API',account:t('nav.profile'),extras:t('nav.mysteryBoxes')};
-            return <div key={group} className="mt-5"><div className="px-4 pb-2 rapid-nav-label">{labels[group]}</div><ul className="space-y-1 px-3">{navItems.filter(i=>i.group===group).map(item=><li key={item.key}><Link to={item.href} onClick={()=>setIsMobileMenuOpen(false)} className={cn("rapid-nav-item flex items-center gap-3 px-3 py-2.5 rounded-2xl text-sm font-bold", location.pathname===item.href ? "is-active" : "")}><span className="rapid-nav-icon"><item.icon className="w-4 h-4"/></span><span>{t(item.key)}</span></Link></li>)}</ul></div>
-          })}
-        </nav>
-        <div className="rapid-sidebar-foot p-4 space-y-2">
-          <LanguageSwitcher className="w-full justify-center border-gray-300 text-gray-600 hover:bg-gray-50 dark:bg-slate-800 dark:border-slate-600 dark:text-gray-200 dark:hover:bg-gray-700" />
-          <ThemeToggle className="w-full justify-center border-gray-300 dark:border-slate-600" />
-          <button onClick={logOut} className="flex items-center gap-3 px-3 py-2 w-full rounded-md text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"><LogOut className="w-5 h-5" /> {t('common.signOut')}</button>
+          </nav>
+        </div>
+
+        {/* Foot */}
+        <div className="rapid-sidebar-foot space-y-2 p-gutter-sm">
+          <div className="flex items-center justify-between rounded-xl bg-surface-container p-space-md dark:bg-surface-container">
+            <div className="flex flex-col">
+              <span className="font-mono text-label-sm uppercase tracking-wider text-on-surface-variant dark:text-on-surface-variant">Tier Level</span>
+              <span className="font-display text-headline-sm font-semibold text-primary dark:text-primary">{dbUser.isAdmin ? 'Administrator' : 'Standard Member'}</span>
+            </div>
+            <span className="material-symbols-outlined text-xl text-primary dark:text-primary">{dbUser.isAdmin ? 'verified' : 'workspace_premium'}</span>
+          </div>
+          <LanguageSwitcher className="w-full justify-center border-slate-700 text-slate-400 hover:bg-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800" />
+          <button onClick={logOut} className="rapid-nav-item w-full justify-start"><LogOut className="h-[18px] w-[18px]" /> {t('common.signOut')}</button>
         </div>
       </aside>
-      <main className="rapid-main flex-1 flex flex-col min-w-0 overflow-hidden w-full h-full relative">
-        <header className="rapid-topbar h-[76px] flex items-center justify-between px-4 md:px-8 flex-shrink-0">
-          <div className="flex items-center gap-4">
-            <button onClick={() => setIsMobileMenuOpen(true)} className="md:hidden text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"><Menu className="w-6 h-6" /></button>
-            <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 truncate">{navItems.find(i => i.href === location.pathname) ? t(navItems.find(i => i.href === location.pathname)!.key) : t('nav.clientArea')}</h2>
+
+      {/* ─── Column ───────────────────────────────────────────────────────── */}
+      <div className={cn("flex min-w-0 flex-1 flex-col", dir === 'rtl' ? "md:pr-64" : "md:pl-64")}>
+        <header className="rapid-topbar fixed inset-x-0 top-0 z-30 flex h-16 items-center justify-between px-gutter-lg md:ps-64">
+          <div className="flex flex-1 items-center gap-space-md">
+            <button onClick={() => setIsMobileMenuOpen(true)} className="text-slate-400 hover:text-slate-100 md:hidden"><Menu className="h-5 w-5" /></button>
+            <form onSubmit={submitSearch} className="relative w-full max-w-md">
+              <span className="material-symbols-outlined absolute start-space-md top-1/2 -translate-y-1/2 text-[18px] text-slate-500 dark:text-outline">search</span>
+              <input
+                type="search"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="h-10 w-full rounded-xl border border-transparent bg-surface-container ps-10 pe-space-md font-body-sm text-body-sm text-on-surface placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary/40 dark:bg-surface-container"
+                placeholder={t('client.globalSearchPlaceholder')}
+              />
+            </form>
           </div>
-          <div className="flex items-center gap-3">
-            <button onClick={logOut} className="hidden md:inline-flex btn-ghost items-center gap-1.5 dark:text-gray-300 dark:hover:bg-gray-700"><LogOut className="h-4 w-4"/> {t('common.signOut')}</button>
-            <Link to="/dashboard/add-funds" className="hidden sm:flex btn-primary py-2"><Plus className="h-4 w-4"/> {t('nav.addFunds')}</Link>
+
+          <div className="flex items-center gap-space-md">
+            {/* Balance */}
+            <div className="hidden items-center gap-space-sm rounded-xl bg-surface-container px-space-md py-space-xs sm:flex dark:bg-surface-container">
+              <span className="material-symbols-outlined text-[18px] text-tertiary">payments</span>
+              <div className="flex flex-col">
+                <span className="font-mono text-code-xs leading-none text-on-surface-variant dark:text-on-surface-variant">{t('common.currentBalance')}</span>
+                <span className="font-mono text-code-sm font-medium tabular-nums text-on-surface dark:text-on-surface">
+                  {config?.currencySymbol || '$'}{Number(account?.balance || 0).toFixed(2)} {config?.currencyCode || 'USD'}
+                </span>
+              </div>
+              <Link to="/dashboard/add-funds" className="ms-1 flex h-6 w-6 items-center justify-center rounded-lg bg-surface-container-high text-tertiary transition-colors hover:bg-surface-bright">
+                <span className="material-symbols-outlined text-[16px]">add</span>
+              </Link>
+            </div>
+
+            {/* Instant order */}
+            <Link to="/dashboard/new-order" className="inline-flex items-center gap-1 rounded-xl bg-primary-container px-space-md py-space-sm font-label-lg text-label-lg font-semibold text-on-primary-container shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] transition-all hover:bg-primary">
+              <span className="material-symbols-outlined text-[18px]">bolt</span>
+              <span className="hidden sm:inline">{t('nav.newOrder')}</span>
+            </Link>
+
+            {/* Notifications */}
             <div className="relative">
-              <button aria-label={t('notifications.title')} onClick={()=>setNotificationsOpen(v=>!v)} className="rounded-xl border border-slate-200 dark:border-slate-600 p-2 text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white"><Bell className="h-4 w-4"/>{notificationData?.unread>0&&<span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-rose-500 text-white text-[10px] flex items-center justify-center">{notificationData.unread>9?'9+':notificationData.unread}</span>}</button>
-              {notificationsOpen&&<div className="absolute top-11 right-0 z-50 w-[min(360px,calc(100vw-2rem))] rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-xl p-3">
-                <div className="flex items-center justify-between px-2 pb-2 border-b border-slate-100 dark:border-slate-700"><b className="text-sm text-slate-900 dark:text-gray-200">{t('notifications.title')}</b><button className="text-xs text-violet-600 dark:text-violet-400" onClick={async()=>{const token=await user?.getIdToken();await apiFetch('/api/client/notifications/read-all',user,{method:'PUT',headers:{Authorization:`Bearer ${token}`}});await refetchNotifications();}}>{t('notifications.markAll')}</button></div>
-                <div className="max-h-80 overflow-y-auto">{(notificationData?.notifications||[]).length===0?<p className="p-4 text-xs text-slate-500 dark:text-gray-400">{t('notifications.empty')}</p>:(notificationData.notifications||[]).map((n:any)=><button key={n.id} onClick={async()=>{const token=await user?.getIdToken();if(!n.readAt)await apiFetch(`/api/client/notifications/${n.id}/read`,user,{method:'PUT',headers:{Authorization:`Bearer ${token}`}});await refetchNotifications();if(n.link)window.location.href=n.link;}} className={`w-full text-left p-3 rounded-xl mt-1 ${n.readAt?'bg-gray-100 dark:bg-slate-700':'bg-violet-50 dark:bg-violet-900/20'} hover:bg-slate-50 dark:hover:bg-gray-700`}><div className="text-xs font-bold text-slate-900 dark:text-gray-200">{n.title}</div><div className="text-xs text-slate-500 dark:text-gray-400 mt-1">{n.message}</div><div className="text-[10px] text-slate-400 dark:text-gray-500 mt-1">{n.createdAt?new Date(n.createdAt).toLocaleString():''}</div></button>)}</div>
-              </div>}
+              <button
+                aria-label={t('notifications.title')}
+                onClick={() => setNotificationsOpen(v => !v)}
+                className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-surface-container text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface dark:bg-surface-container"
+              >
+                <span className="material-symbols-outlined text-[18px]">notifications</span>
+                {notificationData?.unread > 0 && <span className="absolute end-2 top-2 h-2 w-2 rounded-full bg-error ring-2 ring-surface-container" />}
+              </button>
+              {notificationsOpen && (
+                <div className="absolute end-0 top-12 z-50 w-[min(360px,calc(100vw-2rem))] rounded-xl border border-slate-700 bg-slate-800 p-3 shadow-float dark:border-slate-700 dark:bg-slate-800">
+                  <div className="flex items-center justify-between border-b border-slate-700 px-2 pb-2 dark:border-slate-700">
+                    <b className="font-display text-sm font-semibold">{t('notifications.title')}</b>
+                    <button className="text-xs text-primary dark:text-primary" onClick={async () => { const token = await user?.getIdToken(); await apiFetch('/api/client/notifications/read-all', user, { method: 'PUT', headers: { Authorization: `Bearer ${token}` } }); await refetchNotifications(); }}>{t('notifications.markAll')}</button>
+                  </div>
+                  <div className="max-h-80 overflow-y-auto">
+                    {(notificationData?.notifications || []).length === 0
+                      ? <p className="p-4 text-xs text-slate-400 dark:text-slate-400">{t('notifications.empty')}</p>
+                      : (notificationData.notifications || []).map((n: any) => (
+                        <button key={n.id} onClick={async () => { const token = await user?.getIdToken(); if (!n.readAt) await apiFetch(`/api/client/notifications/${n.id}/read`, user, { method: 'PUT', headers: { Authorization: `Bearer ${token}` } }); await refetchNotifications(); if (n.link) window.location.href = n.link; }} className={cn("mt-1 w-full rounded-lg p-3 text-start", n.readAt ? 'bg-slate-700/40' : 'bg-indigo-500/15')}>
+                          <div className="text-xs font-semibold">{n.title}</div>
+                          <div className="mt-1 text-xs text-slate-400 dark:text-slate-400">{n.message}</div>
+                          <div className="mt-1 font-mono text-[10px] text-slate-500 dark:text-slate-500">{n.createdAt ? new Date(n.createdAt).toLocaleString() : ''}</div>
+                        </button>
+                      ))}
+                  </div>
+                </div>
+              )}
             </div>
-            <div className={dir === 'rtl' ? "flex flex-col text-left" : "flex flex-col text-right"}>
-              <span className="text-sm font-black text-slate-900 dark:text-gray-200">{config?.currencySymbol || '$'}{Number((freshUser || dbUser).balance).toFixed(4)}</span>
-              <span className="text-xs text-slate-500 dark:text-gray-400 hidden sm:block">{t('common.currentBalance')}</span>
+
+            {/* Theme + identity */}
+            <ThemeButton />
+            <div className="flex items-center gap-space-sm ps-space-sm">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-100 font-semibold text-violet-700 ring-1 ring-outline/30 dark:bg-violet-900/40 dark:text-violet-300">{(account?.email || 'R')[0].toUpperCase()}</span>
+              <div className="hidden flex-col xl:flex">
+                <span className="font-label-lg text-label-lg leading-tight">{account?.name || account?.email?.split('@')[0]}</span>
+                <span className="font-mono text-code-xs text-on-surface-variant dark:text-on-surface-variant">{account?.email}</span>
+              </div>
             </div>
-            <Link to="/dashboard/profile" className="w-10 h-10 rounded-full bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center text-violet-700 dark:text-violet-300 font-bold border border-violet-200 dark:border-violet-700 transition-colors">{(freshUser || dbUser).email[0].toUpperCase()}</Link>
-            <ThemeToggle className="border-gray-300 dark:border-slate-600" />
           </div>
         </header>
-        <div className="rapid-content flex-1 overflow-y-auto p-4 md:p-8"><div className="mx-auto max-w-[1480px] client-page-frame">
+
+        <div className="rapid-content mt-16 flex-1 overflow-y-auto"><div className="client-page-frame mx-auto w-full max-w-[1480px]">
           <Outlet />
         </div></div>
-        <nav className="rapid-mobile-nav md:hidden">{navItems.slice(0,5).map(item=><Link key={item.key} to={item.href} className={location.pathname===item.href?'active':''}><item.icon/><span>{t(item.key)}</span></Link>)}</nav>
-      </main>
+
+        <nav className="rapid-mobile-nav md:hidden">{navItems.slice(0, 5).map(item => <Link key={item.key} to={item.href} className={location.pathname === item.href ? 'active' : ''}><item.icon /><span>{t(item.key)}</span></Link>)}</nav>
+      </div>
     </div>
   );
+}
+
+/** Theme toggle re-styled to the design's 40px control slot. */
+function ThemeButton() {
+  return <ThemeToggle className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-container p-0 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface dark:bg-surface-container dark:text-on-surface-variant" />;
 }

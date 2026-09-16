@@ -30,6 +30,7 @@ export const translations: Dict = {
   'common.save': { en: 'Save', ar: 'حفظ' },
   'common.cancel': { en: 'Cancel', ar: 'إلغاء' },
   'common.search': { en: 'Search', ar: 'بحث' },
+  'client.globalSearchPlaceholder': { en: 'Search orders, service IDs, or API keys...', ar: 'ابحث عن الطلبات، معرفات الخدمات، أو مفاتيح API...' },
   'common.export': { en: 'Export CSV', ar: 'تصدير CSV' },
   'common.exportAll': { en: 'Export All', ar: 'تصدير الكل' },
   'common.exportPage': { en: 'Export This Page', ar: 'تصدير الصفحة' },

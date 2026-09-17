@@ -164,12 +164,43 @@ type ProviderSyncJob = {
 const providerSyncJobs = new Map<string, ProviderSyncJob>();
 const activeProviderSync = new Map<string, string>();
 /**
+ * The supplier's own wording is welcome as the service description, but it arrives carrying their
+ * brand: links, domains and words like "provider"/"panel"/"reseller" that describe how we buy it.
+ * Strip those, keep the substance (quality, speed, drop protection, refill terms ...).
+ */
+const sanitizeCustomerText = (input: unknown) => {
+  let text = String(input ?? '');
+  text = text.replace(/https?:\/\/\S+/gi, ' ');                       // full links
+  text = text.replace(/\bwww\.[^\s,;]+/gi, ' ');                        // www links
+  text = text.replace(/\b[a-z0-9-]+\.(com|net|org|io|co|xyz|shop|store|me|ru|info|site)(\/\S*)?\b/gi, ' '); // bare domains
+  text = text.replace(/\b(instagram|tiktok|telegram|youtube)\.com\b/gi, ' '); // real platforms are not a leak, but keep them tidy
+  text = text.replace(/\b(our\s+|the\s+)?(provider|supplier|reseller|vendor|wholesaler)s?\b/gi, ' ');
+  text = text.replace(/\b(smm\s+)?panels?\b/gi, ' ');
+  text = text.replace(/\b(from|by|via|with|at|on|for|using)\s*(?=[-–—·.,;:!?]|$)/gi, ' '); // dangling preposition after a removal
+  text = text.replace(/\b(rate|price|cost|pricing)\b\s*(per\s*1\s*k|per\s*1000|per\s*item)?\s*[:=]?\s*\d[\d.,]*/gi, ' '); // never publish what it costs us
+  text = text.replace(/\s*[\u00b7|]\s*[\s\u00b7|]+/g, ' · ');          // collapsing separators
+  text = text.replace(/[ \t]{2,}/g, ' ');
+  text = text.replace(/\s+([,.;:])/g, '$1');
+  text = text.replace(/^[\s·,;:.\-]+|[\s·,;:.\-]+$/g, '');
+  return text.slice(0, 5000);
+};
+
+/** Every field name a supplier might use for the service description. */
+const providerDescriptionSource = (raw: any) => {
+  for (const key of ['description', 'desc', 'details', 'info', 'service_description', 'description_en', 'about']) {
+    const value = raw?.[key];
+    if (typeof value === 'string' && value.trim()) return value;
+  }
+  return '';
+};
+
+/**
  * Auto description for a synced service. This text is shown to CUSTOMERS, so it must never name the
  * fulfilment side or reveal what a service costs us — it describes the service and its limits only.
  */
 const buildProviderDescription = (raw: any, name: string, _rate: number, min: number, max: number, refillable: boolean, cancelable: boolean, dripfeed: boolean) => {
-  const source = String(raw?.description ?? raw?.desc ?? '').trim();
-  if (source) return source.slice(0, 5000);
+  const source = sanitizeCustomerText(providerDescriptionSource(raw));
+  if (source) return source;
   const isSingle = min === 1 && max === 1;
   const parts = [`${name}.`];
   parts.push(isSingle ? 'Delivered as a single unit per order.' : `Order quantity from ${min.toLocaleString()} to ${max.toLocaleString()}.`);
@@ -183,8 +214,9 @@ const buildProviderDescription = (raw: any, name: string, _rate: number, min: nu
 /** Descriptions written by older syncs exposed the fulfilment side and our cost — never show them. */
 const LEGACY_AUTO_DESCRIPTION = /provider service\b|Provider (rate per 1K|price per item)|Drip-feed: available\. Type:/i;
 const customerDescription = (serviceName: string, raw: any, min: number, max: number, refillable: boolean, cancelable: boolean) => {
-  const stored = String(raw || '').trim();
-  if (stored && !LEGACY_AUTO_DESCRIPTION.test(stored)) return stored;
+  const original = String(raw || '').trim();
+  const stored = sanitizeCustomerText(original);
+  if (stored && !LEGACY_AUTO_DESCRIPTION.test(original)) return stored;
   const isSingle = min === 1 && max === 1;
   return isSingle
     ? `${serviceName}. Delivered as a single unit per order. Refill: ${refillable ? 'available' : 'not available'}. Cancel: ${cancelable ? 'available' : 'not available'}.`

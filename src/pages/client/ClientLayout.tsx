@@ -5,11 +5,12 @@ import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
 import { useTranslation, LanguageSwitcher, ThemeToggle } from '../../lib/i18n';
 import {
-  Banknote, Bell, Code, Gamepad2, Gift, Layers, LayoutDashboard, LifeBuoy, Link2, ListOrdered,
+  Banknote, Code, Gamepad2, Gift, Layers, LayoutDashboard, LifeBuoy, Link2, ListOrdered,
   LogOut, Menu, Plus, Receipt, RefreshCw, Search, ShieldCheck, ShoppingCart, Tags, Ticket,
   User, Users, Wallet, X, Zap,
 } from 'lucide-react';
 import { BrandLogo } from '../../components/BrandLogo';
+import NotificationCenter from '../../components/NotificationCenter';
 import { cn } from '../../lib/utils';
 import { useLiveUpdates } from '../../lib/useLive';
 
@@ -54,7 +55,6 @@ export default function ClientLayout() {
   const { t, dir, lang } = useTranslation();
   const qc = useQueryClient();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const ar = dir === 'rtl';
 
@@ -76,16 +76,6 @@ export default function ClientLayout() {
       return res.ok ? res.json() : { ok: false };
     },
     refetchInterval: 60_000,
-  });
-
-  const { data: notificationData, refetch: refetchNotifications } = useQuery({
-    queryKey: ['client-notifications'],
-    queryFn: async () => {
-      const res = await apiFetch('/api/client/notifications', user);
-      return res.ok ? res.json() : { notifications: [], unread: 0 };
-    },
-    enabled: !!user,
-    refetchInterval: 60_000, // safety net; live pushes arrive immediately
   });
 
   const { data: freshUser } = useQuery({
@@ -116,7 +106,6 @@ export default function ClientLayout() {
   const balance = Number(account?.balance || 0).toFixed(2);
   const activeOrders = Number(overview?.activeOrders ?? ((overview?.ordersByStatus?.pending || 0) + (overview?.ordersByStatus?.processing || 0) + (overview?.ordersByStatus?.['in progress'] || 0))) || 0;
   const openTickets = Number(overview?.openTickets || 0);
-  const unread = Number(notificationData?.unread || 0);
 
   if (loading) return <div className="rapid-auth-screen"><div className="rapid-auth-loader"><BrandLogo size={40} /><div className="rapid-spinner"/><strong>{t('common.loading')}</strong><small>{ar ? 'بنثبّت جلستك…' : 'Securing your session…'}</small></div></div>;
   if (!user) return <Navigate to="/" replace />;
@@ -142,16 +131,6 @@ export default function ClientLayout() {
     const term = search.trim();
     setIsMobileMenuOpen(false);
     navigate(term ? `/dashboard/services?q=${encodeURIComponent(term)}` : '/dashboard/services');
-  };
-
-  const openNotification = async (n: any) => {
-    setNotificationsOpen(false);
-    if (!n.readAt) {
-      try { await apiFetch(`/api/client/notifications/${n.id}/read`, user, { method: 'PUT' }); } catch { /* already gone */ }
-      refetchNotifications();
-      qc.invalidateQueries({ queryKey: ['client-notifications'] });
-    }
-    if (n.link) navigate(n.link);
   };
 
   const badgeFor = (item: NavItem) => {
@@ -289,47 +268,7 @@ export default function ClientLayout() {
               <span className="hidden sm:inline">{t('nav.newOrder')}</span>
             </Link>
 
-            <div className="relative">
-              <button
-                aria-label={t('notifications.title')}
-                onClick={() => setNotificationsOpen(v => !v)}
-                className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-surface-container text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface"
-              >
-                <Bell className="h-[18px] w-[18px] shrink-0" />
-                {unread > 0 && (
-                  <span className="absolute -end-1 -top-1 min-w-[18px] rounded-full bg-error px-1 text-center font-mono text-[10px] font-bold leading-[18px] text-white">{unread > 99 ? '99+' : unread}</span>
-                )}
-              </button>
-              {notificationsOpen && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setNotificationsOpen(false)} />
-                  <div className="absolute end-0 z-50 mt-2 w-[min(92vw,380px)] overflow-hidden rounded-xl border border-outline-variant bg-surface-container shadow-2xl">
-                    <div className="flex items-center justify-between border-b border-outline-variant px-4 py-3">
-                      <b className="text-sm font-bold text-on-surface">{t('notifications.title')} {unread > 0 && <span className="text-error">({unread})</span>}</b>
-                      <button className="text-xs font-bold text-primary hover:underline"
-                        onClick={async () => { await apiFetch('/api/client/notifications/read-all', user, { method: 'PUT' }); refetchNotifications(); }}>
-                        {t('notifications.markAll')}
-                      </button>
-                    </div>
-                    <div className="max-h-80 overflow-y-auto">
-                      {(notificationData?.notifications || []).length === 0
-                        ? <p className="p-4 text-sm text-on-surface-variant">{t('notifications.empty')}</p>
-                        : (notificationData.notifications || []).map((n: any) => (
-                          <button key={n.id} onClick={() => openNotification(n)}
-                            className="flex w-full items-start gap-3 border-b border-outline-variant px-4 py-3 text-start transition-colors last:border-0 hover:bg-surface-container-high">
-                            <span className={cn('mt-1.5 h-2 w-2 shrink-0 rounded-full', n.readAt ? 'bg-outline' : 'bg-error')} />
-                            <span className="min-w-0 flex-1">
-                              <span className="block truncate text-sm font-bold text-on-surface">{n.title}</span>
-                              <span className="mt-0.5 block text-xs leading-relaxed text-on-surface-variant">{n.message}</span>
-                              <span className="mt-1 block font-mono text-[10px] text-on-surface-variant/80">{n.createdAt ? new Date(n.createdAt).toLocaleString() : ''}</span>
-                            </span>
-                          </button>
-                        ))}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
+            <NotificationCenter base="/api/client" queryKey="client-notifications" />
 
             <ThemeToggle className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-container p-0 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface" />
           </div>

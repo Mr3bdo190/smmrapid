@@ -5,7 +5,11 @@ import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
 import { notify } from '../../lib/notify';
 import { useTranslation } from '../../lib/i18n';
-import { Aperture, ArrowUpDown, AudioWaveform, BadgeCheck, Briefcase, Camera, CircleX, Download, Globe, Info, MessageCircle, MessagesSquare, MonitorPlay, Network, PlayCircle, RefreshCcw, RotateCcw, Search, Send, ShieldCheck, SlidersHorizontal, Tag, Terminal, ThumbsUp, Tv, X, Zap } from 'lucide-react';
+import {
+  Aperture, AudioWaveform, BadgeCheck, Briefcase, Camera, CircleX, Download, Globe, Info, Loader2,
+  MessageCircle, MessagesSquare, MonitorPlay, Network, PlayCircle, RefreshCcw, RefreshCw, RotateCcw,
+  Search, Send, Tag, Terminal, ThumbsUp, Tv, X, Zap,
+} from 'lucide-react';
 
 const PAGE_SIZE = 20;
 
@@ -34,12 +38,6 @@ const PlatformIcon = ({ name, className }: { name?: string; className?: string }
   return <Icon className={className} />;
 };
 
-const iconTones = ['text-secondary', 'text-tertiary', 'text-primary', 'text-error', 'text-on-surface'];
-const toneFor = (name: string) => {
-  const sum = String(name || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-  return iconTones[sum % iconTones.length];
-};
-
 export default function ClientServices() {
   const { user } = useAuth();
   const { t, lang } = useTranslation();
@@ -59,8 +57,8 @@ export default function ClientServices() {
 
   useEffect(() => { setSearch(searchParams.get('q') ?? ''); }, [searchParams]);
 
-  const { data: services = [], isLoading, dataUpdatedAt } = useQuery({
-    queryKey: ['client-services-list'],
+  const { data: services = [], isLoading, isError, isFetching, refetch, dataUpdatedAt } = useQuery({
+    queryKey: ['client-services'],
     queryFn: async () => {
       const token = await user?.getIdToken();
       const res = await apiFetch('/api/client/services', user, { headers: { Authorization: `Bearer ${token}` } });
@@ -70,7 +68,7 @@ export default function ClientServices() {
     enabled: !!user,
   });
 
-  /* ── real platform (category) tabs with real per-category counts ───────── */
+  /* ── real category chips with real per-category counts ─────────────────── */
   const categories = useMemo(() => {
     const map = new Map<string, { id: string; name: string; count: number; sortOrder: number }>();
     for (const s of services as any[]) {
@@ -123,13 +121,12 @@ export default function ClientServices() {
     return out;
   }, [totalPages, currentPage]);
 
-  /* ── KPI values, all derived from the real services array ─────────────── */
+  /* ── counters, all derived from the real services array ───────────────── */
   const total = (services as any[]).length;
   const refillCount = (services as any[]).filter(s => s.refillable).length;
   const cancelableCount = (services as any[]).filter(s => s.cancelable).length;
-  const refillPct = total ? Math.round((refillCount / total) * 1000) / 10 : 0;
-  const coveragePct = total ? Math.round((filtered.length / total) * 1000) / 10 : 0;
   const updatedAt = dataUpdatedAt ? new Date(dataUpdatedAt).toLocaleTimeString(lang === 'ar' ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit' }) : '—';
+  const filtersActive = !!search.trim() || platform !== 'all' || typeFilter !== 'all' || guarantee !== 'all' || sortBy !== 'id_asc';
 
   const applySearch = (value: string) => {
     setSearch(value);
@@ -157,362 +154,436 @@ export default function ClientServices() {
     notify.success(t('common.exportSuccess'));
   };
 
-  const inputCls = 'h-[38px] w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-space-md font-body-md text-on-surface placeholder:text-outline focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20';
-  const selectCls = 'bg-transparent text-on-surface font-label-sm text-label-sm focus:outline-none cursor-pointer';
-  const optionCls = 'bg-surface-container text-on-surface';
+  const field = 'h-11 w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-sm text-on-surface placeholder:text-outline focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20';
+  const labelCls = 'text-sm font-semibold text-on-surface';
+  const chipOn = 'inline-flex h-10 items-center gap-2 rounded-lg bg-primary-container px-3 text-sm font-semibold text-on-primary-container transition-colors hover:bg-primary';
+  const chipOff = 'inline-flex h-10 items-center gap-2 rounded-lg border border-outline-variant bg-surface-container-low px-3 text-sm text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface';
+  const secondaryBtn = 'inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-outline-variant bg-surface-container px-4 text-sm font-semibold text-on-surface transition-colors hover:bg-surface-container-high';
+  const statPill = 'inline-flex h-9 items-center gap-2 rounded-lg bg-surface-container-low px-3 text-sm text-on-surface-variant';
 
   return (
     <div className="flex flex-col gap-gutter-lg">
-      {/* Breadcrumb & Top Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-space-md mb-space-lg">
-        <div className="flex flex-col gap-space-2xs">
-          <div className="flex items-center gap-space-xs text-on-surface-variant font-code-xs text-code-xs tracking-wider uppercase">
-            <span>{t('nav.dashboard')}</span>
-            <span>/</span>
-            <span>{L('العمليات', 'Operations')}</span>
-            <span>/</span>
-            <span className="text-primary font-semibold">{t('services.title')}</span>
-          </div>
-          <div className="flex flex-wrap items-baseline gap-space-sm">
-            <h1 className="font-headline-lg text-headline-lg text-on-surface tracking-tight">{t('services.title')}</h1>
-            <span className="font-headline-sm text-headline-sm text-on-surface-variant">{lang === 'ar' ? 'Services List' : 'قائمة الخدمات'}</span>
-          </div>
-          <p className="font-body-sm text-body-sm text-on-surface-variant max-w-2xl">
-            {L('نقاط نهاية API عالية السرعة مع مراقبة لحظية موثوقة للثبات وأسعار جملة متدرجة. منصة البث المباشر للخدمات المتزامنة ومراقبة الاستقرار اللحظي.', 'High-velocity API endpoints with verified real-time drop telemetry and wholesale tiered pricing. Live service broadcasting with real-time stability monitoring.')}
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-start justify-between gap-space-md">
+        <div className="min-w-0">
+          <h1 className="font-display text-headline-lg text-on-surface">{t('services.title')}</h1>
+          <p className="mt-1 text-sm text-on-surface-variant">
+            {L('كل الخدمات المتاحة مع سعر كل 1000 وأقل وأعلى كمية. اختر الخدمة ثم اضغط "اطلب".',
+              'Every service we offer, with the price per 1,000, the minimum and the maximum. Pick one and press Order.')}
           </p>
         </div>
-
-        {/* Live telemetry pill & main CTAs */}
-        <div className="flex flex-wrap items-center gap-space-sm">
-          <div className="flex items-center gap-space-xs px-space-md py-space-xs rounded-xl bg-surface-container shadow-sm">
-            <span className="w-2 h-2 rounded-full bg-tertiary animate-ping"></span>
-            <span className="w-2 h-2 rounded-full bg-tertiary -ms-3"></span>
-            <div className="flex flex-col">
-              <span className="font-code-xs text-code-xs text-tertiary font-semibold uppercase tracking-wider">{isLoading ? 'API SYNCING' : 'API ACTIVE'}</span>
-              <span className="font-code-xs text-code-xs text-on-surface-variant">{toNum(total)} {L('خدمة مباشرة', 'live services')} • {L('آخر تحديث', 'updated')} {updatedAt}</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-space-xs">
-            <button onClick={exportCsv} className="inline-flex items-center gap-space-xs px-space-md py-space-sm rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md transition-all shadow-sm" type="button">
-              <Download className="text-primary h-[18px] w-[18px] shrink-0" />
-              <span>{t('common.export')}</span>
-            </button>
-            <Link to="/dashboard/api" className="inline-flex items-center gap-space-xs px-space-md py-space-sm rounded-xl bg-primary-container text-on-primary-container hover:bg-primary font-label-md text-label-md shadow-md transition-all">
-              <Terminal className="h-[18px] w-[18px] shrink-0" />
-              <span>{t('api.viewClientApi')}</span>
-            </Link>
-          </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" onClick={exportCsv} className={secondaryBtn}>
+            <Download className="h-4 w-4" /> {t('common.export')}
+          </button>
+          <Link to="/dashboard/api" className={secondaryBtn}>
+            <Terminal className="h-4 w-4" /> {t('api.viewClientApi')}
+          </Link>
+          <Link to="/dashboard/new-order" className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-primary-container px-4 text-sm font-semibold text-on-primary-container transition-colors hover:bg-primary">
+            <Zap className="h-4 w-4" /> {t('nav.newOrder')}
+          </Link>
         </div>
       </div>
 
-      {/* Analytical KPI metric cards — only the two the real data can back */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md mb-space-xl">
-        <div className="relative overflow-hidden rounded-xl bg-surface-container p-space-lg shadow-md flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-space-xs">
-            <span className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">{L('إجمالي الخدمات النشطة', 'Active Services Total')}</span>
-            <Network className="text-primary h-[24px] w-[24px] shrink-0" />
+      <div className="flex flex-col gap-space-xl rounded-xl border border-outline-variant bg-surface-container p-5">
+        {/* ── 1 · Find a service ───────────────────────────────────────────── */}
+        <section className="flex flex-col gap-space-lg">
+          <div className="flex flex-col gap-1">
+            <h2 className="font-display text-headline-sm text-on-surface">{L('ابحث عن خدمة', 'Find a service')}</h2>
+            <p className="text-sm text-on-surface-variant">
+              {L('ابحث بالاسم أو برقم الخدمة، أو اختر القسم، ثم استخدم عوامل التصفية للتضييق.',
+                'Search by name or service ID, or pick a category, then narrow the list with the filters.')}
+            </p>
           </div>
-          <div className="flex items-baseline justify-between mt-space-xs">
-            <div>
-              <span className="font-headline-xl text-headline-xl text-on-surface font-bold">{toNum(total)}</span>
-              <span className="font-body-sm text-body-sm text-on-surface-variant ms-space-xs">{L('خدمة مفعلة', 'active services')}</span>
-            </div>
-            <span className="font-code-xs text-code-xs px-space-xs py-space-2xs rounded bg-surface-container-high text-tertiary font-medium">{toNum(categories.length)} {t('services.category')}</span>
-          </div>
-          <div className="w-full bg-surface-container-lowest h-1.5 rounded-full mt-space-sm overflow-hidden">
-            <div className="bg-primary h-full rounded-full" style={{ width: `${coveragePct}%` }}></div>
-          </div>
-        </div>
 
-        <div className="relative overflow-hidden rounded-xl bg-surface-container p-space-lg shadow-md flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-space-xs">
-            <span className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">{L('معدل الثبات وضمان التعويض', 'Refill & Cancel Coverage')}</span>
-            <ShieldCheck className="text-secondary h-[24px] w-[24px] shrink-0" />
-          </div>
-          <div className="flex items-baseline justify-between mt-space-xs">
-            <div>
-              <span className="font-headline-xl text-headline-xl text-on-surface font-bold">{refillPct}%</span>
-              <span className="font-body-sm text-body-sm text-on-surface-variant ms-space-xs">{toNum(refillCount)} {L('خدمة بتعويض تلقائي', 'refilled services')}</span>
-            </div>
-            <span className="font-code-xs text-code-xs px-space-xs py-space-2xs rounded bg-surface-container-high text-secondary font-semibold">{toNum(cancelableCount)} {L('قابلة للإلغاء', 'cancelable')}</span>
-          </div>
-          <div className="w-full bg-surface-container-lowest h-1.5 rounded-full mt-space-sm overflow-hidden">
-            <div className="bg-secondary h-full rounded-full" style={{ width: `${refillPct}%` }}></div>
-          </div>
-        </div>
-      </div>
-
-      {/* Search & interactive filters bar */}
-      <div className="flex flex-col gap-space-md p-space-md rounded-xl bg-surface-container shadow-md mb-space-lg">
-        {/* Row 1: search and platform pills */}
-        <div className="flex flex-col lg:flex-row items-center justify-between gap-space-md">
-          <div className="relative w-full lg:w-96">
-            <Search className="absolute start-space-md top-1/2 -translate-y-1/2 text-outline h-[20px] w-[20px] shrink-0" />
-            <input
-              className={`${inputCls} ps-10 pe-space-md`}
-              placeholder={L('بحث برقم الخدمة (#ID)، المنصة، أو اسم الخدمة...', 'Search by service ID (#ID), platform or service name...')}
-              type="search"
-              value={search}
-              onChange={e => applySearch(e.target.value)}
-            />
-          </div>
-          <div className="flex items-center gap-space-xs overflow-x-auto w-full pb-space-xs lg:pb-0 scrollbar-none">
-            <button
-              onClick={() => { setPlatform('all'); setPage(1); }}
-              className={platform === 'all'
-                ? 'px-space-md py-space-xs rounded-xl bg-primary-container text-on-primary-container font-label-sm text-label-sm whitespace-nowrap transition-all flex items-center gap-space-xs'
-                : 'px-space-md py-space-xs rounded-xl bg-surface-container-high hover:bg-surface-bright text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm whitespace-nowrap transition-all flex items-center gap-space-xs'}
-              type="button"
-            >
-              <span>{L('الكل (All)', 'All (الكل)')}</span>
-              <span className="font-code-xs text-code-xs px-1.5 py-0.5 rounded bg-surface-container-lowest/30">{toNum(total)}</span>
-            </button>
-            {categories.map(c => (
-              <button
-                key={c.id}
-                onClick={() => { setPlatform(c.id); setPage(1); }}
-                className={platform === c.id
-                  ? 'px-space-md py-space-xs rounded-xl bg-primary-container text-on-primary-container font-label-sm text-label-sm whitespace-nowrap transition-all flex items-center gap-space-xs'
-                  : 'px-space-md py-space-xs rounded-xl bg-surface-container-high hover:bg-surface-bright text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm whitespace-nowrap transition-all flex items-center gap-space-xs'}
-                type="button"
-              >
-                <PlatformIcon name={c.name} className="h-4 w-4 shrink-0" />
-                <span>{c.name}</span>
-                <span className="font-code-xs text-code-xs px-1.5 py-0.5 rounded bg-surface-container-lowest">{toNum(c.count)}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Row 2: secondary dropdown filters & sorters */}
-        <div className="flex flex-wrap items-center justify-between gap-space-sm pt-space-xs">
-          <div className="flex flex-wrap items-center gap-space-sm">
-            {/* Order unit — derived from the real min/max quantity of each service */}
-            <div className="flex items-center gap-space-2xs bg-surface-container-lowest px-space-sm py-space-xs rounded-xl text-on-surface font-label-sm text-label-sm">
-              <span className="text-on-surface-variant">{t('common.type')}:</span>
-              <select className={selectCls} value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setPage(1); }}>
-                <option className={optionCls} value="all">{L('جميع الأنواع (All Types)', 'All Types (جميع الأنواع)')}</option>
-                <option className={optionCls} value="unit">{L('وحدة مفردة (لكل عنصر)', 'Single unit (per item)')}</option>
-                <option className={optionCls} value="bulk">{L('لكل 1000 (جملة)', 'Per 1,000 (bulk)')}</option>
-              </select>
-            </div>
-            {/* Refill policy — the real `refillable` / `cancelable` flags */}
-            <div className="flex items-center gap-space-2xs bg-surface-container-lowest px-space-sm py-space-xs rounded-xl text-on-surface font-label-sm text-label-sm">
-              <span className="text-on-surface-variant">{L('الضمان:', 'Guarantee:')}</span>
-              <select className={selectCls} value={guarantee} onChange={e => { setGuarantee(e.target.value); setPage(1); }}>
-                <option className={optionCls} value="all">{L('كل السياسات (All)', 'All policies (كل السياسات)')}</option>
-                <option className={optionCls} value="refill">{L('تعويض متاح (Refill)', 'Refill available')}</option>
-                <option className={optionCls} value="refill_cancel">{L('تعويض وإلغاء معاً', 'Refill + Cancel')}</option>
-                <option className={optionCls} value="none">{L('بدون تعويض (No Refill)', 'No refill (بدون تعويض)')}</option>
-              </select>
-            </div>
-          </div>
-          {/* Sorter & reset */}
-          <div className="flex items-center gap-space-sm">
-            <div className="flex items-center gap-space-xs bg-surface-container-lowest px-space-sm py-space-xs rounded-xl text-on-surface font-label-sm text-label-sm">
-              <ArrowUpDown className="text-outline h-[18px] w-[18px] shrink-0" />
-              <select className={selectCls} value={sortBy} onChange={e => { setSortBy(e.target.value); setPage(1); }}>
-                <option className={optionCls} value="id_asc">{L('ترتيب: معرف الخدمة (ID)', 'Sort: Service ID')}</option>
-                <option className={optionCls} value="price_asc">{L('السعر: من الأقل للأعلى', 'Price: low to high')}</option>
-                <option className={optionCls} value="price_desc">{L('السعر: من الأعلى للأقل', 'Price: high to low')}</option>
-              </select>
-            </div>
-            <button onClick={resetFilters} className="w-8 h-8 rounded-xl bg-surface-container-lowest hover:bg-surface-container-high flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors" title={L('إعادة ضبط الفلاتر', 'Reset filters')} type="button">
-              <RotateCcw className="h-[16px] w-[16px] shrink-0" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Services data table container */}
-      <div className="w-full bg-surface-container rounded-xl overflow-hidden shadow-lg mb-space-2xl">
-        <div className="px-space-lg py-space-md bg-surface-container-low flex flex-wrap items-center justify-between gap-space-sm">
-          <div className="flex min-w-0 flex-wrap items-center gap-space-sm">
-            <span className="font-headline-sm text-headline-sm text-on-surface font-semibold">{t('services.title')}</span>
-            <span className="font-code-xs text-code-xs px-space-xs py-space-2xs rounded bg-surface-container-high text-tertiary">
-              {L('عرض', 'Showing')} {toNum(pageItems.length)} {L('من', 'of')} {toNum(filtered.length)} {L('نقطة نهاية', 'endpoints')}
+          {/* Live counters, all real values from the services list */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={statPill}>
+              <Network className="h-4 w-4" />
+              <b className="font-mono tabular-nums text-on-surface">{toNum(total)}</b>
+              {L('خدمة', 'services')}
             </span>
+            <span className={statPill}>
+              <b className="font-mono tabular-nums text-on-surface">{toNum(categories.length)}</b>
+              {t('services.category')}
+            </span>
+            <span className={statPill}>
+              <BadgeCheck className="h-4 w-4" />
+              <b className="font-mono tabular-nums text-on-surface">{toNum(refillCount)}</b>
+              {L('مع تعويض', 'with refill')}
+            </span>
+            <span className={statPill}>
+              <CircleX className="h-4 w-4" />
+              <b className="font-mono tabular-nums text-on-surface">{toNum(cancelableCount)}</b>
+              {L('قابلة للإلغاء', 'cancelable')}
+            </span>
+            <button
+              type="button"
+              onClick={() => refetch()}
+              className="inline-flex h-9 items-center gap-2 rounded-lg bg-surface-container-low px-3 text-sm font-medium text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface"
+            >
+              <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+              {t('common.refresh')}
+              <span className="font-mono tabular-nums">{updatedAt}</span>
+            </button>
           </div>
-          <div className="flex items-center gap-space-xs font-code-xs text-code-xs text-on-surface-variant">
-            <span className="w-2 h-2 rounded-full bg-tertiary"></span>
-            <span>{L('الأسعار محدثة بنظام الدفع الفوري (USD/1,000)', 'Prices updated live (USD / 1,000)')}</span>
-          </div>
-        </div>
 
-        <div className="overflow-x-auto w-full">
-          <table className="w-full text-start">
-            <thead>
-              <tr className="bg-surface-container-lowest text-on-surface-variant font-code-xs text-code-xs uppercase tracking-wider">
-                <th className="py-space-md px-space-lg text-start font-medium">{L('معرف الخدمة والاسم', 'Service ID & Name')}</th>
-                <th className="py-space-md px-space-md text-start font-medium">{L('المنصة والنوع', 'Platform & Type')}</th>
-                <th className="py-space-md px-space-md text-start font-medium">{t('services.rate')}</th>
-                <th className="py-space-md px-space-md text-start font-medium">{t('services.minMax')}</th>
-                <th className="py-space-md px-space-md text-start font-medium">{L('سياسة التعويض', 'Refill Policy')}</th>
-                <th className="py-space-md px-space-lg text-center font-medium">{L('الإجراء السريع', 'Quick Action')}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y-0">
-              {isLoading && (
-                <tr><td className="py-space-md px-space-lg font-body-md text-on-surface-variant" colSpan={6}>{t('common.loading')}</td></tr>
-              )}
-              {!isLoading && pageItems.length === 0 && (
-                <tr><td className="py-space-md px-space-lg font-body-md text-on-surface-variant" colSpan={6}>{t('common.noResults')}</td></tr>
-              )}
-              {pageItems.map((s: any) => (
-                <tr key={s.id} className="hover:bg-surface-container-high/60 transition-colors group">
-                  <td className="py-space-md px-space-lg">
-                    <div className="flex flex-col gap-space-2xs max-w-md">
-                      <div className="flex min-w-0 items-center gap-space-xs">
-                        <span className="shrink-0 font-code-xs text-code-xs px-space-xs py-space-2xs rounded bg-surface-container-lowest text-primary font-bold">#{s.id}</span>
-                        <span className="truncate font-label-lg text-label-lg text-on-surface font-semibold transition-colors group-hover:text-primary">{s.name}</span>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-space-xs">
-                        {!!s.description && (
-                          <span className="font-code-xs text-code-xs px-space-xs py-space-2xs rounded bg-surface-container text-tertiary max-w-[320px] truncate">{s.description}</span>
-                        )}
-                        {Number(s.cashbackPercentage) > 0 && (
-                          <span className="font-code-xs text-code-xs px-space-xs py-space-2xs rounded bg-surface-container text-on-surface-variant">{L('كاش باك', 'Cashback')}: {Number(s.cashbackPercentage)}%</span>
-                        )}
-                        <span className="min-w-0 font-code-xs text-code-xs text-outline">API: <code className="break-all text-on-surface-variant">{`action=add&service=${s.id}`}</code></span>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="py-space-md px-space-md">
-                    <div className="flex items-center gap-space-xs">
-                      <PlatformIcon name={s.category?.name || ''} className={`h-5 w-5 shrink-0 ${toneFor(s.category?.name || '')}`} />
-                      <div className="flex flex-col">
-                        <span className="font-label-md text-label-md text-on-surface">{s.category?.name || '—'}</span>
-                        <span className="font-code-xs text-code-xs text-on-surface-variant">{isUnit(s) ? L('لكل عنصر', 'per item') : t('newOrder.perThousand')}</span>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="py-space-md px-space-md whitespace-nowrap">
-                    <div className="flex items-center gap-space-xs">
-                      <span className="font-headline-sm text-headline-sm font-bold text-tertiary">${Number(s.pricePer1k).toFixed(4)}</span>
-                      <span className="font-code-xs text-code-xs text-outline">{isUnit(s) ? ' / item' : ' / 1K'}</span>
-                    </div>
-                  </td>
-                  <td className="py-space-md px-space-md whitespace-nowrap">
-                    <div className="flex flex-col font-code-sm text-code-sm text-on-surface tabular-nums">
-                      <span>{toNum(s.minQuantity)} <span className="text-on-surface-variant">/</span> {toNum(s.maxQuantity)}</span>
-                      <span className="font-code-xs text-code-xs text-outline">{t('services.minMax')}</span>
-                    </div>
-                  </td>
-                  <td className="py-space-md px-space-md whitespace-nowrap">
-                    <div className="flex flex-wrap items-center gap-space-2xs">
-                      {s.refillable ? (
-                        <div className="inline-flex items-center gap-space-2xs px-space-xs py-space-2xs rounded bg-surface-container-lowest text-secondary font-label-sm text-label-sm">
-                          <BadgeCheck className="h-[16px] w-[16px] shrink-0" />
-                          <span>{L('تعويض متاح', 'Refill available')}</span>
-                        </div>
-                      ) : (
-                        <div className="inline-flex items-center gap-space-2xs px-space-xs py-space-2xs rounded bg-surface-container-lowest text-on-surface-variant font-label-sm text-label-sm">
-                          <RefreshCcw className="text-outline h-[16px] w-[16px] shrink-0" />
-                          <span>{L('بدون تعويض', 'No refill')}</span>
-                        </div>
-                      )}
-                      {s.cancelable && (
-                        <div className="inline-flex items-center gap-space-2xs px-space-xs py-space-2xs rounded bg-surface-container-lowest text-tertiary font-label-sm text-label-sm">
-                          <CircleX className="h-[16px] w-[16px] shrink-0" />
-                          <span>{L('إلغاء متاح', 'Cancel available')}</span>
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                  <td className="py-space-md px-space-lg text-center whitespace-nowrap">
-                    <div className="flex items-center justify-center gap-space-xs">
-                      <Link to="/dashboard/new-order" className="px-space-md py-space-xs rounded-xl bg-primary-container text-on-primary-container hover:bg-primary font-label-md text-label-md shadow-sm transition-all flex items-center gap-space-2xs">
-                        <Zap className="h-[16px] w-[16px] shrink-0" />
-                        <span>{L('طلب فوري', 'Instant order')}</span>
-                      </Link>
-                      <button onClick={() => setDetail(s)} className="p-space-xs rounded-xl bg-surface-container-high hover:bg-surface-bright text-on-surface-variant hover:text-on-surface transition-colors" title={L('مواصفات ونقاط الخدمة', 'Service specifications')} type="button">
-                        <Info className="h-[18px] w-[18px] shrink-0" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+          {/* Search — kept in sync with the ?q= URL parameter */}
+          <div className="flex flex-col gap-2">
+            <label htmlFor="service-search" className={labelCls}>{L('بحث', 'Search')}</label>
+            <div className="relative">
+              <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-outline" />
+              <input
+                id="service-search"
+                type="search"
+                value={search}
+                onChange={e => applySearch(e.target.value)}
+                placeholder={L('اسم الخدمة أو رقمها، مثال: 1234', 'Service name or ID, e.g. 1234')}
+                className={`${field} ps-9`}
+              />
+            </div>
+            <p className="text-xs text-on-surface-variant">
+              {search.trim()
+                ? L(`${toNum(filtered.length)} خدمة تطابق "${search.trim()}"`, `${toNum(filtered.length)} services match "${search.trim()}"`)
+                : L('اكتب الاسم أو الرقم لعرض الخدمات المطابقة فقط.', 'Type a name or an ID to show only the matching services.')}
+            </p>
+          </div>
+
+          {/* Category chips */}
+          <div className="flex flex-col gap-2">
+            <span className={labelCls}>{t('services.category')}</span>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => { setPlatform('all'); setPage(1); }}
+                className={platform === 'all' ? chipOn : chipOff}
+                aria-pressed={platform === 'all'}
+              >
+                <Network className="h-4 w-4" />
+                {t('services.allCategories')}
+                <span className="font-mono tabular-nums">{toNum(total)}</span>
+              </button>
+              {categories.map(c => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => { setPlatform(c.id); setPage(1); }}
+                  className={platform === c.id ? chipOn : chipOff}
+                  aria-pressed={platform === c.id}
+                >
+                  <PlatformIcon name={c.name} className="h-4 w-4 shrink-0" />
+                  {c.name}
+                  <span className="font-mono tabular-nums">{toNum(c.count)}</span>
+                </button>
               ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Table footer / pagination */}
-        <div className="px-space-lg py-space-md bg-surface-container-low flex flex-col sm:flex-row items-center justify-between gap-space-md text-on-surface-variant font-code-xs text-code-xs">
-          <div>
-            <span>{L('عرض النتائج', 'Showing results')} <strong className="text-on-surface">{toNum(firstRow)} - {toNum(lastRow)}</strong> {L('من أصل', 'of')} <strong className="text-on-surface">{toNum(filtered.length)}</strong> {L('خدمة متوفرة عبر API', 'services available via API')}</span>
+            </div>
           </div>
-          <div className="flex items-center gap-space-xs">
-            <button onClick={() => setPage(currentPage - 1)} disabled={currentPage <= 1} className="px-space-sm py-space-xs rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors disabled:opacity-40" type="button">{L('السابق', 'Previous')}</button>
-            {pageButtons.map((p, i) => (
-              typeof p === 'number' ? (
-                <button key={p} onClick={() => setPage(p)} className={p === currentPage ? 'px-space-sm py-space-xs rounded-lg bg-primary text-on-primary font-bold' : 'px-space-sm py-space-xs rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors'} type="button">{toNum(p)}</button>
-              ) : (
-                <span key={`gap-${i}`}>...</span>
-              )
-            ))}
-            <button onClick={() => setPage(currentPage + 1)} disabled={currentPage >= totalPages} className="px-space-sm py-space-xs rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors disabled:opacity-40" type="button">{L('التالي', 'Next')}</button>
-          </div>
-        </div>
-      </div>
 
-      {/* Service specifications — bound to the real service the user picked */}
-      {detail && (
-        <div className="fixed inset-0 z-50 bg-surface-container-lowest/80 backdrop-blur-sm flex items-center justify-center p-space-md" onClick={e => { if (e.target === e.currentTarget) setDetail(null); }}>
-          <div className="w-full max-w-xl bg-surface-container rounded-xl shadow-2xl overflow-hidden flex flex-col">
-            <div className="px-space-lg py-space-md bg-surface-container-low flex items-center justify-between">
-              <div className="flex items-center gap-space-sm">
-                <SlidersHorizontal className="text-primary h-[24px] w-[24px] shrink-0" />
-                <span className="font-headline-sm text-headline-sm text-on-surface font-bold">{L('مواصفات ونقاط الخدمة الفنية', 'Service specifications')}</span>
-              </div>
-              <button className="text-on-surface-variant hover:text-on-surface p-1" onClick={() => setDetail(null)} type="button">
-                <X className="h-[18px] w-[18px] shrink-0" />
+          {/* Filters — only the options the data really supports */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="flex flex-col gap-2">
+              <label htmlFor="type-filter" className={labelCls}>{t('common.type')}</label>
+              <select id="type-filter" value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setPage(1); }} className={`${field} cursor-pointer`}>
+                <option value="all">{L('كل الأنواع', 'All types')}</option>
+                <option value="unit">{L('عنصر مفرد', 'Single item')}</option>
+                <option value="bulk">{L('لكل 1000', 'Per 1,000')}</option>
+              </select>
+            </div>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="guarantee-filter" className={labelCls}>{L('الضمان', 'Guarantee')}</label>
+              <select id="guarantee-filter" value={guarantee} onChange={e => { setGuarantee(e.target.value); setPage(1); }} className={`${field} cursor-pointer`}>
+                <option value="all">{L('كل الخدمات', 'All services')}</option>
+                <option value="refill">{L('تعويض متاح', 'Refill available')}</option>
+                <option value="refill_cancel">{L('تعويض وإلغاء', 'Refill and cancel')}</option>
+                <option value="none">{L('بدون تعويض', 'No refill')}</option>
+              </select>
+            </div>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="sort-filter" className={labelCls}>{L('الترتيب', 'Sort by')}</label>
+              <select id="sort-filter" value={sortBy} onChange={e => { setSortBy(e.target.value); setPage(1); }} className={`${field} cursor-pointer`}>
+                <option value="id_asc">{L('رقم الخدمة', 'Service ID')}</option>
+                <option value="price_asc">{L('السعر: من الأقل', 'Price: low to high')}</option>
+                <option value="price_desc">{L('السعر: من الأعلى', 'Price: high to low')}</option>
+              </select>
+            </div>
+            <div className="flex items-end">
+              <button type="button" onClick={resetFilters} disabled={!filtersActive} className={`${secondaryBtn} w-full disabled:cursor-not-allowed disabled:opacity-50`}>
+                <RotateCcw className="h-4 w-4" /> {L('إعادة الضبط', 'Reset filters')}
               </button>
             </div>
-            <div className="p-space-lg flex flex-col gap-space-md max-h-[70vh] overflow-y-auto">
-              <div className="flex items-center justify-between p-space-sm rounded-lg bg-surface-container-lowest">
-                <span className="font-code-xs text-code-xs text-on-surface-variant">{L('معرّف نقطة النهاية', 'Service endpoint identifier')}</span>
-                <code className="break-all text-end font-code-sm text-code-sm text-tertiary">#{detail.id}</code>
+          </div>
+        </section>
+
+        {/* ── 2 · Services ─────────────────────────────────────────────────── */}
+        <section className="flex flex-col gap-space-lg border-t border-outline-variant pt-space-xl">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div className="flex flex-col gap-1">
+              <h2 className="font-display text-headline-sm text-on-surface">{t('services.title')}</h2>
+              <p className="text-sm text-on-surface-variant">
+                {isLoading
+                  ? t('common.loading')
+                  : L(`عرض ${toNum(firstRow)}–${toNum(lastRow)} من ${toNum(filtered.length)} خدمة`,
+                      `Showing ${toNum(firstRow)}–${toNum(lastRow)} of ${toNum(filtered.length)} services`)}
+              </p>
+            </div>
+            <p className="max-w-md text-sm text-on-surface-variant">
+              {L('الأسعار بالدولار لكل 1000 أمر، أو لكل عنصر في الخدمات المفردة.',
+                'Prices are in USD per 1,000 orders, or per single item for unit services.')}
+            </p>
+          </div>
+
+          {isError && (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-error/40 bg-error-container p-3 text-sm text-on-error-container">
+              <span>{L('تعذر تحميل قائمة الخدمات. جرّب التحديث.', 'We could not load the services list. Try refreshing.')}</span>
+              <button type="button" onClick={() => refetch()} className="inline-flex h-9 items-center gap-2 rounded-lg bg-surface-container px-3 font-semibold">
+                <RefreshCw className="h-4 w-4" /> {t('common.retry')}
+              </button>
+            </div>
+          )}
+
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] text-start">
+              <thead>
+                <tr className="border-b border-outline-variant">
+                  <th className="py-3 pe-4 text-start text-xs font-semibold text-on-surface-variant">{t('newOrder.service')}</th>
+                  <th className="px-4 py-3 text-start text-xs font-semibold text-on-surface-variant">{t('services.rate')}</th>
+                  <th className="px-4 py-3 text-start text-xs font-semibold text-on-surface-variant">{t('services.minMax')}</th>
+                  <th className="px-4 py-3 text-start text-xs font-semibold text-on-surface-variant">{L('الضمان', 'Guarantee')}</th>
+                  <th className="ps-4 py-3 text-end text-xs font-semibold text-on-surface-variant">{t('common.actions')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-outline-variant">
+                {isLoading && (
+                  <tr>
+                    <td colSpan={5} className="py-10 text-center text-sm text-on-surface-variant">
+                      <span className="inline-flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        {L('جاري تحميل قائمة الخدمات...', 'Loading the service list...')}
+                      </span>
+                    </td>
+                  </tr>
+                )}
+
+                {!isLoading && !isError && total === 0 && (
+                  <tr>
+                    <td colSpan={5} className="py-10 text-center text-sm text-on-surface-variant">
+                      <p>{L('لا توجد خدمات متاحة حالياً.', 'No services are available right now.')}</p>
+                      <button type="button" onClick={() => refetch()} className={`${secondaryBtn} mt-3 h-9`}>
+                        <RefreshCw className="h-4 w-4" /> {t('common.refresh')}
+                      </button>
+                    </td>
+                  </tr>
+                )}
+
+                {!isLoading && !isError && total > 0 && pageItems.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="py-10 text-center text-sm text-on-surface-variant">
+                      <p className="font-semibold text-on-surface">{t('common.noResults')}</p>
+                      <p className="mt-1">{L('لا توجد خدمة تطابق البحث أو عوامل التصفية.', 'No service matches your search or filters.')}</p>
+                      <button type="button" onClick={resetFilters} className={`${secondaryBtn} mt-3 h-9`}>
+                        <RotateCcw className="h-4 w-4" /> {L('إعادة الضبط', 'Reset filters')}
+                      </button>
+                    </td>
+                  </tr>
+                )}
+
+                {pageItems.map((s: any) => (
+                  <tr key={s.id} className="align-top transition-colors hover:bg-surface-container-high/60">
+                    <td className="py-4 pe-4">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-sm font-semibold text-on-surface">{s.name}</span>
+                        <span className="flex flex-wrap items-center gap-2 text-xs text-on-surface-variant">
+                          <span className="font-mono tabular-nums">#{s.id}</span>
+                          {s.category?.name && (
+                            <span className="inline-flex items-center gap-1">
+                              <PlatformIcon name={s.category.name} className="h-3.5 w-3.5" />
+                              {s.category.name}
+                            </span>
+                          )}
+                          {Number(s.cashbackPercentage) > 0 && (
+                            <span className="rounded bg-surface-container-high px-1.5 py-0.5 text-on-surface-variant">
+                              {t('newOrder.cashback')} {Number(s.cashbackPercentage)}%
+                            </span>
+                          )}
+                        </span>
+                        {!!s.description && (
+                          <span className="max-w-md truncate text-xs text-on-surface-variant">{s.description}</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-4">
+                      <div className="flex flex-col">
+                        <span className="font-mono text-sm font-semibold tabular-nums text-tertiary">${Number(s.pricePer1k).toFixed(4)}</span>
+                        <span className="text-xs text-on-surface-variant">{isUnit(s) ? L('لكل عنصر', 'per item') : t('newOrder.perThousand')}</span>
+                      </div>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-4">
+                      <div className="flex flex-col">
+                        <span className="font-mono text-sm tabular-nums text-on-surface">{toNum(s.minQuantity)} – {toNum(s.maxQuantity)}</span>
+                        <span className="text-xs text-on-surface-variant">{t('services.minMax')}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {s.refillable ? (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-1 text-xs text-emerald-400">
+                            <BadgeCheck className="h-3.5 w-3.5" /> {L('تعويض متاح', 'Refill available')}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-surface-container-high px-2 py-1 text-xs text-on-surface-variant">
+                            <RefreshCcw className="h-3.5 w-3.5" /> {L('بدون تعويض', 'No refill')}
+                          </span>
+                        )}
+                        {s.cancelable && (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-sky-500/10 px-2 py-1 text-xs text-sky-400">
+                            <CircleX className="h-3.5 w-3.5" /> {L('إلغاء متاح', 'Cancel available')}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="ps-4 py-4">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setDetail(s)}
+                          className="inline-flex h-9 items-center gap-2 rounded-lg border border-outline-variant bg-surface-container-low px-3 text-sm font-semibold text-on-surface transition-colors hover:bg-surface-container-high"
+                        >
+                          <Info className="h-4 w-4" /> {L('التفاصيل', 'Details')}
+                        </button>
+                        <Link
+                          to="/dashboard/new-order"
+                          className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary-container px-3 text-sm font-semibold text-on-primary-container transition-colors hover:bg-primary"
+                        >
+                          <Zap className="h-4 w-4" /> {L('اطلب', 'Order')}
+                        </Link>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          {filtered.length > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-on-surface-variant">
+                {L(`عرض ${toNum(firstRow)}–${toNum(lastRow)} من ${toNum(filtered.length)} خدمة`,
+                  `Showing ${toNum(firstRow)}–${toNum(lastRow)} of ${toNum(filtered.length)} services`)}
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPage(currentPage - 1)}
+                  disabled={currentPage <= 1}
+                  className="inline-flex h-9 items-center rounded-lg border border-outline-variant bg-surface-container-low px-3 text-sm text-on-surface transition-colors hover:bg-surface-container-high disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {L('السابق', 'Previous')}
+                </button>
+                {pageButtons.map((p, i) => (
+                  typeof p === 'number' ? (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setPage(p)}
+                      aria-current={p === currentPage ? 'page' : undefined}
+                      className={p === currentPage
+                        ? 'inline-flex h-9 min-w-9 items-center justify-center rounded-lg bg-primary-container px-2 font-mono text-sm font-semibold tabular-nums text-on-primary-container'
+                        : 'inline-flex h-9 min-w-9 items-center justify-center rounded-lg border border-outline-variant bg-surface-container-low px-2 font-mono text-sm tabular-nums text-on-surface transition-colors hover:bg-surface-container-high'}
+                    >
+                      {toNum(p)}
+                    </button>
+                  ) : (
+                    <span key={`gap-${i}`} className="px-1 text-sm text-on-surface-variant">…</span>
+                  )
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setPage(currentPage + 1)}
+                  disabled={currentPage >= totalPages}
+                  className="inline-flex h-9 items-center rounded-lg border border-outline-variant bg-surface-container-low px-3 text-sm text-on-surface transition-colors hover:bg-surface-container-high disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {L('التالي', 'Next')}
+                </button>
               </div>
-              <div>
-                <h4 className="font-label-lg text-label-lg text-on-surface font-bold mb-space-xs">{detail.name}</h4>
-                {!!detail.description && <p className="font-body-sm text-body-sm text-on-surface-variant">{detail.description}</p>}
+            </div>
+          )}
+        </section>
+      </div>
+
+      {/* ── Service details — bound to the real service the user picked ────── */}
+      {detail && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-surface-container-lowest/80 p-4 backdrop-blur-sm"
+          onClick={e => { if (e.target === e.currentTarget) setDetail(null); }}
+        >
+          <div className="flex max-h-[85vh] w-full max-w-xl flex-col overflow-hidden rounded-xl border border-outline-variant bg-surface-container shadow-2xl">
+            <div className="flex items-center justify-between gap-3 border-b border-outline-variant p-4">
+              <div className="flex items-center gap-2">
+                <Info className="h-5 w-5 shrink-0 text-primary" />
+                <h3 className="font-display text-headline-sm text-on-surface">{t('newOrder.serviceDetails')}</h3>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-sm">
-                <div className="p-space-sm rounded-xl bg-surface-container-lowest">
-                  <span className="font-code-xs text-code-xs text-on-surface-variant block">{t('services.rate')}:</span>
-                  <span className="font-code-sm text-code-sm text-tertiary">${Number(detail.pricePer1k).toFixed(4)}</span>
+              <button type="button" onClick={() => setDetail(null)} aria-label={t('common.close')} className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-space-lg overflow-y-auto p-4">
+              <div className="flex flex-col gap-1">
+                <h4 className="text-base font-semibold text-on-surface">{detail.name}</h4>
+                <p className="flex flex-wrap items-center gap-2 text-sm text-on-surface-variant">
+                  <span className="font-mono tabular-nums">#{detail.id}</span>
+                  {detail.category?.name && (
+                    <span className="inline-flex items-center gap-1">
+                      <PlatformIcon name={detail.category.name} className="h-3.5 w-3.5" />
+                      {detail.category.name}
+                    </span>
+                  )}
+                </p>
+              </div>
+
+              {!!detail.description && (
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-on-surface-variant">{detail.description}</p>
+              )}
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="flex flex-col gap-1 rounded-lg bg-surface-container-low p-3">
+                  <span className="text-xs text-on-surface-variant">{t('services.rate')}</span>
+                  <span className="font-mono text-sm font-semibold tabular-nums text-tertiary">
+                    ${Number(detail.pricePer1k).toFixed(4)} <span className="text-xs font-normal text-on-surface-variant">{isUnit(detail) ? L('لكل عنصر', 'per item') : t('newOrder.perThousand')}</span>
+                  </span>
                 </div>
-                <div className="p-space-sm rounded-xl bg-surface-container-lowest">
-                  <span className="font-code-xs text-code-xs text-on-surface-variant block">{t('services.minMax')}:</span>
-                  <span className="font-code-sm text-code-sm text-on-surface tabular-nums">{toNum(detail.minQuantity)} / {toNum(detail.maxQuantity)}</span>
+                <div className="flex flex-col gap-1 rounded-lg bg-surface-container-low p-3">
+                  <span className="text-xs text-on-surface-variant">{t('services.minMax')}</span>
+                  <span className="font-mono text-sm tabular-nums text-on-surface">{toNum(detail.minQuantity)} – {toNum(detail.maxQuantity)}</span>
                 </div>
-                <div className="p-space-sm rounded-xl bg-surface-container-lowest">
-                  <span className="font-code-xs text-code-xs text-on-surface-variant block">{L('سياسة التعويض', 'Refill policy')}:</span>
-                  <span className="font-code-sm text-code-sm text-secondary">{detail.refillable ? L('تعويض متاح', 'Refill available') : L('بدون تعويض', 'No refill')}</span>
+                <div className="flex flex-col gap-1 rounded-lg bg-surface-container-low p-3">
+                  <span className="text-xs text-on-surface-variant">{L('الضمان', 'Guarantee')}</span>
+                  <span className="text-sm text-on-surface">{detail.refillable ? L('تعويض متاح', 'Refill available') : L('بدون تعويض', 'No refill')}</span>
                 </div>
-                <div className="p-space-sm rounded-xl bg-surface-container-lowest">
-                  <span className="font-code-xs text-code-xs text-on-surface-variant block">{L('سياسة الإلغاء', 'Cancel policy')}:</span>
-                  <span className="font-code-sm text-code-sm text-on-surface">{detail.cancelable ? L('إلغاء متاح', 'Cancel available') : L('غير قابل للإلغاء', 'Not cancelable')}</span>
+                <div className="flex flex-col gap-1 rounded-lg bg-surface-container-low p-3">
+                  <span className="text-xs text-on-surface-variant">{L('الإلغاء', 'Cancellation')}</span>
+                  <span className="text-sm text-on-surface">{detail.cancelable ? L('إلغاء متاح', 'Cancel available') : L('غير قابل للإلغاء', 'Not cancelable')}</span>
                 </div>
                 {Number(detail.cashbackPercentage) > 0 && (
-                  <div className="p-space-sm rounded-xl bg-surface-container-lowest">
-                    <span className="font-code-xs text-code-xs text-on-surface-variant block">{L('الكاش باك', 'Cashback')}:</span>
-                    <span className="font-code-sm text-code-sm text-tertiary">{Number(detail.cashbackPercentage)}%</span>
+                  <div className="flex flex-col gap-1 rounded-lg bg-surface-container-low p-3">
+                    <span className="text-xs text-on-surface-variant">{t('newOrder.cashback')}</span>
+                    <span className="font-mono text-sm tabular-nums text-on-surface">{Number(detail.cashbackPercentage)}%</span>
                   </div>
                 )}
-                <div className="p-space-sm rounded-xl bg-surface-container-lowest">
-                  <span className="font-code-xs text-code-xs text-on-surface-variant block">{L('طلب API', 'API request')}:</span>
-                  <span className="font-code-sm text-code-sm text-tertiary">{`action=add&service=${detail.id}`}</span>
+                <div className="flex flex-col gap-1 rounded-lg bg-surface-container-low p-3">
+                  <span className="text-xs text-on-surface-variant">{L('طلب API', 'API request')}</span>
+                  <code className="break-all font-mono text-xs text-on-surface-variant">{`action=add&service=${detail.id}`}</code>
                 </div>
               </div>
             </div>
-            <div className="px-space-lg py-space-md bg-surface-container-lowest flex items-center justify-between">
-              <button onClick={() => setDetail(null)} className="px-space-md py-space-xs rounded-xl bg-surface-container hover:bg-surface-bright text-on-surface font-label-md text-label-md transition-colors" type="button">
+
+            <div className="flex flex-wrap items-center justify-end gap-2 border-t border-outline-variant p-4">
+              <button type="button" onClick={() => setDetail(null)} className="inline-flex h-11 items-center justify-center rounded-lg border border-outline-variant bg-surface-container px-4 text-sm font-semibold text-on-surface transition-colors hover:bg-surface-container-high">
                 {t('common.close')}
               </button>
-              <Link to="/dashboard/new-order" onClick={() => setDetail(null)} className="px-space-md py-space-xs rounded-xl bg-primary-container hover:bg-primary text-on-primary-container font-label-md text-label-md transition-colors flex items-center gap-space-2xs">
-                <Zap className="h-[16px] w-[16px] shrink-0" />
-                <span>{L('الانتقال لإنشاء الطلب فوراً', 'Go to create the order now')}</span>
+              <Link to="/dashboard/new-order" onClick={() => setDetail(null)} className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-primary-container px-4 text-sm font-semibold text-on-primary-container transition-colors hover:bg-primary">
+                <Zap className="h-4 w-4" /> {L('اطلب هذه الخدمة', 'Order this service')}
               </Link>
             </div>
           </div>

@@ -1,9 +1,11 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext'; import { apiFetch } from '../../lib/api'; import { notify } from '../../lib/notify';
+import { useAuth } from '../../contexts/AuthContext';
+import { apiFetch } from '../../lib/api';
+import { notify } from '../../lib/notify';
 import { useTranslation } from '../../lib/i18n';
-import { BadgeCheck, Banknote, Copy, Download, ExternalLink, Home, Info, Landmark, RefreshCcw, RefreshCw, Search, TrendingUp, X, Zap } from 'lucide-react';
+import { ArrowRight, Banknote, Copy, Download, ExternalLink, Info, Loader2, Package, RefreshCw, Search, X } from 'lucide-react';
 
 const readErr = async (r: Response, fallback: string) => { const b = await r.json().catch(() => ({})); return b?.error || fallback; };
 const CANCELABLE_STATUSES = ['Pending', 'Processing', 'In Progress'];
@@ -15,29 +17,9 @@ const STATUS_BADGE: Record<string, string> = {
   Pending: 's-pending', Processing: 's-processing', 'In Progress': 's-inprogress',
   Completed: 's-completed', Partial: 's-partial', Canceled: 's-canceled', Refunded: 's-refunded',
 };
-/** Status → progress-bar / remaining-count tone, mirroring the mockup's per-status colors. */
-const PROGRESS_TONE: Record<string, { text: string; bar: string }> = {
-  'In Progress': { text: 'text-primary', bar: 'bg-primary' },
-  Processing: { text: 'text-tertiary', bar: 'bg-tertiary' },
-  Completed: { text: 'text-tertiary', bar: 'bg-tertiary' },
-  Partial: { text: 'text-secondary', bar: 'bg-secondary' },
-  Pending: { text: 'text-outline', bar: 'bg-outline/40' },
-  Canceled: { text: 'text-outline', bar: 'bg-error' },
-  Refunded: { text: 'text-outline', bar: 'bg-error' },
-};
-const PROGRESS_FALLBACK = { text: 'text-outline', bar: 'bg-outline/40' };
 
-/** Status tab rail: reuses the i18n status keys, inline EN/AR only for the two tabs without one. */
-const STATUS_TABS: Array<{ value: string; key?: string; en?: string; ar?: string; tone: string }> = [
-  { value: 'all', en: 'All', ar: 'الكل', tone: 'text-on-primary-container' },
-  { value: 'Pending', key: 'status.pending', tone: 'text-outline' },
-  { value: 'Processing', key: 'status.processing', tone: 'text-tertiary' },
-  { value: 'In Progress', en: 'In Progress', ar: 'قيد التنفيذ', tone: 'text-primary' },
-  { value: 'Completed', key: 'status.completed', tone: 'text-on-surface' },
-  { value: 'Partial', key: 'status.partial', tone: 'text-secondary' },
-  { value: 'Canceled', key: 'status.canceled', tone: 'text-error' },
-  { value: 'Refunded', key: 'status.refunded', tone: 'text-error' },
-];
+/** The status filter options — same set of statuses the screen always offered. */
+const STATUS_OPTIONS = ['all', 'Pending', 'Processing', 'In Progress', 'Completed', 'Partial', 'Canceled', 'Refunded'];
 
 /** Order status → existing i18n key (the enum has one status without a key: In Progress). */
 const STATUS_LABEL_KEY: Record<string, string | undefined> = {
@@ -55,7 +37,11 @@ export default function ClientOrders() {
   const { t, lang } = useTranslation();
   const [q, setQ] = useState('');
   const [status, setStatus] = useState('all');
-  const { data: orders = [], isLoading, refetch } = useQuery({
+
+  /** Inline EN/AR for labels that have no i18n key yet. */
+  const en = (e: string, a: string) => (lang === 'ar' ? a : e);
+
+  const { data: orders = [], isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ['client-orders'], enabled: !!user, refetchInterval: 30000,
     queryFn: async () => { const t = await user!.getIdToken(); const r = await apiFetch('/api/client/orders', user, { headers: { Authorization: `Bearer ${t}` } }); if (!r.ok) throw new Error('Failed to load orders'); return r.json(); }
   });
@@ -86,9 +72,8 @@ export default function ClientOrders() {
 
   const copyId = (id: any) => { navigator.clipboard?.writeText(String(id)); notify.success(t('common.copied')); };
   const statusLabel = (s: string) => { const key = STATUS_LABEL_KEY[s]; if (key) return t(key); return s === 'In Progress' ? (lang === 'ar' ? 'قيد التنفيذ' : 'In Progress') : s; };
-  const tabLabel = (tab: typeof STATUS_TABS[number]) => tab.key ? t(tab.key) : (lang === 'ar' ? String(tab.ar) : String(tab.en));
 
-  /* ---------- KPI figures — all computed from the real orders array ---------- */
+  /* ---------- Summary figures — all computed from the real orders array ---------- */
   const nowMs = Date.now();
   const startOfTodayMs = new Date().setHours(0, 0, 0, 0);
   const countBy = (s: string) => orderList.filter((o: any) => o.status === s).length;
@@ -102,230 +87,333 @@ export default function ClientOrders() {
   const fulfillmentRate = totalOrders ? (fulfilledCount / totalOrders) * 100 : 0;
   const refundRate = totalOrders ? (refundedCount / totalOrders) * 100 : 0;
 
+  /* Shared field styling — touch-sized, token-based, RTL-safe. */
+  const field = 'h-11 w-full rounded-lg border border-outline-variant bg-surface-container-lowest text-sm text-on-surface placeholder:text-outline focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20';
+  const label = 'text-sm font-semibold text-on-surface';
+  const hint = 'text-xs text-on-surface-variant';
+  const statCard = 'flex flex-col rounded-xl border border-outline-variant bg-surface-container p-4';
+
+  const busy = refreshOrder.isPending || refill.isPending || cancel.isPending;
+
   return (
     <div className="flex flex-col gap-gutter-lg">
-      {/* Breadcrumb + banner */}
-      <div className="flex flex-col gap-space-md md:flex-row md:items-center md:justify-between">
-        <div className="flex flex-col gap-space-2xs">
-          <div className="flex items-center gap-space-xs font-label-sm text-label-sm text-on-surface-variant">
-            <Link className="flex items-center gap-space-2xs transition-colors hover:text-primary" to="/dashboard">
-              <Home className="h-[16px] w-[16px] shrink-0" />
-              <span>{t('nav.dashboard')}</span>
-            </Link>
-            <span>/</span>
-            <span>{lang === 'ar' ? 'العمليات' : 'Operations'}</span>
-            <span>/</span>
-            <span className="font-medium text-primary">{t('nav.orderHistory')}</span>
-          </div>
-          <div className="flex items-baseline gap-space-md">
-            <h1 className="font-headline-lg text-headline-lg tracking-tight text-on-surface">{lang === 'ar' ? 'سجل الطلبات وتتبعها' : 'Order History & Tracking'}</h1>
-            <span className="rounded bg-surface-container-high px-space-xs py-space-2xs font-code-xs text-code-xs font-semibold uppercase tracking-wider text-tertiary">{lang === 'ar' ? 'المحرك مباشر' : 'Live Engine Active'}</span>
-          </div>
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-start justify-between gap-space-md">
+        <div className="min-w-0">
+          <h1 className="font-display text-headline-lg text-on-surface">{t('nav.orderHistory')}</h1>
+          <p className={`${hint} mt-1`}>{en('Every order you placed, with its status, charge and progress.', 'كل طلب قمت به مع حالته وتكلفته وتقدمه.')}</p>
         </div>
-        <div className="flex flex-wrap items-center gap-space-sm sm:flex-nowrap">
-          <div className="relative w-full sm:w-72">
-            <Search className="absolute start-space-md top-1/2 -translate-y-1/2 text-outline h-[20px] w-[20px] shrink-0" />
-            <input className="h-10 w-full rounded-xl bg-surface-container ps-10 pe-space-md font-body-sm text-body-sm text-on-surface transition-all placeholder:text-outline focus:bg-surface-container-high focus:outline-none" placeholder={lang === 'ar' ? 'تصفية حسب رقم الطلب أو الرابط...' : 'Filter by Order ID, target URL...'} type="text" value={q} onChange={e => setQ(e.target.value)} />
-          </div>
-          <button className="flex h-10 items-center gap-space-xs rounded-xl bg-surface-container px-space-md font-label-lg text-label-lg text-on-surface shadow-sm transition-colors hover:bg-surface-container-high" onClick={() => refetch()} type="button">
-            <RefreshCw className="h-[18px] w-[18px] shrink-0" />
-            <span className="hidden lg:inline">{t('common.refresh')}</span>
-          </button>
-          <button className="flex h-10 items-center gap-space-xs rounded-xl bg-primary px-space-md font-label-lg text-label-lg text-on-primary shadow-sm transition-colors hover:bg-primary-fixed" onClick={exportCsv} type="button">
-            <Download className="h-[18px] w-[18px] shrink-0" />
-            <span>{t('common.export')}</span>
-          </button>
+        <Link
+          to="/dashboard/new-order"
+          className="inline-flex h-11 shrink-0 items-center gap-2 rounded-lg bg-primary-container px-5 text-sm font-semibold text-on-primary-container transition-colors hover:opacity-90"
+        >
+          <ArrowRight className="h-4 w-4 rtl:rotate-180" /> {t('nav.newOrder')}
+        </Link>
+      </div>
+
+      {/* ── 1 · Summary ────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 gap-space-md lg:grid-cols-4">
+        <div className={statCard}>
+          <span className="text-sm text-on-surface-variant">{en('Total orders', 'إجمالي الطلبات')}</span>
+          <span className="mt-1 font-mono text-xl font-bold tabular-nums text-on-surface">{totalOrders.toLocaleString()}</span>
+          <span className={`${hint} mt-1`}>
+            {dispatchedToday > 0 ? en(`+${dispatchedToday} placed today`, `+${dispatchedToday} اليوم`) : en('None placed today', 'لا طلبات اليوم')}
+          </span>
+        </div>
+        <div className={statCard}>
+          <span className="text-sm text-on-surface-variant">{en('In progress', 'قيد التنفيذ')}</span>
+          <span className="mt-1 font-mono text-xl font-bold tabular-nums text-tertiary">{activeCount.toLocaleString()}</span>
+          <span className={`${hint} mt-1`}>{inProgressCount.toLocaleString()} {en('running right now', 'يعمل الآن')}</span>
+        </div>
+        <div className={statCard}>
+          <span className="text-sm text-on-surface-variant">{en('Spent (last 30 days)', 'المصروف (آخر 30 يوم)')}</span>
+          <span className="mt-1 font-mono text-xl font-bold tabular-nums text-on-surface">{money(spent30d)}</span>
+          <span className={`${hint} mt-1`}>{t('common.currency')}</span>
+        </div>
+        <div className={statCard}>
+          <span className="text-sm text-on-surface-variant">{en('Delivered rate', 'معدل التسليم')}</span>
+          <span className="mt-1 font-mono text-xl font-bold tabular-nums text-on-surface">{fulfillmentRate.toFixed(1)}%</span>
+          <span className={`${hint} mt-1`}>{refundRate.toFixed(1)}% {en('refunded or canceled', 'مسترد أو ملغي')}</span>
         </div>
       </div>
 
-      {/* KPI tiles — counts, sums and rates derived from the orders above */}
-      <div className="grid grid-cols-2 gap-space-md md:grid-cols-4">
-        <div className="group relative flex flex-col justify-between overflow-hidden rounded-xl bg-surface-container p-space-lg shadow-sm">
-          <div className="absolute -end-4 -bottom-4 h-20 w-20 rounded-full bg-primary/5 blur-xl transition-all group-hover:bg-primary/10"></div>
-          <div className="flex items-center justify-between text-on-surface-variant">
-            <span className="font-label-sm text-label-sm uppercase tracking-wider">{lang === 'ar' ? 'إجمالي المرسل' : 'Total Dispatched'}</span>
-            <TrendingUp className="text-primary h-[20px] w-[20px] shrink-0" />
+      {/* ── 2 · Find your orders ───────────────────────────────────────────── */}
+      <div className="flex flex-col gap-space-lg rounded-xl border border-outline-variant bg-surface-container p-5">
+        <div className="flex flex-col gap-space-md md:flex-row md:items-end">
+          <div className="flex flex-1 flex-col gap-2">
+            <label htmlFor="order-search" className={label}>{en('Search orders', 'ابحث في الطلبات')}</label>
+            <div className="relative">
+              <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-outline" />
+              <input
+                id="order-search"
+                type="text"
+                value={q}
+                onChange={e => setQ(e.target.value)}
+                placeholder={en('Search order, service or link', 'ابحث برقم الطلب أو الخدمة أو الرابط')}
+                className={`${field} ps-9 pe-3`}
+              />
+            </div>
           </div>
-          <div className="mt-space-md flex items-baseline justify-between">
-            <span className="font-headline-lg text-headline-lg font-bold text-on-surface">{totalOrders.toLocaleString()}</span>
-            <span className="flex items-center font-code-xs text-code-xs text-tertiary">{lang === 'ar' ? `+${dispatchedToday} اليوم` : `+${dispatchedToday} today`}</span>
+          <div className="flex flex-col gap-2 md:w-56">
+            <label htmlFor="order-status" className={label}>{t('common.status')}</label>
+            <select
+              id="order-status"
+              value={status}
+              onChange={e => setStatus(e.target.value)}
+              className={`${field} cursor-pointer px-3`}
+            >
+              {STATUS_OPTIONS.map(s => (
+                <option key={s} value={s}>{s === 'all' ? en('All statuses', 'كل الحالات') : statusLabel(s)}</option>
+              ))}
+            </select>
           </div>
-        </div>
-        <div className="group relative flex flex-col justify-between overflow-hidden rounded-xl bg-surface-container p-space-lg shadow-sm">
-          <div className="absolute -end-4 -bottom-4 h-20 w-20 rounded-full bg-tertiary/5 blur-xl transition-all group-hover:bg-tertiary/10"></div>
-          <div className="flex items-center justify-between text-on-surface-variant">
-            <span className="font-label-sm text-label-sm uppercase tracking-wider">{lang === 'ar' ? 'قيد التنفيذ الفعلي' : 'Active Execution'}</span>
-            <RefreshCcw className="text-tertiary h-[20px] w-[20px] shrink-0" />
-          </div>
-          <div className="mt-space-md flex items-baseline justify-between">
-            <span className="font-headline-lg text-headline-lg font-bold text-tertiary">{activeCount.toLocaleString()}</span>
-            <span className="font-code-xs text-code-xs text-on-surface-variant">{inProgressCount.toLocaleString()} {lang === 'ar' ? 'قيد التنفيذ' : 'In-Progress'}</span>
-          </div>
-        </div>
-        <div className="group relative flex flex-col justify-between overflow-hidden rounded-xl bg-surface-container p-space-lg shadow-sm">
-          <div className="absolute -end-4 -bottom-4 h-20 w-20 rounded-full bg-secondary/5 blur-xl transition-all group-hover:bg-secondary/10"></div>
-          <div className="flex items-center justify-between text-on-surface-variant">
-            <span className="font-label-sm text-label-sm uppercase tracking-wider">{lang === 'ar' ? 'إجمالي المصروف (30 يوم)' : 'Total Spent (30D)'}</span>
-            <Landmark className="text-secondary h-[20px] w-[20px] shrink-0" />
-          </div>
-          <div className="mt-space-md flex items-baseline justify-between">
-            <span className="font-headline-lg text-headline-lg font-bold text-on-surface">{money(spent30d)}</span>
-            <span className="font-code-xs text-code-xs text-on-surface-variant">{t('common.currency')}</span>
-          </div>
-        </div>
-        <div className="group relative flex flex-col justify-between overflow-hidden rounded-xl bg-surface-container p-space-lg shadow-sm">
-          <div className="absolute -end-4 -bottom-4 h-20 w-20 rounded-full bg-primary-container/10 blur-xl transition-all group-hover:bg-primary-container/20"></div>
-          <div className="flex items-center justify-between text-on-surface-variant">
-            <span className="font-label-sm text-label-sm uppercase tracking-wider">{lang === 'ar' ? 'معدل الإنجاز' : 'Fulfillment Rate'}</span>
-            <BadgeCheck className="text-primary h-[20px] w-[20px] shrink-0" />
-          </div>
-          <div className="mt-space-md flex items-baseline justify-between">
-            <span className="font-headline-lg text-headline-lg font-bold text-on-surface">{fulfillmentRate.toFixed(1)}%</span>
-            <span className="font-code-xs text-code-xs text-tertiary">{refundRate.toFixed(1)}% {lang === 'ar' ? 'مسترد' : 'refund'}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Status tabs — wired to the existing status state */}
-      <div className="scrollbar-none flex items-center gap-space-xs overflow-x-auto pb-space-xs">
-        {STATUS_TABS.map(tab => {
-          const active = status === tab.value;
-          const count = tab.value === 'all' ? totalOrders : countBy(tab.value);
-          return (
-            <button key={tab.value} onClick={() => setStatus(tab.value)} type="button"
-              className={active
-                ? 'flex items-center gap-space-xs whitespace-nowrap rounded-lg bg-primary-container px-space-md py-space-xs font-label-lg text-label-lg text-on-primary-container shadow-sm'
-                : 'flex items-center gap-space-xs whitespace-nowrap rounded-lg bg-surface-container px-space-md py-space-xs font-label-lg text-label-lg text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface'}>
-              <span>{tabLabel(tab)}</span>
-              <span className={active
-                ? 'rounded bg-on-primary-container/20 px-space-xs py-space-2xs font-code-xs text-code-xs font-semibold'
-                : `rounded bg-surface-container-highest px-space-xs py-space-2xs font-code-xs text-code-xs ${tab.tone}`}>{count.toLocaleString()}</span>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => refetch()}
+              className="inline-flex h-11 items-center gap-2 rounded-lg border border-outline-variant bg-surface-container-lowest px-4 text-sm font-semibold text-on-surface transition-colors hover:bg-surface-container-high"
+            >
+              <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} /> {t('common.refresh')}
             </button>
-          );
-        })}
+            <button
+              type="button"
+              onClick={exportCsv}
+              className="inline-flex h-11 items-center gap-2 rounded-lg border border-outline-variant bg-surface-container-lowest px-4 text-sm font-semibold text-on-surface transition-colors hover:bg-surface-container-high"
+            >
+              <Download className="h-4 w-4" /> {t('common.export')}
+            </button>
+          </div>
+        </div>
+        <p className={hint}>
+          {orderList.length === 0
+            ? en('Your orders will be listed here.', 'ستظهر طلباتك هنا.')
+            : rows.length === orderList.length
+              ? en(`Showing all ${orderList.length} orders.`, `عرض كل الطلبات (${orderList.length}).`)
+              : en(`Showing ${rows.length} of ${orderList.length} orders.`, `عرض ${rows.length} من ${orderList.length} طلب.`)}{' '}
+          {en('The list refreshes automatically every 30 seconds.', 'يتم تحديث القائمة تلقائياً كل 30 ثانية.')}
+        </p>
       </div>
 
-      {/* Orders table */}
-      <div className="w-full overflow-hidden rounded-xl bg-surface-container shadow-xl">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[1040px] text-start font-body-sm text-body-sm">
-            <thead>
-              <tr className="bg-surface-container-lowest font-code-xs text-code-xs uppercase tracking-wider text-on-surface-variant">
-                <th className="w-28 px-space-md py-space-md text-start">{lang === 'ar' ? 'رقم الطلب' : 'Order ID'}</th>
-                <th className="w-36 px-space-md py-space-md text-start">{lang === 'ar' ? 'الإنشاء' : 'Created'}</th>
-                <th className="w-48 px-space-md py-space-md text-start">{lang === 'ar' ? 'الرابط المستهدف' : 'Target URL'}</th>
-                <th className="px-space-md py-space-md text-start">{lang === 'ar' ? 'تفاصيل الخدمة' : 'Service Details'}</th>
-                <th className="w-32 px-space-md py-space-md text-start">{lang === 'ar' ? 'التكلفة / السعر' : 'Charge / Rate'}</th>
-                <th className="w-28 px-space-md py-space-md text-start">{lang === 'ar' ? 'الكمية' : 'Quantity'}</th>
-                <th className="w-36 px-space-md py-space-md text-start">{lang === 'ar' ? 'التقدم' : 'Progress'}</th>
-                <th className="w-32 px-space-md py-space-md text-center">{t('common.status')}</th>
-                <th className="w-36 px-space-md py-space-md text-end">{t('common.actions')}</th>
-              </tr>
-            </thead>
-            <tbody className="text-on-surface">
-              {isLoading ? <tr><td colSpan={9} className="p-space-xl text-center text-on-surface-variant">{t('common.loading')}</td></tr> : rows.length ? rows.map((o: any) => {
-                const canRefill = o.service?.refillable && REFILLABLE_STATUSES.includes(o.status);
-                const canCancel = o.service?.cancelable && CANCELABLE_STATUSES.includes(o.status) && !o.cancelRequested;
-                const canRefresh = !!o.providerOrderId && ACTIVE_STATUSES.includes(o.status);
-                const refunded = num(o.refundedAmount);
-                const created = o.createdAt ? new Date(o.createdAt) : null;
-                const quantity = num(o.quantity);
-                const remains = num(o.remains);
-                const pct = quantity > 0 ? Math.min(100, Math.max(0, ((quantity - remains) / quantity) * 100)) : 0;
-                const tone = PROGRESS_TONE[o.status] || PROGRESS_FALLBACK;
-                return (
-                  <tr key={o.id} className="h-11 transition-colors hover:bg-surface-container-high/40">
-                    <td className="px-space-md py-space-md font-code-sm text-code-sm">
-                      <div className="flex items-center gap-space-xs">
-                        <span className="font-bold text-primary">#{String(o.id).slice(0, 8)}</span>
-                        <button className="flex h-6 w-6 items-center justify-center rounded bg-surface-container-high text-outline transition-colors hover:bg-surface-bright hover:text-on-surface" onClick={() => copyId(o.id)} title={t('common.copy')} type="button">
-                          <Copy className="h-[14px] w-[14px] shrink-0" />
-                        </button>
-                      </div>
-                    </td>
-                    <td className="px-space-md py-space-md">
-                      <div className="flex flex-col">
-                        <span className="font-body-sm text-body-sm text-on-surface">{created ? created.toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US', { month: 'short', day: '2-digit', year: 'numeric' }) : '-'}</span>
-                        <span className="font-code-xs text-code-xs text-on-surface-variant">{created ? created.toLocaleTimeString(lang === 'ar' ? 'ar-EG' : 'en-US', { hour12: false }) : ''}</span>
-                      </div>
-                    </td>
-                    <td className="px-space-md py-space-md">
-                      <div className="group flex items-center gap-space-xs">
-                        <span className="max-w-[160px] truncate font-code-xs text-code-xs text-tertiary" title={o.link}>{o.link}</span>
-                        <a className="text-outline transition-colors hover:text-tertiary" href={o.link} rel="noreferrer" target="_blank">
-                          <ExternalLink className="h-[16px] w-[16px] shrink-0" />
-                        </a>
-                      </div>
-                    </td>
-                    <td className="px-space-md py-space-md">
-                      <div className="flex max-w-sm flex-col gap-space-2xs">
-                        <div className="flex items-center gap-space-xs">
-                          {o.service?.id && <span className="rounded bg-surface-container-high px-space-xs py-space-2xs font-code-xs text-code-xs font-semibold text-secondary">ID {String(o.service.id).slice(0, 8)}</span>}
-                          <span className="truncate font-label-sm text-label-sm font-semibold text-on-surface">{o.service?.name}</span>
-                        </div>
-                        {o.cancelRequested ? (
-                          <div className="flex items-center gap-space-xs font-code-xs text-code-xs text-error">
-                            <Info className="h-[14px] w-[14px] shrink-0" />
-                            <span>{lang === 'ar' ? 'تم طلب الإلغاء' : 'Cancellation requested'}</span>
-                          </div>
-                        ) : o.status === 'Partial' && refunded > 0 ? (
-                          <div className="flex items-center gap-space-xs font-code-xs text-code-xs text-secondary">
-                            <Banknote className="h-[14px] w-[14px] shrink-0" />
-                            <span>{lang === 'ar' ? `المسترد: ${money(refunded)} إلى الرصيد` : `Refunded: ${money(refunded)} to balance`}</span>
-                          </div>
-                        ) : o.providerOrderId ? (
-                          <div className="flex items-center gap-space-xs font-body-sm text-body-sm text-outline">
-                            <Zap className="text-primary h-[14px] w-[14px] shrink-0" />
-                            <span className="font-code-xs text-code-xs text-on-surface-variant">{lang === 'ar' ? 'مرجع المزود: ' : 'Provider ref: '}{o.providerOrderId}</span>
-                          </div>
-                        ) : null}
-                      </div>
-                    </td>
-                    <td className="px-space-md py-space-md">
-                      <div className="flex flex-col font-code-sm text-code-sm">
-                        <span className={o.status === 'Canceled' || o.status === 'Refunded' ? 'font-bold text-outline line-through' : 'font-bold text-on-surface'}>{money(o.charge)}</span>
-                        <span className="font-code-xs text-code-xs text-on-surface-variant">{quantity > 0 ? `${money(num(o.charge) / quantity * 1000)} / 1k` : '-'}</span>
-                      </div>
-                    </td>
-                    <td className="px-space-md py-space-md font-code-sm text-code-sm font-semibold">
-                      <span className={o.status === 'Canceled' || o.status === 'Refunded' ? 'text-outline' : undefined}>{quantity.toLocaleString()}</span>
-                    </td>
-                    <td className="px-space-md py-space-md font-code-xs text-code-xs">
-                      <div className="flex flex-col gap-space-2xs">
-                        <div className="flex justify-between text-on-surface-variant">
-                          <span>{lang === 'ar' ? 'البداية: ' : 'Start: '}{Number.isFinite(Number(o.startCount)) ? num(o.startCount).toLocaleString() : '-'}</span>
-                          <span className={`font-semibold ${tone.text}`}>{lang === 'ar' ? 'المتبقي: ' : 'Remains: '}{Number.isFinite(Number(o.remains)) ? remains.toLocaleString() : '-'}</span>
-                        </div>
-                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-container-high">
-                          <div className={`h-full rounded-full ${tone.bar}`} style={{ width: `${pct}%` }}></div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-space-md py-space-md text-center">
-                      <span className={`status-badge ${STATUS_BADGE[o.status] || 's-default'}`}>{statusLabel(o.status)}</span>
-                    </td>
-                    <td className="px-space-md py-space-md text-end">
-                      <div className="flex items-center justify-end gap-space-xs">
-                        {canRefresh && <button disabled={refreshOrder.isPending} onClick={() => refreshOrder.mutate(o.id)} className="flex items-center gap-space-2xs rounded bg-surface-container-high px-space-xs py-1 font-label-sm text-label-sm text-on-surface-variant transition-colors hover:bg-surface-bright disabled:opacity-50" title="Refresh order status" type="button">
-                          <RefreshCw className="h-[14px] w-[14px] shrink-0" />
-                          <span>{lang === 'ar' ? 'تحديث الحالة' : 'Update status'}</span>
-                        </button>}
-                        {canRefill && <button disabled={refill.isPending} onClick={() => refill.mutate(o.id)} className="flex items-center gap-space-2xs rounded bg-surface-container-high px-space-xs py-1 font-label-sm text-label-sm text-tertiary transition-colors hover:bg-surface-bright disabled:opacity-50" title="Request refill" type="button">
-                          <RefreshCw className="h-[14px] w-[14px] shrink-0" />
-                          <span>{lang === 'ar' ? 'إعادة تعبئة' : 'Refill'}</span>
-                        </button>}
-                        {canCancel && <button disabled={cancel.isPending} onClick={() => confirm('Cancel this order and refund it to your wallet?') && cancel.mutate(o.id)} className="flex items-center gap-space-2xs rounded bg-error-container/20 px-space-xs py-1 font-label-sm text-label-sm text-error transition-colors hover:bg-error-container/40 disabled:opacity-50" title="Cancel order" type="button">
-                          <X className="h-[14px] w-[14px] shrink-0" />
-                          <span>{t('common.cancel')}</span>
-                        </button>}
-                        {!canRefill && !canCancel && <span className="text-outline">-</span>}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              }) : <tr><td colSpan={9} className="p-space-xl text-center text-on-surface-variant">No matching orders found.</td></tr>}</tbody>
-          </table>
+      {/* ── 3 · Your orders ────────────────────────────────────────────────── */}
+      <div className="flex flex-col gap-space-lg rounded-xl border border-outline-variant bg-surface-container p-5">
+        <div className="flex flex-wrap items-center justify-between gap-space-md">
+          <h2 className="font-display text-headline-sm text-on-surface">{en('Your orders', 'طلباتك')}</h2>
+          <span className="text-sm text-on-surface-variant">{rows.length.toLocaleString()} {en('shown', 'معروض')}</span>
         </div>
+
+        {isError && (
+          <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-error/40 bg-error-container p-3 text-sm text-on-error-container">
+            <span>{en('We could not load your orders.', 'تعذر تحميل طلباتك.')}</span>
+            <button
+              type="button"
+              onClick={() => refetch()}
+              className="inline-flex h-9 items-center gap-2 rounded-lg bg-surface-container px-3 font-semibold"
+            >
+              <RefreshCw className="h-4 w-4" /> {t('common.retry')}
+            </button>
+          </div>
+        )}
+
+        {isLoading ? (
+          <div className="flex flex-col items-center gap-1 rounded-lg border border-dashed border-outline-variant bg-surface-container-low p-8 text-center">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            <p className="mt-2 text-sm font-semibold text-on-surface">{t('common.loading')}</p>
+            <p className={hint}>{en('Fetching your latest orders…', 'جارٍ جلب أحدث طلباتك…')}</p>
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-outline-variant bg-surface-container-low p-8 text-center">
+            <Package className="h-8 w-8 text-outline" />
+            <p className="text-sm font-semibold text-on-surface">
+              {orderList.length === 0
+                ? en("You haven't placed any orders yet.", 'لم تقم بأي طلب حتى الآن.')
+                : en('No orders match your search or filter.', 'لا توجد طلبات مطابقة للبحث أو الفلتر.')}
+            </p>
+            <p className={`${hint} max-w-md`}>
+              {orderList.length === 0
+                ? en('Place your first order and it will show up here with live progress.', 'أنشئ أول طلب وسيظهر هنا مع تقدمه المباشر.')
+                : en('Try a different search term, or choose “All statuses”.', 'جرّب كلمة بحث أخرى أو اختر «كل الحالات».')}
+            </p>
+            {orderList.length === 0 ? (
+              <Link
+                to="/dashboard/new-order"
+                className="mt-2 inline-flex h-11 items-center gap-2 rounded-lg bg-primary-container px-5 text-sm font-semibold text-on-primary-container transition-colors hover:opacity-90"
+              >
+                <ArrowRight className="h-4 w-4 rtl:rotate-180" /> {t('nav.newOrder')}
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={() => { setQ(''); setStatus('all'); }}
+                className="mt-2 inline-flex h-11 items-center rounded-lg border border-outline-variant bg-surface-container px-4 text-sm font-semibold text-on-surface transition-colors hover:bg-surface-container-high"
+              >
+                {en('Clear search and filters', 'مسح البحث والفلاتر')}
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[900px] text-start text-sm">
+              <thead>
+                <tr className="border-b border-outline-variant text-sm text-on-surface-variant">
+                  <th className="px-4 py-3 text-start font-semibold">{en('Service', 'الخدمة')}</th>
+                  <th className="px-4 py-3 text-start font-semibold">{en('Link', 'الرابط')}</th>
+                  <th className="px-4 py-3 text-start font-semibold">{en('Quantity', 'الكمية')}</th>
+                  <th className="px-4 py-3 text-start font-semibold">{en('Charge', 'التكلفة')}</th>
+                  <th className="px-4 py-3 text-start font-semibold">{t('common.status')}</th>
+                  <th className="px-4 py-3 text-start font-semibold">{en('Created', 'تاريخ الإنشاء')}</th>
+                  <th className="px-4 py-3 text-end font-semibold">{t('common.actions')}</th>
+                </tr>
+              </thead>
+              <tbody className="text-on-surface">
+                {rows.map((o: any) => {
+                  const canRefill = o.service?.refillable && REFILLABLE_STATUSES.includes(o.status);
+                  const canCancel = o.service?.cancelable && CANCELABLE_STATUSES.includes(o.status) && !o.cancelRequested;
+                  const canRefresh = !!o.providerOrderId && ACTIVE_STATUSES.includes(o.status);
+                  const refunded = num(o.refundedAmount);
+                  const created = o.createdAt ? new Date(o.createdAt) : null;
+                  const validCreated = created && !Number.isNaN(created.getTime());
+                  const quantity = num(o.quantity);
+                  const hasRemains = Number.isFinite(Number(o.remains));
+                  const hasStart = Number.isFinite(Number(o.startCount));
+                  const remains = num(o.remains);
+                  const delivered = Math.min(quantity, Math.max(0, quantity - remains));
+                  const dead = o.status === 'Canceled' || o.status === 'Refunded';
+                  return (
+                    <tr key={o.id} className="border-b border-outline-variant last:border-0 transition-colors hover:bg-surface-container-high/40">
+                      <td className="px-4 py-3 align-top">
+                        <div className="flex min-w-0 flex-col gap-1">
+                          <span className="truncate text-sm font-semibold text-on-surface">{o.service?.name || en('Service unavailable', 'الخدمة غير متاحة')}</span>
+                          <span className="flex flex-wrap items-center gap-2">
+                            <span className="font-mono text-xs tabular-nums text-on-surface-variant">#{String(o.id).slice(0, 8)}</span>
+                            <button
+                              type="button"
+                              onClick={() => copyId(o.id)}
+                              title={t('common.copy')}
+                              aria-label={t('common.copy')}
+                              className="inline-flex h-7 items-center gap-1 rounded-md bg-surface-container-high px-2 text-xs text-on-surface-variant transition-colors hover:bg-surface-bright hover:text-on-surface"
+                            >
+                              <Copy className="h-3.5 w-3.5" /> {t('common.copy')}
+                            </button>
+                          </span>
+                          {quantity > 0 && (hasRemains || hasStart) && (
+                            <span className={hint}>
+                              {en('Delivered', 'تم التسليم')} <b className="font-mono tabular-nums text-on-surface">{delivered.toLocaleString()}</b> {en('of', 'من')}{' '}
+                              <span className="font-mono tabular-nums">{quantity.toLocaleString()}</span>
+                              {hasRemains && <> · <span className="font-mono tabular-nums">{remains.toLocaleString()}</span> {en('remaining', 'متبقٍ')}</>}
+                              {hasStart && <> · {en('started at', 'البداية')} <span className="font-mono tabular-nums">{num(o.startCount).toLocaleString()}</span></>}
+                            </span>
+                          )}
+                          {o.cancelRequested ? (
+                            <span className="flex items-center gap-1 text-xs text-error">
+                              <Info className="h-3.5 w-3.5 shrink-0" /> {en('Cancellation requested', 'تم طلب الإلغاء')}
+                            </span>
+                          ) : o.status === 'Partial' && refunded > 0 ? (
+                            <span className="flex items-center gap-1 text-xs text-success">
+                              <Banknote className="h-3.5 w-3.5 shrink-0" />
+                              {en(`Refunded ${money(refunded)} to your balance`, `تم استرداد ${money(refunded)} إلى رصيدك`)}
+                            </span>
+                          ) : o.providerOrderId ? (
+                            <span className={hint}>
+                              {en('Provider order', 'الطلب لدى المزود')} <span className="font-mono tabular-nums">{o.providerOrderId}</span>
+                            </span>
+                          ) : null}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 align-top">
+                        <div className="flex items-center gap-2">
+                          <a
+                            href={o.link}
+                            target="_blank"
+                            rel="noreferrer"
+                            title={o.link}
+                            className="max-w-[220px] truncate font-mono text-sm text-tertiary hover:underline"
+                          >
+                            {o.link}
+                          </a>
+                          <a
+                            href={o.link}
+                            target="_blank"
+                            rel="noreferrer"
+                            aria-label={en('Open link', 'فتح الرابط')}
+                            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface-container-high text-on-surface-variant transition-colors hover:bg-surface-bright hover:text-on-surface"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 align-top font-mono text-sm font-semibold tabular-nums">
+                        <span className={`${dead ? 'text-outline' : 'text-on-surface'}`}>{quantity.toLocaleString()}</span>
+                      </td>
+                      <td className="px-4 py-3 align-top">
+                        <div className="flex flex-col">
+                          <span className={`font-mono text-sm font-semibold tabular-nums ${dead ? 'text-outline line-through' : 'text-on-surface'}`}>{money(o.charge)}</span>
+                          {quantity > 0 && <span className={hint}>{money(num(o.charge) / quantity * 1000)} / 1k</span>}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 align-top">
+                        <span className={`status-badge ${STATUS_BADGE[o.status] || 's-default'}`}>{statusLabel(o.status)}</span>
+                      </td>
+                      <td className="px-4 py-3 align-top">
+                        <div className="flex flex-col">
+                          <span className="text-sm text-on-surface">
+                            {validCreated ? created!.toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US', { month: 'short', day: '2-digit', year: 'numeric' }) : '—'}
+                          </span>
+                          {validCreated && <span className={hint}>{created!.toLocaleTimeString(lang === 'ar' ? 'ar-EG' : 'en-US', { hour12: false })}</span>}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 align-top text-end">
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                          {canRefresh && (
+                            <button
+                              disabled={refreshOrder.isPending}
+                              onClick={() => refreshOrder.mutate(o.id)}
+                              title={en('Sync status', 'مزامنة الحالة')}
+                              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-sm font-medium text-on-surface transition-colors hover:bg-surface-container-high disabled:opacity-50"
+                              type="button"
+                            >
+                              <RefreshCw className={`h-4 w-4 ${refreshOrder.isPending ? 'animate-spin' : ''}`} />
+                              {refreshOrder.isPending ? en('Updating…', 'جارٍ التحديث…') : en('Update status', 'تحديث الحالة')}
+                            </button>
+                          )}
+                          {canRefill && (
+                            <button
+                              disabled={refill.isPending}
+                              onClick={() => refill.mutate(o.id)}
+                              title={en('Request a refill if this order drops', 'اطلب إعادة التعبئة إذا نقص الطلب')}
+                              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-sm font-medium text-tertiary transition-colors hover:bg-surface-container-high disabled:opacity-50"
+                              type="button"
+                            >
+                              <RefreshCw className="h-4 w-4" />
+                              {refill.isPending ? en('Requesting…', 'جارٍ الطلب…') : en('Refill', 'إعادة تعبئة')}
+                            </button>
+                          )}
+                          {canCancel && (
+                            <button
+                              disabled={cancel.isPending}
+                              onClick={() => confirm('Cancel this order and refund it to your wallet?') && cancel.mutate(o.id)}
+                              title={en('Cancel this order and refund the unfulfilled part', 'إلغاء الطلب واسترداد الجزء غير المنفذ')}
+                              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-error/40 bg-error-container/40 px-3 text-sm font-medium text-error transition-colors hover:bg-error-container disabled:opacity-50"
+                              type="button"
+                            >
+                              <X className="h-4 w-4" />
+                              {cancel.isPending ? en('Canceling…', 'جارٍ الإلغاء…') : t('common.cancel')}
+                            </button>
+                          )}
+                          {!canRefresh && !canRefill && !canCancel && (
+                            <span className="text-sm text-outline" title={en('Nothing left to do for this order', 'لا إجراءات متاحة لهذا الطلب')}>
+                              {en('No actions available', 'لا إجراءات متاحة')}
+                            </span>
+                          )}
+                        </div>
+                        {busy && <p className={`${hint} mt-1`}>{en('Talking to the provider…', 'جارٍ التواصل مع المزود…')}</p>}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

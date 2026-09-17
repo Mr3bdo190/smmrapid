@@ -156,6 +156,8 @@ export const translations: Dict = {
   'admin.dashboard.users.total': { en: 'Total Users', ar: 'مجموع المستخدمين' },
   'admin.nav.withdrawals': { en: 'Affiliate Withdrawals', ar: 'سحوبات الأرباح/الإحالات' },
   'admin.withdrawals.title': { en: 'Affiliate Withdrawals (سحوبات الأرباح/الإحالات)', ar: 'سحوبات الأرباح/الإحالات (Affiliate Withdrawals)' },
+  'admin.tickets.noTickets': { en: 'No tickets yet.', ar: 'لا توجد تذاكر بعد.' },
+  'admin.tickets.title': { en: 'Support Tickets', ar: 'تذاكر الدعم' },
   'admin.withdrawals.pending': { en: 'Pending', ar: 'قيد الانتظار' },
   'admin.withdrawals.approved': { en: 'Approved', ar: 'مقبول' },
   'admin.withdrawals.rejected': { en: 'Rejected', ar: 'مرفوض' },
@@ -394,6 +396,9 @@ export const translations: Dict = {
   'affiliates.title': { en: 'Affiliate Center', ar: 'مركز الإحالة' },
   'affiliates.referralLink': { en: 'Referral Link', ar: 'رابط الإحالة' },
   'affiliates.referredUsers': { en: 'Referred Users', ar: 'المستخدمون المُحالون' },
+  'affiliates.withdrawFailed': { en: 'We could not submit your withdrawal request. Nothing was deducted — please try again.', ar: 'تعذر إرسال طلب السحب. لم يتم خصم أي مبلغ — حاول مرة أخرى.' },
+  'affiliates.insufficientBalance': { en: 'Your available affiliate balance is below the minimum withdrawal amount.', ar: 'رصيد الإحالة المتاح أقل من الحد الأدنى للسحب.' },
+  'affiliates.earnings': { en: 'Earnings', ar: 'الأرباح' },
   'affiliates.commissionDate': { en: 'Date', ar: 'التاريخ' },
   'affiliates.commissionAmount': { en: 'Commission', ar: 'العمولة' },
   'affiliates.commissionHistoryEmpty': { en: 'No commissions yet — they appear here as soon as a referred user makes a deposit.', ar: 'لا توجد عمولات بعد — تظهر هنا بمجرد أن يودع أحد المستخدمين المُحالين.' },
@@ -488,6 +493,8 @@ export const translations: Dict = {
 
   // Admin settings tabs
   'admin.settings.general': { en: 'General Settings', ar: 'الإعدادات العامة' },
+  'admin.settings.addFundsInstructions': { en: 'Add-funds instructions', ar: 'تعليمات شحن الرصيد' },
+  'admin.settings.siteDescription': { en: 'Site description', ar: 'وصف الموقع' },
   'admin.settings.financial': { en: 'Financial Limits', ar: 'حدود مالية' },
   'admin.settings.apiSettings': { en: 'API Settings', ar: 'إعدادات API' },
   'admin.settings.paymentMethods': { en: 'Payment Methods', ar: 'وسائل الدفع' },

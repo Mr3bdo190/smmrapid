@@ -22,7 +22,7 @@ const FAQ_EN: string[][] = [
   ['How do I place my first order?',
     'Create a free account, add funds to your wallet, pick the service you want, paste the public link you are growing and set the quantity. Your order is submitted right away.'],
   ['Do I need to share my social media password?',
-    'Never. Every service only needs the public link (a profile, post, video or channel), and some services ask for a username you can see publicly.'],
+    'Never. A service only needs its target — usually a public link (a profile, post, video or channel), and for some services a username, an email, an ID or a list of comments.'],
   ['How fast do orders start?',
     'Most orders enter processing within minutes of payment confirmation. Large quantities are often delivered gradually over hours or days — the service page shows an estimate before you order.'],
   ['What if my order drops?',

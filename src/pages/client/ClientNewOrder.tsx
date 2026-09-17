@@ -66,6 +66,17 @@ export default function ClientNewOrder() {
 
   const selectedService = services.find((s: any) => s.id === serviceId);
   const singleUnit = !!selectedService && num(selectedService.minQuantity) === 1 && num(selectedService.maxQuantity) === 1;
+  // Services whose target is a list of entries (comments, mentions, hashtags, keywords …) rather
+  // than a single link — the supplier expects exactly what the customer types.
+  const listInput = /comment|mention|hashtag|keyword|poll|list/i.test(String((selectedService as any)?.type || ''));
+  const targetPlaceholder = listInput
+    ? en('One entry per line — comments, usernames, hashtags…', 'كل عنصر في سطر — تعليقات، أسماء، هاشتاجات…')
+    : singleUnit
+      ? en('Email, username, ID — anything this service needs', 'بريد، اسم مستخدم، معرّف — أي بيانات تحتاجها الخدمة')
+      : en('Paste a link — or type any text this service needs', 'الصق رابطاً — أو اكتب أي نص تحتاجه الخدمة');
+  const targetHint = listInput
+    ? en('One entry per line. Everything is sent exactly as written.', 'كل عنصر في سطر. كل ما تكتبه يُرسل كما هو.')
+    : en('A link, an email, a number or any text — sent exactly as you type it.', 'رابط أو إيميل أو أرقام أو أي نص — يُرسل كما تكتبه بالظبط.');
   const totalPrice = selectedService && quantity
     ? (singleUnit ? num(selectedService.pricePer1k) * Number(quantity) : num(selectedService.pricePer1k) * Number(quantity) / 1000)
     : 0;
@@ -200,7 +211,7 @@ export default function ClientNewOrder() {
             e.preventDefault();
             if (!selectedService) return notify.error(en('Choose a service first.', 'اختر الخدمة أولاً.'));
             if (!validQty) return notify.error(singleUnit ? en('This service accepts exactly 1 item.', 'هذه الخدمة تقبل قطعة واحدة فقط.') : t('newOrder.quantityRange', { min: selectedService?.minQuantity, max: selectedService?.maxQuantity }));
-            if (!link.trim()) return notify.error(en('Paste the target link first.', 'الصق الرابط المستهدف أولاً.'));
+            if (!link.trim()) return notify.error(en('Type the target first — a link, an email, a number or any text.', 'اكتب البيانات المطلوبة أولاً — رابط أو إيميل أو أرقام أو أي نص.'));
             if (!sufficient) return notify.error(t('newOrder.insufficientBalance'));
             order.mutate();
           }}
@@ -329,22 +340,21 @@ export default function ClientNewOrder() {
               <span className={stepBadge}>3</span> {t('newOrder.targetLink')}
             </label>
             <div className="relative">
-              <Link2 className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-outline" />
-              <input
+              <Link2 className="pointer-events-none absolute start-3 top-2.5 h-4 w-4 text-outline" />
+              <textarea
                 id="target-link"
-                type="text"
+                rows={listInput ? 4 : singleUnit ? 1 : 2}
                 value={link}
                 onChange={e => setLink(e.target.value)}
-                placeholder={singleUnit ? en('email@example.com or account ID', 'البريد الإلكتروني أو معرّف الحساب') : 'https://instagram.com/username'}
-                className={`${field} ps-9 pe-24`}
+                placeholder={targetPlaceholder}
+                maxLength={5000}
+                className={`${field} !h-auto min-h-11 resize-y py-2.5 ps-9 pe-20 leading-relaxed`}
               />
-              <button type="button" onClick={pasteLink} className="absolute end-2 top-1/2 inline-flex h-8 -translate-y-1/2 items-center gap-1 rounded-md bg-surface-container-high px-2 text-xs font-medium text-on-surface-variant transition-colors hover:text-on-surface">
+              <button type="button" onClick={pasteLink} className="absolute end-2 top-2 inline-flex h-8 items-center gap-1 rounded-md bg-surface-container-high px-2 text-xs font-medium text-on-surface-variant transition-colors hover:text-on-surface">
                 <Clipboard className="h-3.5 w-3.5" /> {en('Paste', 'لصق')}
               </button>
             </div>
-            <p className={hint}>{singleUnit
-              ? en('Enter the account data this service needs (email, ID, or link).', 'أدخل البيانات المطلوبة للخدمة (بريد، معرف، أو رابط).')
-              : en('Paste the public link of the post, video or profile you want to grow.', 'الصق الرابط العام للمنشور أو الفيديو أو الحساب المطلوب.')}</p>
+            <p className={hint}>{targetHint}</p>
           </div>
 
           {/* 4 · Quantity */}
@@ -482,7 +492,7 @@ export default function ClientNewOrder() {
               <p className={`${hint} text-center`}>
                 {!selectedService ? en('Choose a service above to continue.', 'اختر الخدمة بالأعلى للاستمرار.')
                   : !validQty ? t('newOrder.enterValidQuantity')
-                  : !link.trim() ? en('Paste the target link to continue.', 'الصق الرابط المستهدف للاستمرار.')
+                  : !link.trim() ? en('Type the target to continue — link, email, number or text.', 'اكتب البيانات المطلوبة للاستمرار — رابط أو إيميل أو أرقام أو نص.')
                   : t('newOrder.insufficientBalance')}
               </p>
             )}

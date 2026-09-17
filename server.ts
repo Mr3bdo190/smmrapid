@@ -544,6 +544,7 @@ app.get('/api/client/services', requireAuth, async (_req, res) => {
     id:x.id, category:x.category ? { id:x.category.id, name:x.category.name, sortOrder:x.category.sortOrder } : null,
     name:x.name, pricePer1k:x.pricePer1k, minQuantity:x.minQuantity, maxQuantity:x.maxQuantity,
     description:x.description ? customerDescription(x.name, x.description, x.minQuantity, x.maxQuantity, Boolean(x.refillable), Boolean(x.cancelable)) : null, cashbackPercentage:x.cashbackPercentage,
+    type:String((x.providerMeta as any)?.type || '').trim().slice(0,60) || null,
     refillable:Boolean(x.refillable), cancelable:Boolean(x.cancelable),
     singleUnit:Number(x.minQuantity)===1 && Number(x.maxQuantity)===1
   }));
@@ -669,14 +670,16 @@ async function calculateCouponDiscount(tx: any, userId: string, codeRaw: unknown
 }
 
 async function validateOrderInput(serviceId: unknown, link: unknown, quantity: unknown) {
-  if (!uuidLike(serviceId) || typeof link !== 'string' || link.trim().length < 1 || link.length > 2048) throw new Error('Invalid order data');
+  // The target field is deliberately free text: depending on the service it carries a link, a
+  // username, an email, a numeric id, or a list of comments/mentions — the supplier API
+  // (JAP / SMMTOM "Custom Comments", "Mentions", "Package" types) expects it exactly as written.
+  if (!uuidLike(serviceId) || typeof link !== 'string' || link.trim().length < 1 || link.length > 5000) throw new Error('Invalid order data');
   const service = await db.query.services.findFirst({ where: eq(services.id, String(serviceId)), with: { category: true, provider: true } });
   if (!service || service.status !== 'active' || service.category?.status !== 'active') throw new Error('Service is unavailable');
 
   const singleUnit = isSingleUnitService(service);
-  // Single-unit/package services may receive an email, username, license key,
-  // account identifier, or another provider-specific value instead of a URL.
-  if (!singleUnit && !validUrl(link.trim())) throw new Error('A valid URL is required for this service');
+  // No format check on purpose: every service type is accepted (URL, email, phone, username, ID,
+  // comment list …). The value is stored and forwarded to the supplier unchanged.
 
   const rawQ = quantity === undefined || quantity === null || quantity === '' ? (singleUnit ? 1 : NaN) : Number(quantity);
   if (!Number.isInteger(rawQ) || rawQ <= 0) throw new Error('Invalid quantity');

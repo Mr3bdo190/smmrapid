@@ -399,22 +399,31 @@ export default function AdminOrders() {
                             </div>
                           </td>
                           <td className="px-space-md py-space-md">
-                            <div className="flex flex-col">
+                            <div className="flex flex-col gap-0.5">
+                              {/* our own ids first: every order and service is stored locally, so the
+                                  admin tracks the order by our numbers and the fulfilment references
+                                  (service id / order id) sit underneath, admin-only. */}
+                              <span className="flex min-w-0 items-center gap-space-2xs font-mono text-code-xs" title={L('Our order id', 'رقم الطلب عندنا')}>
+                                <span className="text-on-surface-variant">{L('Order', 'الطلب')}</span>
+                                <span className="max-w-[140px] truncate font-semibold text-primary">#{o.id ? String(o.id).slice(0, 8) : '-'}</span>
+                                {o.id
+                                  ? <button type="button" onClick={() => copyText(String(o.id))} title={t('common.copy')} aria-label={t('common.copy')} className="inline-flex shrink-0 cursor-pointer items-center text-tertiary transition-colors hover:text-primary"><Copy className="h-3.5 w-3.5" /></button>
+                                  : null}
+                              </span>
+                              <span className="flex min-w-0 items-center gap-space-2xs font-mono text-code-xs text-on-surface-variant" title={L('Our service id', 'رقم الخدمة عندنا')}>
+                                {L('Service', 'الخدمة')}
+                                <span className="max-w-[140px] truncate font-semibold">{o.serviceId ? `#${String(o.serviceId).slice(0, 8)}` : '-'}</span>
+                              </span>
+                              <span className="font-mono text-[11px] text-on-surface-variant" title={t('admin.orders.headers.provider_id')}>
+                                {L('Service ref', 'مرجع الخدمة')}: {o.service?.providerServiceId || '-'} · {L('Order ref', 'مرجع الطلب')}: {o.providerOrderId || '-'}
+                              </span>
                               <span className="font-label-md text-label-md text-on-surface" title={t('admin.orders.headers.mode')}>
                                 {o.service?.executionMode === 'manual' ? t('admin.orders.manual') : t('admin.orders.provider')}
-                              </span>
-                              <span className="flex min-w-0 items-center gap-space-2xs font-mono text-code-xs text-on-surface-variant" title={t('admin.orders.headers.provider_id')}>
-                                ID: <span className="max-w-[140px] truncate font-semibold text-primary">{o.providerOrderId || '-'}</span>
-                                {o.providerOrderId
-                                  ? <button type="button" onClick={() => copyText(String(o.providerOrderId))} title={t('common.copy')} aria-label={t('common.copy')} className="inline-flex shrink-0 cursor-pointer items-center text-tertiary transition-colors hover:text-primary"><Copy className="h-3.5 w-3.5" /></button>
-                                  : null}
                               </span>
                               {o.providerError
                                 ? <span className="flex items-center gap-space-2xs font-mono text-code-xs font-semibold text-error">{L('Err', 'خطأ')}: {o.providerError}</span>
                                 : <span className={`font-mono text-code-xs ${o.providerOrderId ? 'text-on-surface-variant' : 'text-secondary'}`}>
-                                    {o.providerOrderId
-                                      ? L('Synced', 'متزامن')
-                                      : L('Awaiting dispatch', 'بانتظار الإرسال')}
+                                    {o.providerOrderId ? L('Sent', 'تم الإرسال') : L('Awaiting dispatch', 'بانتظار الإرسال')}
                                   </span>}
                             </div>
                           </td>

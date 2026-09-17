@@ -163,16 +163,47 @@ type ProviderSyncJob = {
 };
 const providerSyncJobs = new Map<string, ProviderSyncJob>();
 const activeProviderSync = new Map<string, string>();
-const buildProviderDescription = (raw: any, name: string, rate: number, min: number, max: number, refillable: boolean, cancelable: boolean, dripfeed: boolean) => {
+/**
+ * Auto description for a synced service. This text is shown to CUSTOMERS, so it must never name the
+ * fulfilment side or reveal what a service costs us — it describes the service and its limits only.
+ */
+const buildProviderDescription = (raw: any, name: string, _rate: number, min: number, max: number, refillable: boolean, cancelable: boolean, dripfeed: boolean) => {
   const source = String(raw?.description ?? raw?.desc ?? '').trim();
   if (source) return source.slice(0, 5000);
-  const parts = [`${name} — provider service.`];
-  if (Number.isFinite(rate)) parts.push(`Provider ${min === 1 && max === 1 ? 'price per item' : 'rate per 1K'}: ${rate}.`);
-  parts.push(`Minimum: ${min.toLocaleString()}. Maximum: ${max.toLocaleString()}.`);
-  parts.push(`Refill: ${refillable ? 'Available' : 'Not available'}. Cancel: ${cancelable ? 'Available' : 'Not available'}.`);
+  const isSingle = min === 1 && max === 1;
+  const parts = [`${name}.`];
+  parts.push(isSingle ? 'Delivered as a single unit per order.' : `Order quantity from ${min.toLocaleString()} to ${max.toLocaleString()}.`);
+  parts.push(`Refill: ${refillable ? 'available' : 'not available'}. Cancel: ${cancelable ? 'available' : 'not available'}.`);
   if (dripfeed) parts.push('Drip-feed: available.');
   if (raw?.type) parts.push(`Type: ${String(raw.type)}.`);
+  parts.push('Delivery starts automatically once the payment is confirmed.');
   return parts.join(' ').slice(0, 5000);
+};
+
+/** Descriptions written by older syncs exposed the fulfilment side and our cost — never show them. */
+const LEGACY_AUTO_DESCRIPTION = /provider service\b|Provider (rate per 1K|price per item)|Drip-feed: available\. Type:/i;
+const customerDescription = (serviceName: string, raw: any, min: number, max: number, refillable: boolean, cancelable: boolean) => {
+  const stored = String(raw || '').trim();
+  if (stored && !LEGACY_AUTO_DESCRIPTION.test(stored)) return stored;
+  const isSingle = min === 1 && max === 1;
+  return isSingle
+    ? `${serviceName}. Delivered as a single unit per order. Refill: ${refillable ? 'available' : 'not available'}. Cancel: ${cancelable ? 'available' : 'not available'}.`
+    : `${serviceName}. Order quantity from ${Number(min).toLocaleString()} to ${Number(max).toLocaleString()}. Refill: ${refillable ? 'available' : 'not available'}. Cancel: ${cancelable ? 'available' : 'not available'}.`;
+};
+
+/** An order exactly as the customer is allowed to see it — no fulfilment ids, cost or errors. */
+const publicOrder = (o: any) => {
+  if (!o) return o;
+  const { providerOrderId, providerError, cost, dispatching, providerId, providerMeta, service, ...safe } = o;
+  return {
+    ...safe,
+    service: service ? {
+      id: service.id, name: service.name, pricePer1k: service.pricePer1k,
+      minQuantity: service.minQuantity, maxQuantity: service.maxQuantity,
+      refillable: Boolean(service.refillable), cancelable: Boolean(service.cancelable),
+      description: service.description ? customerDescription(service.name, service.description, service.minQuantity, service.maxQuantity, Boolean(service.refillable), Boolean(service.cancelable)) : null,
+    } : null,
+  };
 };
 
 const hashApiKey = (key: string) => crypto.createHash('sha256').update(key).digest('hex');
@@ -347,7 +378,7 @@ app.get('/api/public/services', publicReadLimiter, async (_req, res) => {
   const byCategory = new Map<string, any[]>();
   for (const s of svcs) {
     const list = byCategory.get(s.categoryId) || [];
-    list.push({ id: s.id, name: s.name, description: s.description, rate: s.pricePer1k, min: s.minQuantity, max: s.maxQuantity });
+    list.push({ id: s.id, name: s.name, description: s.description ? customerDescription(s.name, s.description, s.minQuantity, s.maxQuantity, Boolean(s.refillable), Boolean(s.cancelable)) : null, rate: s.pricePer1k, min: s.minQuantity, max: s.maxQuantity });
     byCategory.set(s.categoryId, list);
   }
   const grouped = cats.map(c => ({ id: c.id, name: c.name, services: byCategory.get(c.id) || [] })).filter(c => c.services.length > 0);
@@ -480,7 +511,7 @@ app.get('/api/client/services', requireAuth, async (_req, res) => {
   const safe = rows.filter(x => x.category?.status === 'active' && (!x.providerId || x.provider?.status === 'active')).map((x:any) => ({
     id:x.id, category:x.category ? { id:x.category.id, name:x.category.name, sortOrder:x.category.sortOrder } : null,
     name:x.name, pricePer1k:x.pricePer1k, minQuantity:x.minQuantity, maxQuantity:x.maxQuantity,
-    description:String(x.description||'').trim() || null, cashbackPercentage:x.cashbackPercentage,
+    description:x.description ? customerDescription(x.name, x.description, x.minQuantity, x.maxQuantity, Boolean(x.refillable), Boolean(x.cancelable)) : null, cashbackPercentage:x.cashbackPercentage,
     refillable:Boolean(x.refillable), cancelable:Boolean(x.cancelable),
     singleUnit:Number(x.minQuantity)===1 && Number(x.maxQuantity)===1
   }));
@@ -489,13 +520,13 @@ app.get('/api/client/services', requireAuth, async (_req, res) => {
 
 app.get('/api/client/orders', requireAuth, async (req: any, res) => {
   const rows = await db.query.orders.findMany({ where: eq(orders.userId, req.dbUser.id), orderBy: [desc(orders.createdAt)], with: { service: true } });
-  res.json(rows);
+  res.json(rows.map(publicOrder));
 });
 app.post('/api/client/orders/:id/refresh', orderLimiter, requireAuth, async (req: any, res) => {
   try {
     const [o] = await db.select().from(orders).where(and(eq(orders.id, req.params.id), eq(orders.userId, req.dbUser.id)));
     if (!o) return apiError(res, 404, 'Order not found', 'NOT_FOUND');
-    if (!o.providerOrderId) return res.json(o);
+    if (!o.providerOrderId) return res.json(publicOrder(o));
     await checkOrderStatus(o.id);
     const [updated] = await db.select().from(orders).where(eq(orders.id, o.id));
     res.json(updated || o);

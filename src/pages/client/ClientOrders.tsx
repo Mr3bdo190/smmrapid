@@ -48,12 +48,12 @@ export default function ClientOrders() {
 
   const refill = useMutation({
     mutationFn: async (id: string) => { const t = await user!.getIdToken(); const r = await apiFetch(`/api/client/orders/${id}/refill`, user, { method: 'POST', headers: { Authorization: `Bearer ${t}` } }); if (!r.ok) throw new Error(await readErr(r, 'Refill request failed')); return r.json(); },
-    onSuccess: () => { notify.success('Refill requested — we\'ll update the order once the provider responds'); qc.invalidateQueries({ queryKey: ['client-orders'] }); },
+    onSuccess: () => { notify.success(en('Refill requested — we will update the order as soon as it is processed.', 'تم طلب إعادة التعبئة — هنحدّث الطلب بمجرد ما يتم تنفيذه.')); qc.invalidateQueries({ queryKey: ['client-orders'] }); },
     onError: (e: any) => notify.error(e),
   });
   const cancel = useMutation({
     mutationFn: async (id: string) => { const t = await user!.getIdToken(); const r = await apiFetch(`/api/client/orders/${id}/cancel`, user, { method: 'POST', headers: { Authorization: `Bearer ${t}` } }); if (!r.ok) throw new Error(await readErr(r, 'Cancel request failed')); return r.json(); },
-    onSuccess: (data: any) => { notify.success(Number(data?.refundedAmount || 0) > 0 ? 'Order canceled. The unfulfilled quantity was refunded to your wallet.' : 'Cancellation requested. The provider is processing it now; your refund will be calculated from the unfulfilled quantity.'); qc.invalidateQueries({ queryKey: ['client-orders'] }); qc.invalidateQueries({ queryKey: ['client-me'] }); },
+    onSuccess: (data: any) => { notify.success(Number(data?.refundedAmount || 0) > 0 ? 'Order canceled. The unfulfilled quantity was refunded to your wallet.' : en('Cancellation requested — we are processing it now, and your refund is calculated from the unfulfilled quantity.', 'تم طلب الإلغاء — بنعالجه حالياً، والاسترداد بيتحسب من الكمية غير المنفَّذة.')); qc.invalidateQueries({ queryKey: ['client-orders'] }); qc.invalidateQueries({ queryKey: ['client-me'] }); },
     onError: (e: any) => notify.error(e),
   });
 
@@ -268,7 +268,7 @@ export default function ClientOrders() {
                 {rows.map((o: any) => {
                   const canRefill = o.service?.refillable && REFILLABLE_STATUSES.includes(o.status);
                   const canCancel = o.service?.cancelable && CANCELABLE_STATUSES.includes(o.status) && !o.cancelRequested;
-                  const canRefresh = !!o.providerOrderId && ACTIVE_STATUSES.includes(o.status);
+                  const canRefresh = ACTIVE_STATUSES.includes(o.status);
                   const refunded = num(o.refundedAmount);
                   const created = o.createdAt ? new Date(o.createdAt) : null;
                   const validCreated = created && !Number.isNaN(created.getTime());
@@ -311,10 +311,6 @@ export default function ClientOrders() {
                             <span className="flex items-center gap-1 text-xs text-success">
                               <Banknote className="h-3.5 w-3.5 shrink-0" />
                               {en(`Refunded ${money(refunded)} to your balance`, `تم استرداد ${money(refunded)} إلى رصيدك`)}
-                            </span>
-                          ) : o.providerOrderId ? (
-                            <span className={hint}>
-                              {en('Provider order', 'الطلب لدى المزود')} <span className="font-mono tabular-nums">{o.providerOrderId}</span>
                             </span>
                           ) : null}
                         </div>
@@ -405,7 +401,7 @@ export default function ClientOrders() {
                             </span>
                           )}
                         </div>
-                        {busy && <p className={`${hint} mt-1`}>{en('Talking to the provider…', 'جارٍ التواصل مع المزود…')}</p>}
+                        {busy && <p className={`${hint} mt-1`}>{en('Checking the order…', 'بنحدّث الطلب…')}</p>}
                       </td>
                     </tr>
                   );

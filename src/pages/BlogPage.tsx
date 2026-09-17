@@ -5,7 +5,7 @@ import PublicPageShell from './PublicPageShell';
 import { useTranslation } from '../lib/i18n';
 
 const POSTS = [
-  ['what-is-smm-panel','What Is an SMM Panel? A Beginner’s Guide','A clear introduction to SMM panels, how orders work, and what to check before choosing a provider.'],
+  ['what-is-smm-panel','What Is an SMM Panel? A Beginner’s Guide','A clear introduction to buying social media services: how orders work, how delivery is tracked, and what to check before you buy.'],
   ['best-smm-panel-guide','How to Choose the Best SMM Panel','Learn the key factors: service quality, pricing, speed, support, API and reliability.'],
   ['smm-reseller-guide','SMM Reseller Guide: Start Your Own Service Business','A practical overview of reseller workflows, margins, service catalogs and automation.'],
   ['instagram-growth-strategy','Instagram Growth Strategy','Understand the main growth levers for Instagram and how to organize campaigns.'],
@@ -14,7 +14,7 @@ const POSTS = [
   ['telegram-smm-marketing','Telegram SMM Marketing','Ways to structure Telegram growth campaigns while keeping orders organized.'],
   ['smm-api-guide','SMM API Guide for Resellers','Understand API-based ordering, service IDs, balances and automation basics.'],
   ['smm-pricing-profit','SMM Pricing and Profit','How service cost, selling price and margin work together in an SMM business.'],
-  ['smm-panel-security','SMM Panel Security Checklist','The essential security areas for accounts, payments, APIs and provider credentials.'],
+  ['smm-panel-security','SMM Panel Security Checklist','The essential security areas for your account: payments, API keys, password hygiene and account recovery.'],
   ['smm-order-management','SMM Order Management','A simple system for tracking new, processing, completed, canceled and refill orders.'],
   ['common-smm-panel-mistakes','Common SMM Panel Mistakes','Avoid common setup, pricing, service-quality and customer-support mistakes.'],
 ];

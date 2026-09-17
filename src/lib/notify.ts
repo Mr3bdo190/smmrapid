@@ -150,7 +150,7 @@ export function friendlyError(error: any, fallback?: string) {
   if (upper.includes('INSUFFICIENT')) return ar() ? 'رصيدك غير كافٍ لإتمام العملية.' : 'Your balance is not sufficient for this operation.';
   if (upper.includes('INVALID_QUANTITY')) return ar() ? 'الكمية غير صحيحة. اختر كمية داخل حدود الخدمة.' : 'The quantity is invalid. Choose an amount within the service limits.';
   if (upper.includes('INVALID_LINK')) return ar() ? 'من فضلك أدخل رابط الخدمة بشكل صحيح.' : 'Please enter a valid service link.';
-  if (upper.includes('PROVIDER_ORDER_FAILED') || upper.includes('PROVIDER_ERROR')) return ar() ? 'تعذر إرسال الطلب للمزود. تم إرجاع المبلغ إلى رصيدك تلقائياً. راجع الخدمة أو جرّب مرة أخرى.' : 'The order could not be sent to the provider. Your amount was refunded automatically. Please check the service or try again.';
+  if (upper.includes('PROVIDER_ORDER_FAILED') || upper.includes('PROVIDER_ERROR')) return ar() ? 'تعذر تنفيذ الطلب حالياً. تم إرجاع المبلغ إلى رصيدك تلقائياً — راجع الخدمة أو جرّب مرة أخرى.' : 'We could not complete this order right now. Your amount was refunded automatically — check the service or try again.';
   if (upper.includes('ORDER_CREATION_FAILED') || upper.includes('ORDER_ERROR')) return ar() ? 'تعذر إنشاء الطلب حالياً. لم يتم خصم أي مبلغ من رصيدك. حاول مرة أخرى.' : 'We could not create your order right now. Your balance was not charged. Please try again.';
   if (upper.includes('SERVICE_UNAVAILABLE')) return ar() ? 'الخدمة غير متاحة حالياً. من فضلك اختر خدمة أخرى.' : 'This service is currently unavailable. Please choose another service.';
   if (upper.includes('NOT_FOUND')) return ar() ? 'العنصر المطلوب غير موجود أو لم يعد متاحًا.' : 'The requested item was not found or is no longer available.';

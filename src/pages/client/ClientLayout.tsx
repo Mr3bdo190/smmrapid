@@ -1,60 +1,72 @@
 import { useState } from 'react';
 import { useLocation, Link, Outlet, Navigate, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
-import { useTranslation, LanguageSwitcher, ThemeToggle, translations } from '../../lib/i18n';
-import { Award, BadgeCheck, Banknote, Bell, Code, Gamepad2, Gift, Layers, LayoutDashboard, LifeBuoy, Link2, ListOrdered, LogOut, Menu, Plus, Receipt, RefreshCw, Search, ShieldCheck, ShoppingCart, Tags, Terminal, Ticket, User, Users, Wallet, X, Zap } from 'lucide-react';
+import { useTranslation, LanguageSwitcher, ThemeToggle } from '../../lib/i18n';
+import {
+  Banknote, Bell, Code, Gamepad2, Gift, Layers, LayoutDashboard, LifeBuoy, Link2, ListOrdered,
+  LogOut, Menu, Plus, Receipt, RefreshCw, Search, ShieldCheck, ShoppingCart, Tags, Ticket,
+  User, Users, Wallet, X, Zap,
+} from 'lucide-react';
 import { BrandLogo } from '../../components/BrandLogo';
 import { cn } from '../../lib/utils';
+import { useLiveUpdates } from '../../lib/useLive';
+
+type NavGroup = 'main' | 'growth' | 'account';
 
 type NavItem = {
   key: string;
   href: string;
   icon: any;
-  group: 'operations' | 'integration' | 'system';
-  badge?: 'api' | 'dot';
+  group: NavGroup;
+  badge?: 'api' | 'orders' | 'tickets';
 };
 
 const navItems: NavItem[] = [
-  { key: 'nav.dashboard', href: '/dashboard', icon: LayoutDashboard, group: 'operations' },
-  { key: 'nav.newOrder', href: '/dashboard/new-order', icon: ShoppingCart, group: 'operations' },
-  { key: 'nav.orderHistory', href: '/dashboard/orders', icon: ListOrdered, group: 'operations' },
-  { key: 'nav.massOrder', href: '/dashboard/mass-order', icon: Layers, group: 'operations' },
-  { key: 'nav.services', href: '/dashboard/services', icon: Tags, group: 'operations' },
-  { key: 'nav.addFunds', href: '/dashboard/add-funds', icon: Wallet, group: 'operations' },
-  { key: 'nav.transactions', href: '/dashboard/transactions', icon: Receipt, group: 'operations' },
-  { key: 'nav.api', href: '/dashboard/api', icon: Code, group: 'integration', badge: 'api' },
-  { key: 'nav.earnMoney', href: '/dashboard/earn', icon: Link2, group: 'integration' },
-  { key: 'nav.affiliates', href: '/dashboard/affiliates', icon: Users, group: 'integration' },
-  { key: 'nav.tickets', href: '/dashboard/tickets', icon: LifeBuoy, group: 'system' },
-  { key: 'nav.profile', href: '/dashboard/profile', icon: User, group: 'system' },
-  { key: 'nav.lottery', href: '/dashboard/lottery', icon: Ticket, group: 'system' },
-  { key: 'nav.mysteryBoxes', href: '/dashboard/mystery-boxes', icon: Gift, group: 'system' },
-  { key: 'nav.game', href: '/dashboard/game', icon: Gamepad2, group: 'system' },
+  { key: 'nav.dashboard', href: '/dashboard', icon: LayoutDashboard, group: 'main' },
+  { key: 'nav.newOrder', href: '/dashboard/new-order', icon: ShoppingCart, group: 'main' },
+  { key: 'nav.services', href: '/dashboard/services', icon: Tags, group: 'main' },
+  { key: 'nav.orderHistory', href: '/dashboard/orders', icon: ListOrdered, group: 'main', badge: 'orders' },
+  { key: 'nav.massOrder', href: '/dashboard/mass-order', icon: Layers, group: 'main' },
+  { key: 'nav.addFunds', href: '/dashboard/add-funds', icon: Wallet, group: 'main' },
+  { key: 'nav.transactions', href: '/dashboard/transactions', icon: Receipt, group: 'main' },
+  { key: 'nav.api', href: '/dashboard/api', icon: Code, group: 'growth', badge: 'api' },
+  { key: 'nav.affiliates', href: '/dashboard/affiliates', icon: Users, group: 'growth' },
+  { key: 'nav.earnMoney', href: '/dashboard/earn', icon: Link2, group: 'growth' },
+  { key: 'nav.tickets', href: '/dashboard/tickets', icon: LifeBuoy, group: 'account', badge: 'tickets' },
+  { key: 'nav.profile', href: '/dashboard/profile', icon: User, group: 'account' },
+  { key: 'nav.lottery', href: '/dashboard/lottery', icon: Ticket, group: 'account' },
+  { key: 'nav.mysteryBoxes', href: '/dashboard/mystery-boxes', icon: Gift, group: 'account' },
+  { key: 'nav.game', href: '/dashboard/game', icon: Gamepad2, group: 'account' },
 ];
 
-const GROUP_LABEL: Record<NavItem['group'], { en: string; ar: string }> = {
-  operations: { en: 'Operations', ar: 'العمليات' },
-  integration: { en: 'Integration', ar: 'الربط والتكامل' },
-  system: { en: 'System Control', ar: 'التحكم بالنظام' },
-};
+const GROUPS: { key: NavGroup; en: string; ar: string }[] = [
+  { key: 'main', en: 'Ordering & wallet', ar: 'الطلب والرصيد' },
+  { key: 'growth', en: 'Growth & earnings', ar: 'النمو والأرباح' },
+  { key: 'account', en: 'Account & support', ar: 'الحساب والدعم' },
+];
 
 export default function ClientLayout() {
   const { user, dbUser, loading, authError, logOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const { t, dir, lang } = useTranslation();
+  const qc = useQueryClient();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const ar = dir === 'rtl';
+
+  // Live: balance, orders and badges update the moment the server changes.
+  useLiveUpdates();
 
   const { data: config } = useQuery({
     queryKey: ['client-config'],
     queryFn: async () => {
       const res = await apiFetch('/api/client/config', user);
       return res.ok ? res.json() : {};
-    }
+    },
   });
 
   const { data: health } = useQuery({
@@ -68,46 +80,57 @@ export default function ClientLayout() {
 
   const { data: notificationData, refetch: refetchNotifications } = useQuery({
     queryKey: ['client-notifications'],
-    queryFn: async () => { const token = await user?.getIdToken(); const res = await apiFetch('/api/client/notifications', user, { headers: { Authorization: `Bearer ${token}` } }); return res.ok ? res.json() : { notifications: [], unread: 0 }; },
+    queryFn: async () => {
+      const res = await apiFetch('/api/client/notifications', user);
+      return res.ok ? res.json() : { notifications: [], unread: 0 };
+    },
     enabled: !!user,
-    refetchInterval: 30000,
+    refetchInterval: 60_000, // safety net; live pushes arrive immediately
   });
 
   const { data: freshUser } = useQuery({
     queryKey: ['client-me'],
     queryFn: async () => {
-      const token = await user?.getIdToken();
-      const res = await apiFetch('/api/client/me', user, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await apiFetch('/api/client/me', user);
       if (!res.ok) throw new Error('Unable to load account');
       return res.json();
     },
     enabled: !!user,
     staleTime: 10_000,
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
   });
 
-  /** Secondary-language subtitle, mirroring the bilingual rail in the design. */
-  const alt = (key: string) => {
-    const entry = (translations as any)[key];
-    if (!entry) return '';
-    return lang === 'ar' ? entry.en : entry.ar;
-  };
+  // Shared with the dashboard page, so no extra request when both are mounted.
+  const { data: overview } = useQuery({
+    queryKey: ['client-dashboard'],
+    queryFn: async () => {
+      const res = await apiFetch('/api/client/dashboard', user);
+      return res.ok ? res.json() : {};
+    },
+    enabled: !!user,
+    refetchInterval: 60_000,
+  });
 
   const account = freshUser || dbUser;
+  const currency = config?.currencySymbol || '$';
+  const balance = Number(account?.balance || 0).toFixed(2);
+  const activeOrders = Number(overview?.activeOrders ?? ((overview?.ordersByStatus?.pending || 0) + (overview?.ordersByStatus?.processing || 0) + (overview?.ordersByStatus?.['in progress'] || 0))) || 0;
+  const openTickets = Number(overview?.openTickets || 0);
+  const unread = Number(notificationData?.unread || 0);
 
-  if (loading) return <div className="rapid-auth-screen"><div className="rapid-auth-loader"><BrandLogo size={40} /><div className="rapid-spinner"/><strong>{t('common.loading')}</strong><small>Securing your session…</small></div></div>;
+  if (loading) return <div className="rapid-auth-screen"><div className="rapid-auth-loader"><BrandLogo size={40} /><div className="rapid-spinner"/><strong>{t('common.loading')}</strong><small>{ar ? 'بنثبّت جلستك…' : 'Securing your session…'}</small></div></div>;
   if (!user) return <Navigate to="/" replace />;
   if (!dbUser) {
     return (
       <div className="rapid-auth-screen p-4">
         <div className="rapid-auth-loader rapid-auth-error">
           <div className="mb-5 flex justify-center"><BrandLogo size={40} /></div>
-          <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-slate-200">Finishing your secure session</h1>
-          <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">Your login is valid. We’re reconnecting your account data. Nothing has been changed.</p>
-          {user && authError?.code && <p className="mt-3 font-mono text-xs text-amber-600 dark:text-amber-400">Temporary sync code: {authError.code}</p>}
-          <div className="mt-6 flex gap-3 justify-center">
-            {user ? <button onClick={() => window.location.reload()} className="btn-primary"><RefreshCw className="h-4 w-4"/> Retry</button> : <Link to="/" className="btn-primary">Return home</Link>}
-            {user && <button onClick={logOut} className="btn-ghost">Sign out</button>}
+          <h1 className="font-display text-2xl font-bold text-on-surface">{ar ? 'بنجهّز جلستك' : 'Finishing your secure session'}</h1>
+          <p className="mt-2 text-sm leading-6 text-on-surface-variant">{ar ? 'تسجيل الدخول سليم، وبنجهّز بيانات حسابك. مفيش أي تغيير حصل.' : 'Your login is valid. We’re reconnecting your account data. Nothing has been changed.'}</p>
+          {user && authError?.code && <p className="mt-3 font-mono text-xs text-amber-600 dark:text-amber-400">{ar ? 'كود مؤقت:' : 'Temporary sync code:'} {authError.code}</p>}
+          <div className="mt-6 flex justify-center gap-3">
+            {user ? <button onClick={() => window.location.reload()} className="btn-primary"><RefreshCw className="h-4 w-4" /> {ar ? 'إعادة المحاولة' : 'Retry'}</button> : <Link to="/" className="btn-primary">{ar ? 'العودة للرئيسية' : 'Return home'}</Link>}
+            {user && <button onClick={logOut} className="btn-ghost">{t('common.signOut')}</button>}
           </div>
         </div>
       </div>
@@ -121,7 +144,22 @@ export default function ClientLayout() {
     navigate(term ? `/dashboard/services?q=${encodeURIComponent(term)}` : '/dashboard/services');
   };
 
-  const activeItem = navItems.find(i => i.href === location.pathname);
+  const openNotification = async (n: any) => {
+    setNotificationsOpen(false);
+    if (!n.readAt) {
+      try { await apiFetch(`/api/client/notifications/${n.id}/read`, user, { method: 'PUT' }); } catch { /* already gone */ }
+      refetchNotifications();
+      qc.invalidateQueries({ queryKey: ['client-notifications'] });
+    }
+    if (n.link) navigate(n.link);
+  };
+
+  const badgeFor = (item: NavItem) => {
+    if (item.badge === 'api') return 'API v2';
+    if (item.badge === 'orders' && activeOrders > 0) return String(activeOrders);
+    if (item.badge === 'tickets' && openTickets > 0) return String(openTickets);
+    return '';
+  };
 
   return (
     <div className="rapid-app-shell">
@@ -129,179 +167,186 @@ export default function ClientLayout() {
 
       {/* ─── Rail ─────────────────────────────────────────────────────────── */}
       <aside className={cn(
-        "rapid-sidebar fixed inset-y-0 z-40 flex w-64 flex-col justify-between transform transition-transform duration-200 ease-in-out md:relative md:translate-x-0",
-        dir === 'rtl' ? "right-0 border-l" : "left-0 border-r",
-        isMobileMenuOpen ? "translate-x-0" : (dir === 'rtl' ? "translate-x-full" : "-translate-x-full")
+        'client-rail fixed inset-y-0 z-40 flex flex-col transform transition-transform duration-200 ease-in-out md:relative md:translate-x-0',
+        dir === 'rtl' ? 'right-0 border-l' : 'left-0 border-r',
+        isMobileMenuOpen ? 'translate-x-0' : (dir === 'rtl' ? 'translate-x-full' : '-translate-x-full'),
       )}>
-        <div className="flex min-h-0 flex-1 flex-col">
-          {/* Brand head */}
-          <div className="rapid-sidebar-head flex h-16 shrink-0 items-center gap-2 px-gutter">
-            <BrandLogo size={32} showTagline />
-            <button onClick={() => setIsMobileMenuOpen(false)} className="ms-auto text-slate-400 hover:text-slate-100 md:hidden"><X className="h-5 w-5" /></button>
-          </div>
-
-          {/* API engine status */}
-          <div className="px-gutter-sm py-space-sm">
-            <div className="flex items-center justify-between rounded-xl bg-surface-container px-space-md py-space-sm dark:bg-surface-container">
-              <div className="flex items-center gap-1">
-                <Terminal className="text-tertiary h-[18px] w-[18px] shrink-0" />
-                <span className="font-mono text-label-sm uppercase tracking-wider text-on-surface-variant dark:text-on-surface-variant">API Engine</span>
-              </div>
-              <span className="flex items-center gap-1 font-mono text-code-xs text-tertiary dark:text-tertiary">
-                <span className={cn("pulse-dot", health?.ok ? "bg-tertiary" : "bg-critical", health?.ok && "animate-pulse")} />
-                {health?.ok ? 'Live' : 'Offline'}
-              </span>
-            </div>
-          </div>
-
-          {/* Navigation */}
-          <nav className="rapid-sidebar-nav flex-1 space-y-0.5 overflow-y-auto px-gutter-sm">
-            {(['operations', 'integration', 'system'] as const).map(group => (
-              <div key={group}>
-                <div className="rapid-nav-label px-space-md pb-0.5 pt-space-md">{GROUP_LABEL[group][lang === 'ar' ? 'ar' : 'en']}</div>
-                {navItems.filter(i => i.group === group).map(item => {
-                  const isActive = location.pathname === item.href;
-                  return (
-                    <Link
-                      key={item.key}
-                      to={item.href}
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className={cn("rapid-nav-item justify-between", isActive && "is-active")}
-                    >
-                      <span className="flex items-center gap-space-md">
-                        <item.icon className="h-[18px] w-[18px]" />
-                        <span>{t(item.key)}</span>
-                      </span>
-                      {item.badge === 'api' ? (
-                        <span className="rapid-nav-hot">v2.4</span>
-                      ) : (
-                        <span className="hidden truncate font-mono text-code-xs opacity-70 lg:inline">{alt(item.key)}</span>
-                      )}
-                    </Link>
-                  );
-                })}
-                {group === 'system' && dbUser.isAdmin && (
-                  <Link to="/admin" onClick={() => setIsMobileMenuOpen(false)} className="rapid-nav-item justify-between">
-                    <span className="flex items-center gap-space-md">
-                      <ShieldCheck className="h-[18px] w-[18px]" />
-                      <span>Admin Switcher</span>
-                    </span>
-                    <span className="h-2 w-2 rounded-full bg-secondary" />
-                  </Link>
-                )}
-              </div>
-            ))}
-          </nav>
+        <div className="client-rail-head flex h-16 shrink-0 items-center gap-2.5 px-4">
+          <BrandLogo size={30} />
+          <span className="text-[15px] font-black tracking-tight text-white">SMM<span className="text-violet-400">Rapid</span></span>
+          <button onClick={() => setIsMobileMenuOpen(false)} className="ms-auto text-white/50 hover:text-white md:hidden" aria-label={ar ? 'إغلاق' : 'Close'}><X className="h-5 w-5" /></button>
         </div>
 
-        {/* Foot */}
-        <div className="rapid-sidebar-foot space-y-2 p-gutter-sm">
-          <div className="flex items-center justify-between gap-space-sm rounded-xl bg-surface-container p-space-md dark:bg-surface-container">
-            <div className="flex min-w-0 flex-col">
-              <span className="font-mono text-label-sm uppercase tracking-wider text-on-surface-variant dark:text-on-surface-variant">Tier Level</span>
-              <span className="truncate font-display text-headline-sm font-semibold text-primary dark:text-primary">{dbUser.isAdmin ? 'Administrator' : 'Standard Member'}</span>
+        {/* wallet + the two actions people actually repeat */}
+        <div className="shrink-0 px-3 py-3">
+          <div className="client-wallet-card">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] font-extrabold uppercase tracking-[.12em] text-white/60">{t('common.currentBalance')}</span>
+              <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-white/70">
+                <span className={cn('h-1.5 w-1.5 rounded-full', health?.ok ? 'bg-emerald-400' : 'bg-red-400')} />
+                {health?.ok ? (ar ? 'متصل' : 'Live') : (ar ? 'غير متصل' : 'Offline')}
+              </span>
             </div>
-            {dbUser.isAdmin
-              ? <BadgeCheck className="h-6 w-6 shrink-0 text-primary dark:text-primary" />
-              : <Award className="h-6 w-6 shrink-0 text-primary dark:text-primary" />}
+            <p className="client-wallet-value">
+              {currency}{balance}
+              <span className="ms-1 text-[11px] font-bold text-white/45">{config?.currencyCode || 'USD'}</span>
+            </p>
+            <div className="mt-2.5 flex gap-2">
+              <Link to="/dashboard/add-funds" onClick={() => setIsMobileMenuOpen(false)}
+                className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-violet-500 px-2 py-1.5 text-[11px] font-bold text-white transition-colors hover:bg-violet-400">
+                <Plus className="h-3.5 w-3.5" />{t('nav.addFunds')}
+              </Link>
+              <Link to="/dashboard/new-order" onClick={() => setIsMobileMenuOpen(false)}
+                className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-white/10 px-2 py-1.5 text-[11px] font-bold text-white transition-colors hover:bg-white/20">
+                <Zap className="h-3.5 w-3.5" />{t('nav.newOrder')}
+              </Link>
+            </div>
           </div>
-          <LanguageSwitcher className="w-full justify-center border border-outline-variant text-on-surface-variant hover:bg-surface-container-high dark:border-outline-variant dark:text-on-surface-variant dark:hover:bg-surface-container-high" />
-          <button onClick={logOut} className="rapid-nav-item w-full justify-start"><LogOut className="h-[18px] w-[18px]" /> {t('common.signOut')}</button>
+        </div>
+
+        <nav className="client-rail-nav min-h-0 flex-1 overflow-y-auto pb-2">
+          {GROUPS.map(group => (
+            <div key={group.key} className="client-nav-group">
+              <div className="client-nav-group-label">{ar ? group.ar : group.en}</div>
+              {navItems.filter(i => i.group === group.key).map(item => {
+                const isActive = location.pathname === item.href;
+                const chip = badgeFor(item);
+                return (
+                  <Link key={item.key} to={item.href} onClick={() => setIsMobileMenuOpen(false)}
+                    className={cn('client-nav-link', isActive && 'is-active')} aria-current={isActive ? 'page' : undefined}>
+                    <span className="client-nav-icon"><item.icon className="h-[17px] w-[17px]" /></span>
+                    <span className="truncate">{t(item.key)}</span>
+                    {chip && <span className="client-nav-chip">{chip}</span>}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
+
+          {dbUser.isAdmin && (
+            <div className="client-nav-group">
+              <div className="client-nav-group-label">{ar ? 'الإدارة' : 'Administration'}</div>
+              <Link to="/admin" onClick={() => setIsMobileMenuOpen(false)} className="client-nav-link">
+                <span className="client-nav-icon"><ShieldCheck className="h-[17px] w-[17px]" /></span>
+                <span className="truncate">{ar ? 'لوحة الأدمن' : 'Admin console'}</span>
+              </Link>
+            </div>
+          )}
+        </nav>
+
+        <div className="client-rail-foot shrink-0 px-3 py-3">
+          <div className="flex items-center gap-2.5 rounded-xl bg-white/[.04] px-3 py-2">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/25 text-sm font-bold text-violet-200">
+              {(account?.email || 'R')[0].toUpperCase()}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[13px] font-bold text-white">{account?.name || account?.email?.split('@')[0]}</span>
+              <span className="block truncate font-mono text-[10px] text-white/45">{account?.email}</span>
+            </span>
+          </div>
+          <div className="mt-2 flex items-center gap-2">
+            <ThemeToggle className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/[.06] p-0 text-white/70 hover:bg-white/[.12] hover:text-white" />
+            <LanguageSwitcher className="h-9 flex-1 justify-center rounded-xl border border-white/10 text-white/70 hover:bg-white/[.08] hover:text-white" />
+            <button onClick={logOut} title={t('common.signOut')} aria-label={t('common.signOut')}
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/[.06] text-white/70 transition-colors hover:bg-red-500/20 hover:text-red-300">
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </aside>
 
       {/* ─── Column ───────────────────────────────────────────────────────── */}
       <div className="flex min-w-0 flex-1 flex-col md:ps-64">
-        <header className="rapid-topbar fixed inset-x-0 top-0 z-30 flex h-16 items-center justify-between px-gutter-lg md:ps-64">
-          <div className="flex flex-1 items-center gap-space-md">
-            <button onClick={() => setIsMobileMenuOpen(true)} className="text-on-surface-variant hover:text-on-surface md:hidden"><Menu className="h-5 w-5" /></button>
+        <header className="rapid-topbar fixed inset-x-0 top-0 z-30 flex h-16 items-center justify-between gap-3 px-4 md:ps-64">
+          <div className="flex flex-1 items-center gap-3">
+            <button onClick={() => setIsMobileMenuOpen(true)} className="text-on-surface-variant hover:text-on-surface md:hidden" aria-label={ar ? 'القائمة' : 'Menu'}><Menu className="h-5 w-5" /></button>
             <form onSubmit={submitSearch} className="relative w-full max-w-md">
-              <Search className="absolute start-space-md top-1/2 -translate-y-1/2 text-slate-500 dark:text-outline h-[18px] w-[18px] shrink-0" />
+              <Search className="absolute start-3 top-1/2 h-[18px] w-[18px] shrink-0 -translate-y-1/2 text-outline" />
               <input
                 type="search"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="h-10 w-full rounded-xl border border-transparent bg-surface-container ps-10 pe-space-md font-body-sm text-body-sm text-on-surface placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary/40 dark:bg-surface-container"
+                className="h-10 w-full rounded-xl border border-transparent bg-surface-container ps-10 pe-3 text-sm text-on-surface placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary/40"
                 placeholder={t('client.globalSearchPlaceholder')}
               />
             </form>
           </div>
 
-          <div className="flex items-center gap-space-md">
-            {/* Balance */}
-            <div className="hidden items-center gap-space-sm rounded-xl bg-surface-container px-space-md py-space-xs sm:flex dark:bg-surface-container">
-              <Banknote className="text-tertiary h-[18px] w-[18px] shrink-0" />
-              <div className="flex flex-col">
-                <span className="font-mono text-code-xs leading-none text-on-surface-variant dark:text-on-surface-variant">{t('common.currentBalance')}</span>
-                <span className="font-mono text-code-sm font-medium tabular-nums text-on-surface dark:text-on-surface">
-                  {config?.currencySymbol || '$'}{Number(account?.balance || 0).toFixed(2)} {config?.currencyCode || 'USD'}
-                </span>
-              </div>
-              <Link to="/dashboard/add-funds" className="ms-1 flex h-6 w-6 items-center justify-center rounded-lg bg-surface-container-high text-tertiary transition-colors hover:bg-surface-bright">
-                <Plus className="h-[16px] w-[16px] shrink-0" />
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="hidden items-center gap-2 rounded-xl bg-surface-container px-3 py-1.5 sm:flex">
+              <Banknote className="h-[18px] w-[18px] shrink-0 text-tertiary" />
+              <span className="flex flex-col leading-none">
+                <span className="text-[10px] text-on-surface-variant">{t('common.currentBalance')}</span>
+                <span className="font-mono text-sm font-bold tabular-nums text-on-surface">{currency}{balance}</span>
+              </span>
+              <Link to="/dashboard/add-funds" className="ms-1 flex h-6 w-6 items-center justify-center rounded-lg bg-surface-container-high text-tertiary transition-colors hover:bg-surface-bright" aria-label={t('nav.addFunds')}>
+                <Plus className="h-4 w-4" />
               </Link>
             </div>
 
-            {/* Instant order */}
-            <Link to="/dashboard/new-order" className="inline-flex items-center gap-1 rounded-xl bg-primary-container px-space-md py-space-sm font-label-lg text-label-lg font-semibold text-on-primary-container shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] transition-all hover:bg-primary">
+            <Link to="/dashboard/new-order" className="inline-flex items-center gap-1 rounded-xl bg-primary-container px-3 py-2.5 text-sm font-bold text-on-primary-container transition-colors hover:bg-primary">
               <Zap className="h-[18px] w-[18px] shrink-0" />
               <span className="hidden sm:inline">{t('nav.newOrder')}</span>
             </Link>
 
-            {/* Notifications */}
             <div className="relative">
               <button
                 aria-label={t('notifications.title')}
                 onClick={() => setNotificationsOpen(v => !v)}
-                className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-surface-container text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface dark:bg-surface-container"
+                className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-surface-container text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface"
               >
                 <Bell className="h-[18px] w-[18px] shrink-0" />
-                {notificationData?.unread > 0 && <span className="absolute end-2 top-2 h-2 w-2 rounded-full bg-error ring-2 ring-surface-container" />}
+                {unread > 0 && (
+                  <span className="absolute -end-1 -top-1 min-w-[18px] rounded-full bg-error px-1 text-center font-mono text-[10px] font-bold leading-[18px] text-white">{unread > 99 ? '99+' : unread}</span>
+                )}
               </button>
               {notificationsOpen && (
-                <div className="absolute end-0 top-12 z-50 w-[min(360px,calc(100vw-2rem))] rounded-xl border border-slate-700 bg-slate-800 p-3 shadow-float dark:border-slate-700 dark:bg-slate-800">
-                  <div className="flex items-center justify-between border-b border-slate-700 px-2 pb-2 dark:border-slate-700">
-                    <b className="font-display text-sm font-semibold">{t('notifications.title')}</b>
-                    <button className="text-xs text-primary dark:text-primary" onClick={async () => { const token = await user?.getIdToken(); await apiFetch('/api/client/notifications/read-all', user, { method: 'PUT', headers: { Authorization: `Bearer ${token}` } }); await refetchNotifications(); }}>{t('notifications.markAll')}</button>
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setNotificationsOpen(false)} />
+                  <div className="absolute end-0 z-50 mt-2 w-[min(92vw,380px)] overflow-hidden rounded-xl border border-outline-variant bg-surface-container shadow-2xl">
+                    <div className="flex items-center justify-between border-b border-outline-variant px-4 py-3">
+                      <b className="text-sm font-bold text-on-surface">{t('notifications.title')} {unread > 0 && <span className="text-error">({unread})</span>}</b>
+                      <button className="text-xs font-bold text-primary hover:underline"
+                        onClick={async () => { await apiFetch('/api/client/notifications/read-all', user, { method: 'PUT' }); refetchNotifications(); }}>
+                        {t('notifications.markAll')}
+                      </button>
+                    </div>
+                    <div className="max-h-80 overflow-y-auto">
+                      {(notificationData?.notifications || []).length === 0
+                        ? <p className="p-4 text-sm text-on-surface-variant">{t('notifications.empty')}</p>
+                        : (notificationData.notifications || []).map((n: any) => (
+                          <button key={n.id} onClick={() => openNotification(n)}
+                            className="flex w-full items-start gap-3 border-b border-outline-variant px-4 py-3 text-start transition-colors last:border-0 hover:bg-surface-container-high">
+                            <span className={cn('mt-1.5 h-2 w-2 shrink-0 rounded-full', n.readAt ? 'bg-outline' : 'bg-error')} />
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-sm font-bold text-on-surface">{n.title}</span>
+                              <span className="mt-0.5 block text-xs leading-relaxed text-on-surface-variant">{n.message}</span>
+                              <span className="mt-1 block font-mono text-[10px] text-on-surface-variant/80">{n.createdAt ? new Date(n.createdAt).toLocaleString() : ''}</span>
+                            </span>
+                          </button>
+                        ))}
+                    </div>
                   </div>
-                  <div className="max-h-80 overflow-y-auto">
-                    {(notificationData?.notifications || []).length === 0
-                      ? <p className="p-4 text-xs text-slate-400 dark:text-slate-400">{t('notifications.empty')}</p>
-                      : (notificationData.notifications || []).map((n: any) => (
-                        <button key={n.id} onClick={async () => { const token = await user?.getIdToken(); if (!n.readAt) await apiFetch(`/api/client/notifications/${n.id}/read`, user, { method: 'PUT', headers: { Authorization: `Bearer ${token}` } }); await refetchNotifications(); if (n.link) window.location.href = n.link; }} className={cn("mt-1 w-full rounded-lg p-3 text-start", n.readAt ? 'bg-slate-700/40' : 'bg-indigo-500/15')}>
-                          <div className="text-xs font-semibold">{n.title}</div>
-                          <div className="mt-1 text-xs text-slate-400 dark:text-slate-400">{n.message}</div>
-                          <div className="mt-1 font-mono text-[10px] text-outline">{n.createdAt ? new Date(n.createdAt).toLocaleString() : ''}</div>
-                        </button>
-                      ))}
-                  </div>
-                </div>
+                </>
               )}
             </div>
 
-            {/* Theme + identity */}
-            <ThemeButton />
-            <div className="flex min-w-0 items-center gap-space-sm ps-space-sm">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-100 font-semibold text-violet-700 ring-1 ring-outline/30 dark:bg-violet-900/40 dark:text-violet-300">{(account?.email || 'R')[0].toUpperCase()}</span>
-              <div className="hidden min-w-0 flex-col xl:flex">
-                <span className="max-w-[180px] truncate font-label-lg text-label-lg leading-tight text-on-surface">{account?.name || account?.email?.split('@')[0]}</span>
-                <span className="max-w-[180px] truncate font-mono text-code-xs text-on-surface-variant dark:text-on-surface-variant">{account?.email}</span>
-              </div>
-            </div>
+            <ThemeToggle className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-container p-0 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface" />
           </div>
         </header>
 
-        <div className="rapid-content mt-16 flex-1 overflow-y-auto"><div className="client-page-frame mx-auto w-full max-w-[1480px]">
-          <Outlet />
-        </div></div>
+        <div className="rapid-content mt-16 flex-1 overflow-y-auto">
+          <div className="client-page-frame mx-auto w-full max-w-[1480px]"><Outlet /></div>
+        </div>
 
-        <nav className="rapid-mobile-nav md:hidden">{navItems.slice(0, 5).map(item => <Link key={item.key} to={item.href} className={location.pathname === item.href ? 'active' : ''}><item.icon /><span>{t(item.key)}</span></Link>)}</nav>
+        <nav className="rapid-mobile-nav md:hidden">
+          {navItems.slice(0, 5).map(item => (
+            <Link key={item.key} to={item.href} className={location.pathname === item.href ? 'active' : ''}>
+              <item.icon /><span>{t(item.key)}</span>
+            </Link>
+          ))}
+        </nav>
       </div>
     </div>
   );
-}
-
-/** Theme toggle re-styled to the design's 40px control slot. */
-function ThemeButton() {
-  return <ThemeToggle className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-container p-0 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface dark:bg-surface-container dark:text-on-surface-variant" />;
 }

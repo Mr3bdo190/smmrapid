@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
 import { useParams, Link } from 'react-router-dom';
+import { useEffect } from 'react';
 import { ArrowLeft, Send, CheckCircle } from 'lucide-react';
 import { notify } from '../../lib/notify';
 
@@ -12,6 +13,15 @@ export default function AdminTicketView() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [message, setMessage] = useState('');
+
+  // This ticket's notification items are cleared only when this ticket is actually opened.
+  useEffect(() => {
+    if (!user || !id) return;
+    const qs = new URLSearchParams({ link: `/admin/tickets/${id}` });
+    apiFetch(`/api/admin/notifications/read-all?${qs.toString()}`, user, { method: 'PUT' })
+      .then(() => queryClient.invalidateQueries({ queryKey: ['admin-notifications'] }))
+      .catch(() => undefined);
+  }, [user, id, queryClient]);
 
   const { data: ticketData, isLoading } = useQuery({
     queryKey: ['admin-ticket', id],

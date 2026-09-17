@@ -1229,3 +1229,86 @@ html:not(.dark) .blog-cta p { color: #475569; }
 @media (max-width: 1023px) {
   .blog-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Client rail (v2) — grouped navigation, wallet card, quiet footer.
+   Scoped to .client-rail so the admin shell keeps its own look.
+   ══════════════════════════════════════════════════════════════════════════ */
+.client-rail {
+  width: 17rem;
+  background: linear-gradient(180deg, #04101f 0%, #020b16 100%);
+  border-color: #16273a;
+  color: #cfe0f7;
+}
+.client-rail-head { border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+.client-rail-nav { scrollbar-width: thin; scrollbar-color: #1b2b3f transparent; }
+.client-rail-foot { border-top: 1px solid rgba(255, 255, 255, 0.06); }
+.client-wallet-card {
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: radial-gradient(130% 130% at 0% 0%, rgba(139, 92, 246, 0.30), rgba(255, 255, 255, 0.03) 62%);
+  padding: 12px 14px;
+}
+.client-wallet-value {
+  font-family: var(--font-mono);
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  line-height: 1.35;
+}
+.client-nav-group { padding: 10px 8px 0; }
+.client-nav-group-label {
+  padding: 0 10px 6px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(207, 224, 247, 0.42);
+}
+.client-nav-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: rgba(207, 224, 247, 0.78);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.client-nav-link:hover { background: rgba(255, 255, 255, 0.06); color: #ffffff; }
+.client-nav-link.is-active { background: rgba(129, 140, 248, 0.16); color: #ffffff; }
+.client-nav-link.is-active::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 0;
+  top: 22%;
+  bottom: 22%;
+  width: 3px;
+  border-radius: 999px;
+  background: #818cf8;
+}
+.client-nav-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+}
+.client-nav-link.is-active .client-nav-icon { background: rgba(129, 140, 248, 0.3); color: #ffffff; }
+.client-nav-chip {
+  margin-inline-start: auto;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.09);
+  font-family: var(--font-mono);
+  font-size: 0.63rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.client-rail .client-nav-link:focus-visible { outline: 2px solid #818cf8; outline-offset: 2px; }

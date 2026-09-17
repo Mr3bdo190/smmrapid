@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { useLocation, Link, Outlet, Navigate } from 'react-router-dom';
+import { useLocation, useNavigate, Link, Outlet, Navigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/api';
 import { useTranslation, LanguageSwitcher, ThemeToggle } from '../../lib/i18n';
-import { LayoutDashboard, Users, ShoppingCart, Settings, Server, Tags, ListOrdered, Wallet, LogOut, Menu, X, Ticket, LifeBuoy, Link2, Gift, ShieldAlert, History, Handshake, Mail, ArrowLeft } from 'lucide-react';
+import { LayoutDashboard, Users, ShoppingCart, Settings, Server, Tags, ListOrdered, Wallet, LogOut, Menu, X, Ticket, LifeBuoy, Link2, Gift, ShieldAlert, History, Handshake, Mail, ArrowLeft, Bell, Check } from 'lucide-react';
 import { BrandLogo } from '../../components/BrandLogo';
 import { cn } from '../../lib/utils';
+import { useLiveUpdates } from '../../lib/useLive';
 
 const navItems = [
   { key: 'nav.admin.dashboard', href: '/admin', icon: LayoutDashboard },
@@ -31,8 +32,36 @@ const navItems = [
 export default function AdminLayout() {
   const { dbUser, loading, logOut, user } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const { t, dir } = useTranslation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [bellOpen, setBellOpen] = useState(false);
+
+  // Live: balances, order rows and the badge move the moment the server changes.
+  useLiveUpdates();
+
+  const notifQ = useQuery({
+    queryKey: ['admin-notifications'],
+    queryFn: async () => {
+      const res = await apiFetch('/api/admin/notifications', user);
+      return res.ok ? res.json() : { notifications: [], unread: 0 };
+    },
+    enabled: !!user,
+    refetchInterval: 60_000, // safety net only — SSE pushes arrive immediately
+  });
+  const notifications: any[] = notifQ.data?.notifications || [];
+  const unread = Number(notifQ.data?.unread || 0);
+
+  const openNotification = async (n: any) => {
+    setBellOpen(false);
+    try { await apiFetch(`/api/admin/notifications/${n.id}/read`, user, { method: 'PUT' }); } catch { /* already gone */ }
+    notifQ.refetch();
+    if (n.link) navigate(n.link);
+  };
+  const clearAll = async () => {
+    try { await apiFetch('/api/admin/notifications/read-all', user, { method: 'PUT' }); } catch { /* ignore */ }
+    notifQ.refetch();
+  };
 
   const { data: config } = useQuery({
     queryKey: ['client-config'],
@@ -117,6 +146,44 @@ export default function AdminLayout() {
             <h2 className="truncate font-display text-headline-sm font-semibold text-on-surface">{activeItem ? t(activeItem.key) : t('nav.admin.title')}</h2>
           </div>
           <div className="flex items-center gap-space-md">
+            <div className="relative">
+              <button onClick={() => setBellOpen(v => !v)} aria-label={t('nav.notifications') || 'Notifications'}
+                className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-surface-container text-on-surface-variant transition-colors hover:bg-surface-container-high">
+                <Bell className="h-[18px] w-[18px]" />
+                {unread > 0 && (
+                  <span className="absolute -end-1 -top-1 min-w-[18px] rounded-full bg-critical px-1 text-center font-mono text-[10px] font-bold leading-[18px] text-white">{unread > 99 ? '99+' : unread}</span>
+                )}
+              </button>
+              {bellOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setBellOpen(false)} />
+                  <div className="absolute end-0 z-50 mt-2 w-[min(92vw,380px)] overflow-hidden rounded-xl border border-outline-variant bg-surface-container shadow-2xl">
+                    <div className="flex items-center justify-between border-b border-outline-variant px-4 py-3">
+                      <span className="text-sm font-bold text-on-surface">{t('nav.notifications') || 'Notifications'} {unread > 0 && <span className="text-critical">({unread})</span>}</span>
+                      {unread > 0 && (
+                        <button onClick={clearAll} className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline">
+                          <Check className="h-3.5 w-3.5" />{t('common.markAllRead') || 'Mark all read'}
+                        </button>
+                      )}
+                    </div>
+                    <div className="max-h-[60vh] overflow-y-auto">
+                      {notifications.length === 0 && <p className="px-4 py-6 text-center text-sm text-on-surface-variant">{t('common.noNotifications') || 'Nothing yet'}</p>}
+                      {notifications.map((n: any) => (
+                        <button key={n.id} onClick={() => openNotification(n)}
+                          className="flex w-full items-start gap-3 border-b border-outline-variant px-4 py-3 text-start transition-colors last:border-0 hover:bg-surface-container-high">
+                          <span className={cn('mt-1.5 h-2 w-2 shrink-0 rounded-full', n.readAt ? 'bg-outline' : 'bg-critical')} />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-bold text-on-surface">{n.title}</span>
+                            <span className="mt-0.5 block text-xs leading-relaxed text-on-surface-variant">{n.message}</span>
+                            <span className="mt-1 block font-mono text-[11px] text-on-surface-variant/80">{new Date(n.createdAt).toLocaleString()}</span>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
             <button onClick={logOut} className="btn-ghost hidden md:inline-flex"><LogOut className="h-4 w-4" /> {t('common.signOut')}</button>
             <span className="hidden font-mono text-code-xs text-on-surface-variant lg:inline">{dbUser.email}</span>
             <span className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-900/40 font-semibold text-violet-300 ring-1 ring-outline/30">{dbUser.email[0].toUpperCase()}</span>

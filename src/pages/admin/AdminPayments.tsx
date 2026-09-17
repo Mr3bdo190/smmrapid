@@ -13,9 +13,25 @@ async function readApiError(res: Response, fallback: string) {
 
 const PAGE_SIZE = 100;
 
+/**
+ * Opening the queue means the deposit requests were seen, so their notification items are cleared
+ * (one item per request — the badge drops by exactly what was actually looked at).
+ */
+function useClearQueueNotifications(kind: string, user: any, link?: string) {
+  const qc = useQueryClient();
+  useEffect(() => {
+    if (!user) return;
+    const qs = new URLSearchParams({ type: kind, ...(link ? { link } : {}) });
+    apiFetch(`/api/admin/notifications/read-all?${qs.toString()}`, user, { method: 'PUT' })
+      .then(() => qc.invalidateQueries({ queryKey: ['admin-notifications'] }))
+      .catch(() => undefined);
+  }, [user, kind, link, qc]);
+}
+
 export default function AdminPayments() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  useClearQueueNotifications('admin_payment', user);
   const [q,setQ]=useState(''); const [status,setStatus]=useState('all'); const [page,setPage]=useState(1);
   useEffect(()=>{setPage(1)},[status]);
 

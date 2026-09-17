@@ -20,6 +20,7 @@ import {
 import { adminAuth } from './src/lib/firebase-admin';
 import { ProviderClient, placeOrderToProvider, startProviderWorker, checkOrderStatus, refundOrderOnce } from './src/lib/provider-engine';
 import { encryptSecret, decryptSecret, isEncryptedSecret } from './src/lib/secret-crypto';
+import { sseAdd, sseRemove, ssePush, sseCount } from './src/lib/live';
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
@@ -247,13 +248,40 @@ const publicUser = (u: any) => {
 
 async function createNotificationTx(tx: any, userId: string, type: string, title: string, message: string, link?: string) {
   await tx.insert(notifications).values({ userId, type, title, message, link: link || null });
+  ssePush(userId, 'notification', { type, title, message, link: link || null });
 }
 
 async function createNotification(userId: string, type: string, title: string, message: string, link?: string) {
   try {
     await db.insert(notifications).values({ userId, type, title, message, link: link || null });
+    ssePush(userId, 'notification', { type, title, message, link: link || null });
   } catch (e) {
     console.error('[notifications] create failed:', e instanceof Error ? e.message : e);
+  }
+}
+
+let adminIdCache: { ids: string[]; expires: number } = { ids: [], expires: 0 };
+/** Users who can see the admin queue (role = admin), cached briefly to keep SSE pushes cheap. */
+async function adminUserIds() {
+  if (adminIdCache.expires > Date.now()) return adminIdCache.ids;
+  try {
+    const rows = await db.select({ id: users.id }).from(users).where(eq(users.role, 'admin' as any));
+    adminIdCache = { ids: rows.map((r: any) => String(r.id)), expires: Date.now() + 30_000 };
+  } catch {
+    adminIdCache = { ids: [], expires: Date.now() + 5_000 };
+  }
+  return adminIdCache.ids;
+}
+/**
+ * Something happened that the admin must act on (a support message, a deposit request, a pending
+ * payment). Every admin gets their own notification row, so the badge counts ITEMS and marking one
+ * as read drops the number by exactly one.
+ */
+async function notifyAdmins(type: string, title: string, message: string, link: string) {
+  const ids = await adminUserIds();
+  for (const id of ids) {
+    await createNotification(id, type, title, message, link);
+    ssePush(id, 'admin-queue', { type, title, message, link });
   }
 }
 
@@ -296,6 +324,7 @@ async function creditWallet(tx: any, userId: string, amount: number, description
   const next = money(num(u.balance) + a);
   await tx.update(users).set({ balance: next.toFixed(4) }).where(eq(users.id, userId));
   await tx.insert(walletLedger).values({ id: crypto.randomUUID(), userId, amount: a.toFixed(4), type: 'credit', description, referenceId: referenceId ?? null, createdAt: new Date() });
+  ssePush(userId, 'balance', { balance: next.toFixed(4), delta: a.toFixed(4) });
 }
 
 async function debitWallet(tx: any, userId: string, amount: number, description: string, referenceId?: string) {
@@ -308,6 +337,7 @@ async function debitWallet(tx: any, userId: string, amount: number, description:
   const next = money(current - a);
   await tx.update(users).set({ balance: next.toFixed(4) }).where(eq(users.id, userId));
   await tx.insert(walletLedger).values({ id: crypto.randomUUID(), userId, amount: (-a).toFixed(4), type: 'debit', description, referenceId: referenceId ?? null, createdAt: new Date() });
+  ssePush(userId, 'balance', { balance: next.toFixed(4), delta: (-a).toFixed(4) });
 }
 
 const requireAuth = async (req: any, res: any, next: any) => {
@@ -354,6 +384,34 @@ const requireAdmin = (req: any, res: any, next: any) => req.dbUser?.role === 'ad
 app.get('/api/health', publicReadLimiter, async (_req, res) => {
   try { await db.execute(sql`select 1`); res.json({ ok: true, service: 'smm-panel', time: new Date().toISOString() }); }
   catch { apiError(res, 503, 'Database unavailable', 'DB_UNAVAILABLE'); }
+});
+
+/**
+ * Live updates for the signed-in browser: one SSE stream per tab.
+ * EventSource cannot send an Authorization header, so the token is accepted from the query string
+ * as well (same Firebase verification either way).
+ */
+app.get('/api/events', async (req: any, res: any) => {
+  const header = req.headers.authorization;
+  const token = header?.startsWith('Bearer ') ? header.slice(7).trim() : String(req.query?.token || '').trim();
+  if (!token) return apiError(res, 401, 'Unauthorized', 'UNAUTHORIZED');
+  let decoded: any;
+  try { decoded = await adminAuth.verifyIdToken(token); }
+  catch { return apiError(res, 401, 'Firebase authentication failed. Please sign in again.', 'INVALID_TOKEN'); }
+  const uid = String(decoded?.uid || '');
+  if (!uid) return apiError(res, 401, 'Unauthorized', 'UNAUTHORIZED');
+
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream; charset=utf-8',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
+  res.write('retry: 5000\n\n');
+  res.write('event: ready\ndata: {"ok":true}\n\n');
+  sseAdd(uid, res);
+  const beat = setInterval(() => { try { res.write(': keepalive\n\n'); } catch { /* stream closed */ } }, 25_000);
+  req.on('close', () => { clearInterval(beat); sseRemove(uid, res); });
 });
 
 // Small in-memory cache for public, read-only data. It prevents every landing-page click/refresh
@@ -792,6 +850,7 @@ app.post('/api/client/payments', paymentLimiter, requireAuth, async (req: any, r
     status: 'Pending',
     transactionDetails: { ...details, egpAmount: amountEgp.toFixed(2), rate },
   }).returning();
+  await notifyAdmins('admin_payment','New deposit request',`${req.dbUser?.email || 'A customer'} requested ${amountEgp.toFixed(2)} EGP ($${usdAmount.toFixed(2)}) via ${method}.`,'/admin/payments');
   res.status(201).json(p);
 });
 
@@ -925,6 +984,7 @@ app.post('/api/heleket/create', paymentLimiter, requireAuth, async (req: any, re
         transactionId: String(result?.uuid || orderId),
         transactionDetails: { gateway: 'heleket', currency, invoiceUuid: result?.uuid || null, orderId, response: result },
       }).where(eq(payments.id, p.id));
+      await notifyAdmins('admin_payment','New crypto deposit invoice',`${req.dbUser?.email || 'A customer'} started a $${money(amount).toFixed(2)} crypto deposit.`,'/admin/payments');
       res.json({ paymentId: p.id, orderId, invoiceUuid: result?.uuid, paymentUrl: result?.url, expiresAt: result?.expired_at || null });
     } catch (invoiceErr: any) {
       // Don't leave an orphaned "Pending" payment row behind if Heleket never actually issued an invoice.
@@ -1070,6 +1130,7 @@ app.post('/api/shahnawy/create', paymentLimiter, requireAuth, async (req:any, re
         transactionId: d.id || d.transaction_id ? String(d.id || d.transaction_id) : null,
         transactionDetails: { gateway:'shahnawy', walletMethod:method, senderWallet:number, egpAmount:amountEgp.toFixed(2), rate, merchantWalletNumber:cfg.merchantWalletNumber, reference:d.reference || null, gatewayResponse:result }
       }).where(eq(payments.id,p.id));
+      await notifyAdmins('admin_payment','New wallet deposit request',`${req.dbUser?.email || 'A customer'} requested ${money(amountEgp).toFixed(2)} EGP ($${usdAmount.toFixed(2)}).`,'/admin/payments');
       res.status(201).json({ paymentId:p.id, transactionId:d.id, reference:d.reference, status:d.status || 'pending', amountEgp, usdAmount:usdAmount.toFixed(2) });
     } catch (e:any) {
       await db.update(payments).set({ status:'Rejected', transactionDetails:{ gateway:'shahnawy', error:e?.message || String(e), gatewayBody:e?.gatewayBody || null } }).where(eq(payments.id,p.id));
@@ -1175,11 +1236,41 @@ app.get('/api/admin/affiliates',requireAuth,requireAdmin,async(_req:any,res:any)
 
 // Client support ticket APIs.
 app.get('/api/client/tickets',requireAuth,async(req:any,res:any)=>{try{const rows=await db.select().from(tickets).where(eq(tickets.userId,req.dbUser.id)).orderBy(desc(tickets.createdAt));res.json(rows);}catch(e:any){logSystemError('error', 'Failed to load tickets', e?.message || String(e)); apiError(res, 500, 'Internal server error', 'INTERNAL_ERROR');}});
-app.post('/api/client/tickets',orderLimiter,requireAuth,async(req:any,res:any)=>{try{const subject=String(req.body?.subject||'').trim();const message=String(req.body?.message||'').trim();if(subject.length<3||subject.length>200||message.length<1||message.length>5000)return apiError(res,400,'Invalid ticket subject or message','INVALID_TICKET');let result:any;await db.transaction(async tx=>{const [t]=await tx.insert(tickets).values({userId:req.dbUser.id,subject,status:'Open'}).returning();const [m]=await tx.insert(ticketMessages).values({id:crypto.randomUUID(),ticketId:t.id,senderId:req.dbUser.id,message,isAdmin:false}).returning();await createNotificationTx(tx,req.dbUser.id,'ticket','Support ticket created',`Ticket #${t.id.slice(0,8)} was created successfully.`,`/dashboard/tickets/${t.id}`);result={ticket:t,message:m};});res.status(201).json(result);}catch(e:any){apiError(res,400,e.message||'Failed to create ticket','TICKET_CREATE_FAILED');}});
+app.post('/api/client/tickets',orderLimiter,requireAuth,async(req:any,res:any)=>{try{const subject=String(req.body?.subject||'').trim();const message=String(req.body?.message||'').trim();if(subject.length<3||subject.length>200||message.length<1||message.length>5000)return apiError(res,400,'Invalid ticket subject or message','INVALID_TICKET');let result:any;await db.transaction(async tx=>{const [t]=await tx.insert(tickets).values({userId:req.dbUser.id,subject,status:'Open'}).returning();const [m]=await tx.insert(ticketMessages).values({id:crypto.randomUUID(),ticketId:t.id,senderId:req.dbUser.id,message,isAdmin:false}).returning();await createNotificationTx(tx,req.dbUser.id,'ticket','Support ticket created',`Ticket #${t.id.slice(0,8)} was created successfully.`,`/dashboard/tickets/${t.id}`);result={ticket:t,message:m};});await notifyAdmins('admin_ticket','New support ticket',`${req.dbUser?.email || 'A customer'}: ${subject}`,`/admin/tickets/${result.ticket.id}`);res.status(201).json(result);}catch(e:any){apiError(res,400,e.message||'Failed to create ticket','TICKET_CREATE_FAILED');}});
 app.get('/api/client/tickets/:id',requireAuth,async(req:any,res:any)=>{try{const [ticket]=await db.select().from(tickets).where(and(eq(tickets.id,req.params.id),eq(tickets.userId,req.dbUser.id)));if(!ticket)return apiError(res,404,'Ticket not found','NOT_FOUND');const messages=await db.select().from(ticketMessages).where(eq(ticketMessages.ticketId,ticket.id)).orderBy(asc(ticketMessages.createdAt));res.json({ticket,messages});}catch(e:any){apiError(res,400,e.message||'Failed to load ticket','TICKET_LOAD_FAILED');}});
-app.post('/api/client/tickets/:id/messages',requireAuth,async(req:any,res:any)=>{try{const message=String(req.body?.message||'').trim();if(!message||message.length>5000)return apiError(res,400,'Invalid message','INVALID_MESSAGE');const [ticket]=await db.select().from(tickets).where(and(eq(tickets.id,req.params.id),eq(tickets.userId,req.dbUser.id)));if(!ticket)return apiError(res,404,'Ticket not found','NOT_FOUND');if(ticket.status==='Closed')return apiError(res,409,'Ticket is closed','TICKET_CLOSED');const [m]=await db.insert(ticketMessages).values({id:crypto.randomUUID(),ticketId:ticket.id,senderId:req.dbUser.id,message,isAdmin:false}).returning();if(ticket.status==='Answered')await db.update(tickets).set({status:'Open'}).where(eq(tickets.id,ticket.id));res.status(201).json(m);}catch(e:any){apiError(res,400,e.message||'Failed to send message','TICKET_MESSAGE_FAILED');}});
+app.post('/api/client/tickets/:id/messages',requireAuth,async(req:any,res:any)=>{try{const message=String(req.body?.message||'').trim();if(!message||message.length>5000)return apiError(res,400,'Invalid message','INVALID_MESSAGE');const [ticket]=await db.select().from(tickets).where(and(eq(tickets.id,req.params.id),eq(tickets.userId,req.dbUser.id)));if(!ticket)return apiError(res,404,'Ticket not found','NOT_FOUND');if(ticket.status==='Closed')return apiError(res,409,'Ticket is closed','TICKET_CLOSED');const [m]=await db.insert(ticketMessages).values({id:crypto.randomUUID(),ticketId:ticket.id,senderId:req.dbUser.id,message,isAdmin:false}).returning();if(ticket.status==='Answered')await db.update(tickets).set({status:'Open'}).where(eq(tickets.id,ticket.id));await notifyAdmins('admin_ticket','New support message',`${req.dbUser?.email || 'A customer'} replied: ${message.slice(0,120)}`,`/admin/tickets/${ticket.id}`);res.status(201).json(m);}catch(e:any){apiError(res,400,e.message||'Failed to send message','TICKET_MESSAGE_FAILED');}});
 
 // Client notifications
+/* --------------------------------- admin notifications ---------------------------------
+ * The admin badge counts ITEMS, not pages: each support message or deposit request becomes one
+ * row for every admin, so opening one item drops the number by exactly one and opening all of
+ * them clears it. `link` lets a single ticket view clear only its own notifications.
+ */
+app.get('/api/admin/notifications', requireAuth, requireAdmin, async (req: any, res: any) => {
+  const rows = await db.select().from(notifications).where(eq(notifications.userId, req.dbUser.id)).orderBy(desc(notifications.createdAt)).limit(50);
+  const [{ count }] = await db.select({ count: sql<number>`count(*)` }).from(notifications)
+    .where(and(eq(notifications.userId, req.dbUser.id), isNull(notifications.readAt)));
+  res.json({ notifications: rows, unread: Number(count || 0) });
+});
+
+app.put('/api/admin/notifications/:id/read', requireAuth, requireAdmin, async (req: any, res: any) => {
+  const [row] = await db.update(notifications).set({ readAt: new Date() })
+    .where(and(eq(notifications.id, req.params.id), eq(notifications.userId, req.dbUser.id))).returning();
+  if (!row) return apiError(res, 404, 'Notification not found', 'NOT_FOUND');
+  res.json({ success: true, id: row.id });
+});
+
+/** Mark every unread notification of this admin, optionally only one type or one link. */
+app.put('/api/admin/notifications/read-all', requireAuth, requireAdmin, async (req: any, res: any) => {
+  const type = String(req.body?.type || req.query?.type || '').trim();
+  const link = String(req.body?.link || req.query?.link || '').trim();
+  const filters: any[] = [eq(notifications.userId, req.dbUser.id), isNull(notifications.readAt)];
+  if (type) filters.push(eq(notifications.type, type));
+  if (link) filters.push(eq(notifications.link, link));
+  const changed = await db.update(notifications).set({ readAt: new Date() }).where(and(...filters)).returning({ id: notifications.id });
+  res.json({ success: true, cleared: changed.length });
+});
+
 app.get('/api/client/notifications', requireAuth, async (req: any, res: any) => {
   try {
     const rows = await db.select().from(notifications).where(eq(notifications.userId, req.dbUser.id)).orderBy(desc(notifications.createdAt)).limit(50);

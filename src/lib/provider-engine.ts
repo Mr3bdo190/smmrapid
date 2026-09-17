@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import { eq, inArray, sql } from 'drizzle-orm';
 import dns from 'node:dns';
 import net from 'node:net';
+import { ssePush } from './live';
 import { db } from '../db/index';
 import { orders, providers, services, users, walletLedger } from '../db/schema';
 import { decryptSecret } from './secret-crypto';
@@ -133,6 +134,7 @@ export async function refundOrderOnce(orderId:string, amount:number, reason:stri
     if(!u)throw new Error('User not found');
     const next=money(Number(u.balance)+credit);
     await tx.update(users).set({balance:next.toFixed(4)}).where(eq(users.id,u.id));
+    ssePush(u.id, 'balance', { balance: next.toFixed(4), reason: 'refund' });
     await tx.insert(walletLedger).values({id:crypto.randomUUID(),userId:u.id,amount:credit.toFixed(4),type:'credit',description:`Order refund: ${reason}`,referenceId:o.id,createdAt:new Date()});
     const totalRefunded=money(alreadyRefunded+credit);
     await tx.update(orders).set({refundedAmount:totalRefunded.toFixed(4),providerError:reason,updatedAt:new Date()}).where(eq(orders.id,o.id));
@@ -167,6 +169,7 @@ export async function placeOrderToProvider(orderId:string):Promise<{ok:boolean;e
   if(!r.order) return fail('Invalid provider response');
   const initialStart = Number.isFinite(Number(r.start_count)) ? Math.max(0, Number(r.start_count)) : 0;
   await db.update(orders).set({providerOrderId:String(r.order),status:'Processing',providerError:null,startCount:initialStart,remains:order.quantity,dispatching:false,updatedAt:new Date()}).where(eq(orders.id,orderId));
+  ssePush(order.userId, 'order', { orderId, status: 'Processing', startCount: initialStart });
   // Fetch the provider's real start_count/remains immediately after dispatch.
   await checkOrderStatus(orderId).catch(() => undefined);
   return {ok:true};
@@ -210,6 +213,7 @@ export async function checkOrderStatus(orderId:string){
           if(!u)throw new Error('User not found');
           const nextBalance=money(Number(u.balance)+available);
           await tx.update(users).set({balance:nextBalance.toFixed(4)}).where(eq(users.id,u.id));
+          ssePush(u.id, 'balance', { balance: nextBalance.toFixed(4), reason: 'partial-refund' });
           await tx.insert(walletLedger).values({id:crypto.randomUUID(),userId:u.id,amount:available.toFixed(4),type:'credit',description:nextStatus==='Canceled'?'Cancellation refund for unfulfilled quantity':'Partial order refund for unfulfilled quantity',referenceId:locked.id,createdAt:new Date()});
           await tx.update(orders).set({refundedAmount:money(alreadyRefunded+available).toFixed(4)}).where(eq(orders.id,locked.id));
         }
@@ -224,6 +228,9 @@ export async function checkOrderStatus(orderId:string){
       updatedAt:new Date()
     }).where(eq(orders.id,locked.id));
   });
+  // Push after the transaction so the customer never sees a status the database has not committed.
+  ssePush(o.userId, 'order', { orderId, status: status || o.status, remains, startCount: start });
+  if (status && status !== o.status) ssePush(o.userId, 'balance', { reason: 'order-status' });
 }
 
 let workerStarted=false;

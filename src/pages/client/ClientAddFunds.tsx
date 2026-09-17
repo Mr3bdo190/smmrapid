@@ -18,8 +18,9 @@ const WALLET_NAMES: Record<WalletKind, { en: string; ar: string }> = {
   et_cash: { en: 'e& Money / Etisalat Cash', ar: 'اتصالات كاش / e& Money' },
 };
 
-/** How long a created payment request stays "open" before the customer is asked to start over. */
-const PAY_WINDOW_SECONDS = 60;
+/** An electronic-wallet request is open for one minute; a crypto invoice is open for one hour. */
+const WALLET_WINDOW_SECONDS = 60;
+const CRYPTO_WINDOW_SECONDS = 3600;
 /** Balance/payment status is re-checked automatically at this interval (the gateway webhook is the source of truth). */
 const POLL_MS = 10_000;
 
@@ -96,7 +97,16 @@ export default function ClientAddFunds() {
     return () => clearInterval(id);
   }, [active, paid]);
 
+  const windowSeconds = active?.kind === 'crypto' ? CRYPTO_WINDOW_SECONDS : WALLET_WINDOW_SECONDS;
   const secondsLeft = active?.expiresAt ? Math.max(0, Math.ceil((active.expiresAt - now) / 1000)) : null;
+  /** 01:00 for the wallet minute, 1:00:00 for the crypto hour. */
+  const clock = (total: number) => {
+    const h = Math.floor(total / 3600);
+    const m = Math.floor((total % 3600) / 60);
+    const sec = total % 60;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return h > 0 ? `${h}:${pad(m)}:${pad(sec)}` : `${pad(m)}:${pad(sec)}`;
+  };
   const windowOver = secondsLeft !== null && secondsLeft <= 0 && !paid;
 
   /* --------------- returning from the gateway: adopt the open payment --------------- */
@@ -144,25 +154,31 @@ export default function ClientAddFunds() {
     return method === 'crypto' ? n : n / (rate || 1);
   }, [amount, method, rate]);
 
+  // The gateway's floor is in EGP, but the site also has a minimum deposit in USD: the real floor is
+  // whichever is higher, converted at the site rate. Showing only the EGP range made small amounts
+  // look valid while the button stayed disabled.
+  const minEgpEffective = Math.max(minEgp, Math.ceil(minDeposit * (rate || 1)));
   const numberOk = /^01\d{9}$/.test(number);
   const amountOk = useMemo(() => {
     const n = Number(amount);
     if (!Number.isFinite(n) || n <= 0) return false;
     if (method === 'crypto') return n >= minDeposit;
-    return n >= minEgp && n <= maxEgp && usdAmount >= minDeposit;
-  }, [amount, method, minEgp, maxEgp, minDeposit, usdAmount]);
+    return n >= minEgpEffective && n <= maxEgp;
+  }, [amount, method, minEgpEffective, maxEgp, minDeposit]);
 
-  const disabledReason = !amount
-    ? t('addFunds.amountEgp')
-    : !amountOk
-      ? (method === 'crypto'
-        ? `${t('common.balance')}: ${currency}${minDeposit}`
-        : `${ar ? 'المبلغ المتاح' : 'Allowed range'}: ${minEgp} – ${maxEgp}`)
-      : method === 'wallet' && !numberOk
-        ? t('addFunds.walletNumberHint')
-        : '';
+  /** Local guard so a click always answers with the exact reason (the server validates too). */
+  const walletBlockers = () => {
+    if (!amount) return ar ? 'اكتب المبلغ اللي عايز تشحنه.' : 'Enter the amount you want to deposit.';
+    if (!amountOk) return ar
+      ? `المبلغ المسموح من ${minEgpEffective} إلى ${maxEgp} جنيه (الحد الأدنى للشحن ${currency}${minDeposit}).`
+      : `Enter an amount between ${minEgpEffective} and ${maxEgp} EGP (minimum deposit ${currency}${minDeposit}).`;
+    if (!numberOk) return ar ? 'اكتب رقم محفظتك 11 رقم ويبدأ بـ 01، مثال: 01012345678.' : 'Enter your 11-digit wallet number starting with 01, e.g. 01012345678.';
+    return '';
+  };
 
   async function createWalletPayment() {
+    const blocker = walletBlockers();
+    if (blocker) { notify.error(new Error(blocker)); return; }
     setSubmitting(true);
     try {
       const res = await apiJson<any>('/api/shahnawy/create', user, {
@@ -179,7 +195,7 @@ export default function ClientAddFunds() {
         walletKind,
         walletNumber: number,
         startedAt,
-        expiresAt: startedAt + PAY_WINDOW_SECONDS * 1000,
+        expiresAt: startedAt + WALLET_WINDOW_SECONDS * 1000,
       });
       setNow(Date.now());
       await paymentsQ.refetch();
@@ -193,6 +209,12 @@ export default function ClientAddFunds() {
   }
 
   async function createCryptoInvoice() {
+    if (!amountOk) {
+      notify.error(new Error(ar
+        ? `أقل مبلغ للشحن بالعملات الرقمية ${currency}${minDeposit}.`
+        : `The minimum crypto deposit is ${currency}${minDeposit}.`));
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await apiJson<any>('/api/heleket/create', user, {
@@ -208,7 +230,7 @@ export default function ClientAddFunds() {
         amountLabel: `${currency}${Number(amount).toFixed(2)}`,
         creditLabel: `${currency}${Number(amount).toFixed(2)}`,
         startedAt,
-        expiresAt: startedAt + PAY_WINDOW_SECONDS * 1000,
+        expiresAt: startedAt + CRYPTO_WINDOW_SECONDS * 1000,
       });
       setNow(Date.now());
       await paymentsQ.refetch();
@@ -373,13 +395,15 @@ export default function ClientAddFunds() {
                 <div className="rounded-xl border border-outline-variant bg-surface-container p-3 text-center">
                   <p className="text-xs font-bold text-on-surface-variant">{t('addFunds.timeLeft')}</p>
                   <p className={`mt-1 text-3xl font-black tabular-nums ${windowOver ? 'text-amber-600 dark:text-amber-400' : 'text-violet-600 dark:text-violet-400'}`}>
-                    {String(Math.floor((secondsLeft || 0) / 60)).padStart(2, '0')}:{String((secondsLeft || 0) % 60).padStart(2, '0')}
+                    {clock(secondsLeft || 0)}
                   </p>
                   <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-container-high">
                     <div className="h-full rounded-full bg-violet-600 transition-[width] duration-1000"
-                      style={{ width: `${Math.max(0, Math.min(100, ((secondsLeft || 0) / PAY_WINDOW_SECONDS) * 100))}%` }} />
+                      style={{ width: `${Math.max(0, Math.min(100, ((secondsLeft || 0) / windowSeconds) * 100))}%` }} />
                   </div>
-                  <p className="mt-2 text-[11px] text-on-surface-variant">{t('addFunds.payWindow')}: {PAY_WINDOW_SECONDS} {ar ? 'ثانية' : 's'}</p>
+                  <p className="mt-2 text-[11px] text-on-surface-variant">
+                    {t('addFunds.payWindow')}: {active.kind === 'crypto' ? (ar ? 'ساعة واحدة' : '1 hour') : (ar ? 'دقيقة واحدة' : '1 minute')}
+                  </p>
                 </div>
               )}
 
@@ -444,7 +468,11 @@ export default function ClientAddFunds() {
               <button onClick={() => walletEnabled && setMethod('wallet')} disabled={!walletEnabled}
                 className={`rounded-xl border p-4 text-start transition-colors ${method === 'wallet' ? 'border-violet-600 bg-violet-500/8' : 'border-outline-variant bg-surface-container-high hover:border-violet-500/40'} ${walletEnabled ? '' : 'opacity-60'}`}>
                 <span className="flex items-center gap-2 text-sm font-black text-on-surface"><Wallet size={17} />{t('addFunds.eWallet')}</span>
+                <span className="mt-1 block text-xs font-bold text-on-surface-variant">
+                  {ar ? 'فودافون كاش · أورنج كاش · اتصالات كاش' : 'Vodafone Cash · Orange Cash · Etisalat Cash'}
+                </span>
                 <span className="mt-1.5 block text-xs leading-relaxed text-on-surface-variant">{t('addFunds.methodWalletDesc')}</span>
+                <span className="mt-1 block text-[11px] text-on-surface-variant/80">{ar ? 'الدفع بالجنيه المصري · مدة الدفع دقيقة واحدة' : 'Paid in EGP · payment window 1 minute'}</span>
                 <span className={`mt-2.5 inline-block rounded-full px-2.5 py-1 text-[11px] font-bold ${walletEnabled ? 'bg-emerald-500/12 text-emerald-600 dark:text-emerald-400' : 'bg-surface-container-high text-on-surface-variant'}`}>
                   {walletEnabled ? t('addFunds.availableNow') : t('addFunds.walletUnavailable')}
                 </span>
@@ -453,7 +481,9 @@ export default function ClientAddFunds() {
               <button onClick={() => cryptoEnabled && setMethod('crypto')} disabled={!cryptoEnabled}
                 className={`rounded-xl border p-4 text-start transition-colors ${method === 'crypto' ? 'border-violet-600 bg-violet-500/8' : 'border-outline-variant bg-surface-container-high hover:border-violet-500/40'} ${cryptoEnabled ? '' : 'opacity-60'}`}>
                 <span className="flex items-center gap-2 text-sm font-black text-on-surface"><Bitcoin size={17} />{t('addFunds.crypto')}</span>
+                <span className="mt-1 block text-xs font-bold text-on-surface-variant">{ar ? 'محفظة عملات رقمية (USDT وغيرها)' : 'A crypto wallet (USDT and others)'}</span>
                 <span className="mt-1.5 block text-xs leading-relaxed text-on-surface-variant">{t('addFunds.methodCryptoDesc')}</span>
+                <span className="mt-1 block text-[11px] text-on-surface-variant/80">{ar ? 'الدفع بالدولار · الفاتورة صالحة ساعة كاملة' : 'Paid in USD · invoice valid for a full hour'}</span>
                 <span className={`mt-2.5 inline-block rounded-full px-2.5 py-1 text-[11px] font-bold ${cryptoEnabled ? 'bg-emerald-500/12 text-emerald-600 dark:text-emerald-400' : 'bg-surface-container-high text-on-surface-variant'}`}>
                   {cryptoEnabled ? t('addFunds.availableNow') : t('addFunds.cryptoUnavailable')}
                 </span>
@@ -498,11 +528,14 @@ export default function ClientAddFunds() {
               <div className="mt-5 grid gap-4 lg:grid-cols-2">
                 <div>
                   <label className="label-primary text-on-surface-variant" htmlFor="af-amount">
-                    {t('addFunds.amountEgp')} <span className="font-normal">({Number(minEgp).toLocaleString()} – {Number(maxEgp).toLocaleString()})</span>
+                    {t('addFunds.amountEgp')} <span className="font-normal">({minEgpEffective.toLocaleString()} – {Number(maxEgp).toLocaleString()})</span>
                   </label>
                   <input id="af-amount" className="input-primary bg-surface-container-high" inputMode="decimal" value={amount}
                     onChange={e => setAmount(e.target.value.replace(/[^\d.]/g, ''))} placeholder="500" />
-                  <p className="mt-1.5 text-xs text-on-surface-variant">{t('addFunds.amountHint')}</p>
+                  <p className="mt-1.5 text-xs text-on-surface-variant">
+                    {t('addFunds.amountHint')}
+                    {Number(amount) > 0 && ` → ${currency}${(usdAmount).toFixed(2)}`}
+                  </p>
                 </div>
                 <div>
                   <label className="label-primary text-on-surface-variant" htmlFor="af-number">
@@ -521,9 +554,12 @@ export default function ClientAddFunds() {
                   <p className="text-xl font-black tabular-nums text-violet-600 dark:text-violet-400">{currency}{usdAmount.toFixed(2)}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
-                  {disabledReason && <span className="text-xs text-on-surface-variant">{disabledReason}</span>}
-                  <button onClick={createWalletPayment} disabled={submitting || !amountOk || !numberOk}
-                    className="btn-primary flex items-center gap-2">
+                  {amount && !amountOk && (
+                    <span className="text-xs font-bold text-amber-600 dark:text-amber-400">
+                      {ar ? `من ${minEgpEffective} إلى ${maxEgp} جنيه` : `${minEgpEffective} – ${maxEgp} EGP`}
+                    </span>
+                  )}
+                  <button onClick={createWalletPayment} disabled={submitting} className="btn-primary flex items-center gap-2">
                     {submitting ? t('addFunds.creating') : t('addFunds.create')}
                   </button>
                 </div>
@@ -560,8 +596,12 @@ export default function ClientAddFunds() {
                 <div className="flex flex-col justify-end gap-2">
                   <p className="text-sm text-on-surface-variant">{t('addFunds.approxCredit')}: <b className="tabular-nums text-on-surface">{currency}{usdAmount.toFixed(2)}</b></p>
                   <div className="flex flex-wrap items-center gap-3">
-                    {disabledReason && <span className="text-xs text-on-surface-variant">{disabledReason}</span>}
-                    <button onClick={createCryptoInvoice} disabled={submitting || !amountOk} className="btn-primary flex items-center gap-2">
+                    {amount && !amountOk && (
+                      <span className="text-xs font-bold text-amber-600 dark:text-amber-400">
+                        {ar ? `أقل مبلغ ${currency}${minDeposit}` : `min ${currency}${minDeposit}`}
+                      </span>
+                    )}
+                    <button onClick={createCryptoInvoice} disabled={submitting} className="btn-primary flex items-center gap-2">
                       {submitting ? t('addFunds.creatingInvoice') : t('addFunds.createInvoice')}
                     </button>
                   </div>

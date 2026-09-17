@@ -14,6 +14,17 @@ const readError = async (res: Response, fallback: string) => { const b = await r
 const num = (v: any) => Number(v || 0);
 const shortId = (id: any) => String(id || '').slice(0, 8);
 const QUICK_ADDS = [500, 1000, 5000, 10000, 25000];
+/** Storage can be unavailable (private mode, blocked cookies) — never let it crash the page. */
+const readStoredList = (key: string): string[] => {
+  try {
+    const raw = typeof localStorage === 'undefined' ? null : localStorage.getItem(key);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter((x: any) => typeof x === 'string') : [];
+  } catch { return []; }
+};
+const writeStoredList = (key: string, value: string[]) => {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* storage blocked — keep the in-memory state */ }
+};
 
 export default function ClientNewOrder() {
   const { user, dbUser } = useAuth();
@@ -26,8 +37,8 @@ export default function ClientNewOrder() {
   const [quantity, setQuantity] = useState<number | ''>('');
   const [couponCode, setCouponCode] = useState('');
   const [couponResult, setCouponResult] = useState<any>(null);
-  const [favorites, setFavorites] = useState<string[]>(() => JSON.parse(localStorage.getItem('favoriteServices') || '[]'));
-  const [recent, setRecent] = useState<string[]>(() => JSON.parse(localStorage.getItem('recentServices') || '[]'));
+  const [favorites, setFavorites] = useState<string[]>(() => readStoredList('favoriteServices'));
+  const [recent, setRecent] = useState<string[]>(() => readStoredList('recentServices'));
   const [placedOrderId, setPlacedOrderId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -67,7 +78,7 @@ export default function ClientNewOrder() {
 
   const toggleFavorite = (id: string) => {
     const next = favorites.includes(id) ? favorites.filter(x => x !== id) : [...favorites, id];
-    setFavorites(next); localStorage.setItem('favoriteServices', JSON.stringify(next));
+    setFavorites(next); writeStoredList('favoriteServices', next);
   };
   const chooseService = (id: string) => {
     const picked = services.find((s: any) => s.id === id);
@@ -75,7 +86,7 @@ export default function ClientNewOrder() {
     setServiceId(id);
     setQuantity(picked && num(picked.minQuantity) === 1 && num(picked.maxQuantity) === 1 ? 1 : '');
     const next = [id, ...recent.filter(x => x !== id)].slice(0, 8);
-    setRecent(next); localStorage.setItem('recentServices', JSON.stringify(next));
+    setRecent(next); writeStoredList('recentServices', next);
   };
   const addQuantity = (delta: number) => {
     if (!selectedService || singleUnit) return;
@@ -187,9 +198,9 @@ export default function ClientNewOrder() {
           className="flex flex-col gap-space-xl rounded-xl border border-outline-variant bg-surface-container p-5 lg:col-span-2 md:p-6"
           onSubmit={e => {
             e.preventDefault();
-            if (!selectedService) return notify.error(t('newOrder.selectPrompt'));
+            if (!selectedService) return notify.error(en('Choose a service first.', 'اختر الخدمة أولاً.'));
             if (!validQty) return notify.error(singleUnit ? en('This service accepts exactly 1 item.', 'هذه الخدمة تقبل قطعة واحدة فقط.') : t('newOrder.quantityRange', { min: selectedService?.minQuantity, max: selectedService?.maxQuantity }));
-            if (!link.trim()) return notify.error(t('newOrder.link'));
+            if (!link.trim()) return notify.error(en('Paste the target link first.', 'الصق الرابط المستهدف أولاً.'));
             if (!sufficient) return notify.error(t('newOrder.insufficientBalance'));
             order.mutate();
           }}
@@ -469,9 +480,9 @@ export default function ClientNewOrder() {
 
             {!canSubmit && !order.isPending && (
               <p className={`${hint} text-center`}>
-                {!selectedService ? t('newOrder.selectPrompt')
+                {!selectedService ? en('Choose a service above to continue.', 'اختر الخدمة بالأعلى للاستمرار.')
                   : !validQty ? t('newOrder.enterValidQuantity')
-                  : !link.trim() ? t('newOrder.link')
+                  : !link.trim() ? en('Paste the target link to continue.', 'الصق الرابط المستهدف للاستمرار.')
                   : t('newOrder.insufficientBalance')}
               </p>
             )}

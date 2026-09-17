@@ -1,43 +1,77 @@
 import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowRight, Check, ChevronDown, ShieldCheck, Sparkles, Wallet, X, Zap, Clock, BarChart3, Globe, Users, TrendingUp, Award, Rocket, BarChart, Send, Globe2, Headphones, Menu } from 'lucide-react';
+import {
+  ArrowRight, Check, ChevronDown, Clock, Globe2, Headphones, Heart, Menu, RefreshCw,
+  ShieldCheck, Sparkles, TrendingUp, Wallet, X, Zap,
+} from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation, ThemeToggle } from '../lib/i18n';
 import SEO, { SITE } from '../components/SEO';
 import { useAuth } from '../contexts/AuthContext';
 import { notify } from '../lib/notify';
 
-const PLATFORMS = [['Instagram','IG'],['TikTok','TK'],['YouTube','YT'],['Facebook','FB'],['Telegram','TG'],['X / Twitter','X'],['Spotify','SP'],['Threads','TH']];
-
-const FAQ_EN = [
-  ['What is SMM Rapid?', 'SMM Rapid is a direct SMM platform that develops and operates its own social media growth services. We own the infrastructure and deliver results directly — no resellers, no intermediaries.',
-    'We own the entire delivery pipeline, from order intake through fulfillment, giving you transparent pricing and consistent quality.'],
-  ['How do I place my first order?', 'Create a free account, add funds to your wallet, select a service, enter your target link and quantity, then submit. Track every order live from your dashboard.'],
-  ['Do I need to share my social password?', 'No. We never ask for your social media password. Services only require the public target URL or information explicitly requested.'],
-  ['What makes SMM Rapid different?', 'We are the direct provider. Our in-house engineering and quality teams manage the full delivery stack, ensuring faster turnaround and strict quality standards.'],
-  ['What currency is the wallet?', 'USD is the primary wallet currency. Payments are converted at real-time rates before being credited to your USD wallet.'],
-  ['Is my data secure?', 'Your data is encrypted in transit and at rest. We never store social credentials and all wallet transactions are recorded in an immutable ledger.']
+/** Platforms we sell growth services for — shown as a plain strip, no claims attached. */
+const PLATFORMS = [
+  'Instagram', 'TikTok', 'YouTube', 'Facebook', 'Telegram', 'X / Twitter', 'Spotify', 'Threads',
 ];
 
-const FAQ_AR = [
-  ['ما هو SMM Rapid؟', 'SMM Rapid منصة مباشرة لتسويق وسائل التواصل. نحن نطور ونشغل خدماتنا الخاصة بنا. نحن نملك البنية التحتية ونسلّم النتائج مباشرة — بدون وسطاء ولا موزعين.',
-    'نحن نملك كل خطوة في عملية التسليم، من استلام الطلب وحتى التنفيذ، مما يضمن لك أسعار شفافة وجودة متسقة.'],
-  ['كيف أقدّم أول طلبي؟', 'سجّل حسابًا مجاني، أضف رصيد لمحفظتك، اختر خدمة، أدخل رابطك المستهدف والكمية، ثم أرسل. تتبع كل طلب لحظة بلحظة من لوحة التحكم.'],
-  ['هل أشارك بكلمة مرور حسابي الاجتماعي؟', 'لا. نحن لا نطلب كلمة مرور حسابات التواصل الاجتماعي. الخدمات بحاجة فقط للرابط العلني أو المعلومات المطلوبة صراحة.'],
-  ['ماذا يميّز SMM Rapid؟', 'نحن المورّد المباشر. فرقنا الهندسية والجودة تدير كل خطوة من التسليم، مما يضمن تسليم أسرع ومعايير جودة صارمة.'],
-  ['عملة المحفظة؟', 'الدولار الأمريكي هي العملة الأساسية. المدفوعات تُحوّل بالأسعار الفعلية قبل الإضافة لمحفظتك.'],
-  ['هل بياناتي آمنة؟', 'بياناتك مشفرة أثني الإرسال والتخزين. نحن لا نخزن أي بيانات اجتماعية، وكل معاملة مسجلة في سجل غير قابل للتعديل.']
+const FAQ_EN: string[][] = [
+  ['What is SMM Rapid?',
+    'SMM Rapid is an online store for social media growth services — followers, likes, views, comments and engagement for Instagram, TikTok, YouTube, Facebook, Telegram and more.',
+    'You order in a few clicks from your dashboard, pay from your USD wallet, and follow the delivery live.'],
+  ['How do I place my first order?',
+    'Create a free account, add funds to your wallet, pick the service you want, paste the public link you are growing and set the quantity. Your order is submitted right away.'],
+  ['Do I need to share my social media password?',
+    'Never. Every service only needs the public link (a profile, post, video or channel), and some services ask for a username you can see publicly.'],
+  ['How fast do orders start?',
+    'Most orders enter processing within minutes of payment confirmation. Large quantities are often delivered gradually over hours or days — the service page shows an estimate before you order.'],
+  ['What if my order drops?',
+    'If a service offers refills, open the order in your dashboard and press Refill to top it back up. If something is not delivered as described, support will review it and refund your wallet where the order qualifies.'],
+  ['What currency is the wallet?',
+    'The wallet is in USD. Local and international payments are converted at the site exchange rate before the amount is credited.'],
+  ['Is my data secure?',
+    'Your connection is encrypted, card and wallet details are processed securely at checkout and never stored by us, and every balance movement is written to an internal ledger you can review.'],
+];
+
+const FAQ_AR: string[][] = [
+  ['ما هو SMM Rapid؟',
+    'SMM Rapid متجر إلكتروني لخدمات نمو السوشيال ميديا — متابعين، لايكات، مشاهدات، تعليقات وتفاعل لإنستجرام وتيك توك ويوتيوب وفيسبوك وتليجرام وغيرها.',
+    'تطلب خلال ثواني من لوحة التحكم، تدفع من محفظتك بالدولار، وتتابع التنفيذ لحظة بلحظة.'],
+  ['كيف أقدّم أول طلب؟',
+    'أنشئ حساباً مجانياً، أضف رصيداً لمحفظتك، اختر الخدمة، الصق الرابط العام الذي تريد تنميته وحدّد الكمية. الطلب يُرسل فوراً.'],
+  ['هل أشارك كلمة مرور حسابي؟',
+    'أبداً. كل الخدمات تحتاج الرابط العام فقط (حساب، منشور، فيديو أو قناة)، وبعض الخدمات تطلب اسم المستخدم الظاهر للعامة.'],
+  ['متى يبدأ تنفيذ الطلب؟',
+    'معظم الطلبات تبدأ خلال دقائق من تأكيد الدفع. الكميات الكبيرة غالباً تُنفَّذ تدريجياً على مدار ساعات أو أيام — وصفحة الخدمة تعرض التقدير قبل الطلب.'],
+  ['وإذا نقص الطلب بعد التنفيذ؟',
+    'لو الخدمة تدعم إعادة التعبئة، افتح الطلب من لوحة التحكم واضغط «إعادة تعبئة» لتعويض النقص. ولو الحاجة لم تُنفَّذ كما هو موضح، الدعم يراجعها ويُرجع المبلغ لمحفظتك لو الطلب يستحق.'],
+  ['ما عملة المحفظة؟',
+    'المحفظة بالدولار الأمريكي. المدفوعات المحلية والدولية تُحوَّل بسعر الصرف المعلَّن قبل إضافتها للرصيد.'],
+  ['هل بياناتي آمنة؟',
+    'الاتصال مشفَّر، وبيانات الدفع تُدار عبر جهات الدفع، وكل حركة على الرصيد مسجَّلة في سجل داخلي تقدر تراجعه.'],
 ];
 
 async function fetchPublic(path: string, timeoutMs = 8000) {
   const controller = new AbortController();
-  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+  const setTimer: any = typeof window !== 'undefined' ? window.setTimeout : setTimeout;
+  const clearTimer: any = typeof window !== 'undefined' ? window.clearTimeout : clearTimeout;
+  const timer = setTimer(() => controller.abort(), timeoutMs);
   try { return await fetch(path, { signal: controller.signal, headers: { Accept: 'application/json' } }); }
-  finally { window.clearTimeout(timer); }
+  finally { clearTimer(timer); }
+}
+
+/** localStorage throws in private mode / when storage is blocked — never let that break the page. */
+function readStoredRef() {
+  try { return (localStorage.getItem('ref') || '').toUpperCase(); } catch { return ''; }
+}
+function writeStoredRef(code: string) {
+  try { localStorage.setItem('ref', code); } catch { /* storage unavailable — referral still applies at signup */ }
 }
 
 export default function LandingPage() {
-  const { dir } = useTranslation(); const ar = dir === 'rtl'; const navigate = useNavigate();
+  const { dir } = useTranslation();
+  const ar = dir === 'rtl';
+  const navigate = useNavigate();
   const { user, registerWithEmail, loginWithEmail, resetPassword } = useAuth();
   const [menu, setMenu] = useState(false);
   const [auth, setAuth] = useState<'login' | 'register' | null>(null);
@@ -47,109 +81,166 @@ export default function LandingPage() {
   const [referralCode, setReferralCode] = useState('');
   const [faq, setFaq] = useState(0);
 
-  const referralFromUrl = useMemo(() => new URLSearchParams(window.location.search).get('ref')?.trim().toUpperCase() || localStorage.getItem('ref') || '', []);
+  const referralFromUrl = useMemo(() => {
+    let fromUrl = '';
+    try { fromUrl = new URLSearchParams(window.location.search).get('ref')?.trim().toUpperCase() || ''; } catch { /* no window/URL */ }
+    return fromUrl || readStoredRef();
+  }, []);
+
+  // an invitation link opens the register form directly
   React.useEffect(() => { if (referralFromUrl) { setReferralCode(referralFromUrl); setAuth('register'); } }, [referralFromUrl]);
+
+  // close the sign-in card with Escape
+  React.useEffect(() => {
+    if (!auth) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setAuth(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [auth]);
 
   const { data: showcase } = useQuery({
     queryKey: ['public-showcase'],
     queryFn: async () => { const r = await fetchPublic('/api/public/showcase'); if (!r.ok) throw new Error('Failed to load'); return r.json(); },
-    staleTime: 60_000, gcTime: 10 * 60_000, retry: 1
+    staleTime: 60_000, gcTime: 10 * 60_000, retry: 1,
   });
 
-  const services = showcase?.services || [];
+  const services: any[] = showcase?.services || [];
   const serviceCount = Number(showcase?.serviceCount || 0);
   const categoryCount = Number(showcase?.categoryCount || 0);
+  const currency = showcase?.config?.currencySymbol || '$';
   const faqs = ar ? FAQ_AR : FAQ_EN;
 
   const text = ar ? {
     navServices: 'الخدمات', navHow: 'كيف يعمل؟', navBlog: 'المدونة', navSupport: 'الدعم', navApi: 'API',
-    dashboard: 'لوحة التحكم', login: 'تسجيل الدخول', start: 'ابدأ الآن',
-    badge: 'منصة SMM مباشرة — نحن المورّد الأصلي',
-    title: 'نمّر حضورك على وسائل التواصل. مباشرة منا.',
-    copy: 'خدماتنا الخاصة، بنية تحتية مملوكة، وتسليم مباشر. اكتشف الخدمات، أضف رصيدك، واطلب بثقة — بدون أي وسطاء.',
-    browse: 'تصفح الخدمات', how: 'كيف يعمل؟', howCopy: 'ثلاث خطوات واضحة من التسجيل لتتبع الطلب.',
-    create: 'أنشئ حساب', fund: 'أضف رصيد', order: 'اختر الخدمة واطلب',
-    featuresTitle: 'كل ما تحتاجه في لوحة واحدة',
-    featuresCopy: 'بنية تحتية مملوكة، تسليم مباشر، وجودة مضمونة من فريقنا.',
-    proof: ['بنية تحتية مملوكة', 'تسليم مباشر', 'دعم 24/7'],
-    live: ar ? 'مباشر' : 'Live',
-    openCatalog: 'فتح الكتالوج',
-    faqTitle: 'أسئلة شائعة', faqCopy: 'إجابات سريعة على أهم الأسئلة قبل أن تبدأ.',
-    ctaTitle: 'جاهز للبدء؟', ctaCopy: 'أنشئ حساباً مجاناً وابدأ الآن.', cta: 'إنشاء حساب',
+    dashboard: 'لوحة التحكم', login: 'تسجيل الدخول', start: 'ابدأ الآن', close: 'إغلاق',
+    badge: 'خدمات نمو السوشيال ميديا',
+    title: 'كبّر صفحتك على إنستجرام وتيك توك ويوتيوب',
+    titleAccent: 'بنمو حقيقي تلاحظه بالأرقام',
+    copy: 'متابعين، لايكات، مشاهدات وتفاعل بأسعار واضحة ومعلنة. تختار الخدمة، تدفع من محفظتك، وتتابع التنفيذ لحظة بلحظة من لوحة التحكم.',
+    browse: 'تصفح الخدمات', startFree: 'أنشئ حساب مجاني',
+    proof: ['بدون كلمة مرور', 'إعادة تعبئة مضمونة', 'محفظة بالدولار', 'دعم 24/7'],
+    band1: 'وصول أوسع، تفاعل أكثر، ونمو تلاحظه بالفعل',
+    band1sub: 'تسع منصات، محفظة واحدة، وتنفيذ يبدأ خلال دقائق.',
+    platformsTitle: 'منصات نخدمها',
+    live: 'مباشر', catalogTitle: 'من الكتالوج مباشرة', openCatalog: 'فتح الكتالوج كامل',
+    loadingCatalog: 'بنحمّل أحدث الخدمات…', noCatalog: 'الكتالوج بيتحدّث حالياً — افتح الصفحة بعد لحظة.',
+    per1k: 'لكل 1000', from: 'الحد الأدنى', to: 'الأقصى',
+    stats: [
+      { value: serviceCount ? `${serviceCount}+` : '—', label: 'خدمة متاحة' },
+      { value: categoryCount ? `${categoryCount}+` : '—', label: 'فئة خدمات' },
+      { value: 'USD', label: 'عملة المحفظة' },
+      { value: '24/7', label: 'دعم فني' },
+    ],
+    featuresTitle: 'كل إلي يهمك في مكان واحد',
+    featuresCopy: 'خيارات جودة تناسب ميزانيتك، أسعار معلنة لكل 1000، وتتبع واضح لكل طلب.',
+    features: [
+      ['متابعين ولايكات ومشاهدات', 'خدمات تغطّي كل منصة: متابعين، لايكات، مشاهدات، تعليقات وساعات مشاهدة.', TrendingUp],
+      ['خيارات جودة متعددة', 'من الأوفر للممتاز — تختار إلي يناسب هدفك وميزانيتك قبل ما تطلب.', Sparkles],
+      ['بدأ سريع للتنفيذ', 'معظم الطلبات تبدأ خلال دقائق من تأكيد الدفع، بدون طوابير انتظار.', Zap],
+      ['إعادة تعبئة عند النقص', 'الخدمات إلي بتدعم إعادة التعبئة تتيح لك تعويض أي نقص بضغطة واحدة.', RefreshCw],
+      ['محفظة بالدولار وأسعار معلنة', 'تعرف تكلفة الطلب بالظبط قبل ما ترسله، والرصيد يتحرك في سجل واضح.', Wallet],
+      ['دعم بشري 24/7', 'فريق دعم بالعربي والإنجليزي عبر التذاكر والدردشة في أي وقت.', Headphones],
+    ],
+    howTitle: 'كيف يعمل الموقع؟',
+    howCopy: 'ثلاث خطوات من التسجيل لأول طلب — بدون تعقيد.',
+    steps: [
+      { step: '01', title: 'أنشئ حساب', desc: 'تسجيل مجاني في نصف دقيقة، وتفتح لك محفظة بالدولار فوراً.' },
+      { step: '02', title: 'أضف رصيد', desc: 'اشحن بوسيلة دفع محلية أو عالمية، والرصيد يظهر في ثواني.' },
+      { step: '03', title: 'اطلب وتابع', desc: 'اختر الخدمة، الصق الرابط والكمية، وتابع التسليم من لوحة التحكم.' },
+    ],
+    guaranteeTitle: 'ضمان واضح بدون شروط مخفية',
+    guaranteeCopy: 'نبني ثقة العملاء على قواعد معلنة نلتزم بها:',
+    guarantee: 'ضمان الخدمة',
+    guarantees: [
+      'إعادة تعبئة أو تعويض أي طلب لم يُنفَّذ كما هو موضح',
+      'إرجاع المبلغ للمحفظة للطلبات التي لم تبدأ',
+      'أسعار معلنة لكل 1000 — بدون رسوم مفاجئة',
+      'دعم بشري بالعربي والإنجليزي 24/7',
+    ],
+    band2: 'جاهز تبدأ أول طلب؟',
+    band2sub: 'أنشئ حسابك، اشحن محفظتك، واختر الخدمة — التنفيذ يبدأ خلال دقائق.',
+    cta: 'أنشئ حساب مجاني',
+    faqTitle: 'أسئلة شائعة',
+    faqCopy: 'إجابات سريعة على أكثر ما يسأل عنه العملاء قبل البدء.',
+    ctaTitle: 'ابدأ النمو من الآن',
+    ctaCopy: 'حساب مجاني، محفظة بالدولار، وخدمات جاهزة لكل منصة.',
     loginTitle: 'تسجيل الدخول', registerTitle: 'إنشاء حساب',
     name: 'الاسم', email: 'البريد الإلكتروني', password: 'كلمة المرور', ref: 'كود الإحالة',
     optional: 'اختياري', submitLogin: 'دخول', submitRegister: 'إنشاء الحساب',
-    already: 'لديك حساب؟', newUser: 'جديد؟', close: 'إغلاق',
+    already: 'لديك حساب؟', newUser: 'جديد؟',
     forgot: 'نسيت كلمة المرور؟', resetSent: 'تم إرسال رابط إعادة تعيين كلمة المرور.',
-    stats: [['خدمة متاحة', serviceCount], ['فئة', categoryCount], ['عملة', 'USD'], ['دعم', '24/7']],
-    trust: 'ما يضمنه الموقع',
-    guarantee: 'ضماننا',
-    features: [
-      ['تسليـم مباشر', 'بنية تحتية مملوكة تعني تحكم كامل في جودة وسرعة التسليم.', Rocket],
-      ['دعم 24/7', 'فريقنا متاح دائماً عبر التذاكر والدردشة الحية لدعمك.', Headphones],
-      ['دفع آمن', 'جميع المعاملات مشفرة ومسجلة في سجل غير قابل للتعديل.', ShieldCheck],
-      ['ضمان الجودة', 'إعادة تعبئة أو استبدال أي طلب لم يُنفّذ بجودة.', Award],
-      ['سرعة الصرف', 'التحويلات الفورية وتحديث المحفظة في ثوانٍ.', Zap],
-      ['موثوق عالمياً', 'نحن نخدم آلاف العملاء في منصات متعددة عبر العالم.', Globe2]
-    ],
-    steps: [
-      { step: '01', title: 'أنشئ حساب', desc: 'سجّل مجاناً واحصل على محفظة USD فورية.' },
-      { step: '02', title: 'أضف رصيد', desc: 'أضف رصيد بوسائط دفع محلية أو عالمية.' },
-      { step: '03', title: 'اطلب الآن', desc: 'اختر خدمتنا وتابع التسليم لحظة بلحظة.' }
-    ],
-    trustTitle: 'ثقة العملاء حول العالم',
-    trustCopy: 'منصتنا المباشرة تخدم آلاف العملاء الذين يثقون بنا.',
-    copyExample: 'مثال على ميزة',
-    copyValue: 'نمو ملحوظ في 7 أيام'
+    refLocked: 'الكود جاي من رابط الدعوة ومثبت.',
+    footerRights: 'جميع الحقوق محفوظة.',
   } : {
     navServices: 'Services', navHow: 'How it works', navBlog: 'Blog', navSupport: 'Support', navApi: 'API',
-    dashboard: 'Dashboard', login: 'Sign in', start: 'Start now',
-    badge: 'Direct SMM Platform — We are the provider',
-    title: 'Grow your social presence. Direct from us.',
-    copy: 'Our own services, owned infrastructure, and direct delivery. Explore services, fund your wallet, and order with confidence — no middlemen.',
-    browse: 'Browse services', how: 'How it works', howCopy: 'Three clear steps from signup to order tracking.',
-    create: 'Create an account', fund: 'Add funds', order: 'Choose a service & order',
-    featuresTitle: 'Everything you need, built in-house',
-    featuresCopy: 'Owned infrastructure, direct delivery, and guaranteed quality from our engineering teams.',
-    proof: ar ? ['بنية تحتية مملوكة', 'تسليم مباشر', 'دعم 24/7'] : ['Owned infrastructure', 'Direct delivery', '24/7 support'],
-    live: ar ? 'مباشر' : 'Live',
-    openCatalog: 'Open catalog',
-    faqTitle: 'Frequently asked questions', faqCopy: 'Quick answers to the most important questions before you start.',
-    ctaTitle: 'Ready to get started?', ctaCopy: 'Create a free account and start growing today.', cta: 'Create account',
+    dashboard: 'Dashboard', login: 'Sign in', start: 'Start now', close: 'Close',
+    badge: 'Social media growth services',
+    title: 'Grow your page on Instagram, TikTok and YouTube',
+    titleAccent: 'real growth you can measure',
+    copy: 'Followers, likes, views and engagement at clear, published prices. Pick a service, pay from your wallet, and follow the delivery live from your dashboard.',
+    browse: 'Browse services', startFree: 'Create free account',
+    proof: ['No password needed', 'Refill guarantee', 'USD wallet', '24/7 support'],
+    band1: 'More reach. More engagement. Growth you can actually see.',
+    band1sub: 'Eight platforms, one wallet, and delivery that starts within minutes.',
+    platformsTitle: 'Platforms we cover',
+    live: 'Live', catalogTitle: 'Straight from the catalog', openCatalog: 'Open the full catalog',
+    loadingCatalog: 'Loading the latest services…', noCatalog: 'The catalog is updating — check back in a moment.',
+    per1k: 'per 1,000', from: 'min', to: 'max',
+    stats: [
+      { value: serviceCount ? `${serviceCount}+` : '—', label: 'Services available' },
+      { value: categoryCount ? `${categoryCount}+` : '—', label: 'Service categories' },
+      { value: 'USD', label: 'Wallet currency' },
+      { value: '24/7', label: 'Customer support' },
+    ],
+    featuresTitle: 'Everything that matters, in one place',
+    featuresCopy: 'Quality tiers for every budget, published price per 1,000, and clear tracking on every order.',
+    features: [
+      ['Followers, likes & views', 'Services that cover every platform: followers, likes, views, comments and watch time.', TrendingUp],
+      ['Choose your quality', 'From budget-friendly to premium — pick what fits your goal and your budget before ordering.', Sparkles],
+      ['Fast start', 'Most orders enter processing within minutes of payment confirmation — no waiting queues.', Zap],
+      ['Refill when counts drop', 'Services with refills let you top the numbers back up with one button from the order page.', RefreshCw],
+      ['USD wallet & published prices', 'You see the exact charge before submitting, and every balance movement is recorded.', Wallet],
+      ['Human support 24/7', 'An Arabic and English support team on tickets and chat, any time of day.', Headphones],
+    ],
+    howTitle: 'How it works',
+    howCopy: 'Three steps from signup to your first order — nothing complicated.',
+    steps: [
+      { step: '01', title: 'Create your account', desc: 'Free signup in under a minute, with a USD wallet ready straight away.' },
+      { step: '02', title: 'Add funds', desc: 'Top up with a local or international payment method — the balance appears in seconds.' },
+      { step: '03', title: 'Order & track', desc: 'Pick a service, paste your link and quantity, then follow delivery from your dashboard.' },
+    ],
+    guaranteeTitle: 'A clear guarantee, no hidden conditions',
+    guaranteeCopy: 'We keep customer trust with rules we publish and follow:',
+    guarantee: 'Service guarantee',
+    guarantees: [
+      'Refill or compensation for any order not delivered as described',
+      'Wallet refunds for orders that never started',
+      'Published price per 1,000 — no surprise fees',
+      'Human support in Arabic and English, 24/7',
+    ],
+    band2: 'Ready for your first order?',
+    band2sub: 'Create your account, fund your wallet and pick a service — delivery starts within minutes.',
+    cta: 'Create free account',
+    faqTitle: 'Frequently asked questions',
+    faqCopy: 'Quick answers to what customers ask most before they start.',
+    ctaTitle: 'Start growing today',
+    ctaCopy: 'Free account, USD wallet, and services ready for every platform.',
     loginTitle: 'Sign in', registerTitle: 'Create account',
     name: 'Name', email: 'Email', password: 'Password', ref: 'Referral code',
     optional: 'optional', submitLogin: 'Sign in', submitRegister: 'Create account',
-    already: 'Already have an account?', newUser: 'New here?', close: 'Close',
+    already: 'Already have an account?', newUser: 'New here?',
     forgot: 'Forgot password?', resetSent: 'Password reset link sent to your email.',
-    stats: [['Live services', serviceCount || '—'], ['Categories', categoryCount || '—'], ['Currency', 'USD'], ['Support', '24/7']],
-    trust: 'What we guarantee',
-    guarantee: 'Our Guarantee',
-    features: [
-      ['Direct delivery', 'Owned infrastructure means full control over speed and quality of every order.', Rocket],
-      ['24/7 support', 'Our team is always here — live chat and tickets for your needs.', Headphones],
-      ['Secure payments', 'All transactions are encrypted and recorded in an immutable ledger.', ShieldCheck],
-      ['Quality guarantee', 'We back every order with a satisfaction and rework guarantee.', Award],
-      ['Instant funding', 'Wallet is credited instantly after payment confirmation.', Zap],
-      ['Trusted worldwide', 'We serve thousands of customers across multiple platforms globally.', Globe2]
-    ],
-    steps: [
-      { step: '01', title: 'Create account', desc: 'Sign up free and get your instant USD wallet.' },
-      { step: '02', title: 'Add funds', desc: 'Top up using local or international payment methods.' },
-      { step: '03', title: 'Place order', desc: 'Choose our service and track delivery in real time.' }
-    ],
-    trustTitle: 'Trusted by customers worldwide',
-    trustCopy: 'Our direct platform powers thousands of satisfied customers globally.',
-    copyExample: 'Example feature',
-    copyValue: 'Visible growth in 7 days'
+    refLocked: 'This code came from your invitation link and is locked.',
+    footerRights: 'All rights reserved.',
   };
 
   const handleReset = async () => {
     try {
-      if (!email.trim()) throw new Error(ar ? 'أدخل بريدك أولاً.' : 'Enter your email first.');
+      if (!email.trim()) throw new Error(ar ? 'أدخل بريدك الإلكتروني أولاً.' : 'Enter your email first.');
       await resetPassword(email.trim());
       notify.success(text.resetSent);
     } catch (err: any) {
-      notify.error(err, 'Unable to send reset link');
+      notify.error(err, ar ? 'تعذر إرسال رابط الاستعادة' : 'Unable to send reset link');
     }
   };
 
@@ -157,184 +248,281 @@ export default function LandingPage() {
     e.preventDefault();
     try {
       if (auth === 'register') {
-        if (!name.trim() || password.length < 8) throw new Error(ar ? 'أدخل اسم وكلمة مرور 8 أحرف على الأقل.' : 'Enter your name and an 8+ character password.');
-        if (!referralFromUrl && referralCode) localStorage.setItem('ref', referralCode.trim().toUpperCase());
+        if (!name.trim() || password.length < 8) {
+          throw new Error(ar ? 'أدخل الاسم وكلمة مرور من 8 أحرف على الأقل.' : 'Enter your name and a password of at least 8 characters.');
+        }
+        if (!referralFromUrl && referralCode) writeStoredRef(referralCode.trim().toUpperCase());
         await registerWithEmail(email.trim(), password, name.trim());
-        notify.success(ar ? 'تم إنشاء الحساب. تحقق من بريدك لتأكيد الحساب.' : 'Account created. Check your email to verify your account.');
+        notify.success(ar ? 'تم إنشاء الحساب. راجع بريدك لتأكيد الحساب.' : 'Account created. Check your email to verify your account.');
       } else {
         await loginWithEmail(email.trim(), password);
       }
       setAuth(null);
       navigate('/dashboard', { replace: true });
     } catch (err: any) {
-      notify.error(err, 'Authentication failed');
+      notify.error(err, ar ? 'تعذر تسجيل الدخول' : 'Authentication failed');
     }
   };
 
-  const scrollHow = (e: React.MouseEvent) => { e.preventDefault(); setMenu(false); document.getElementById('how')?.scrollIntoView({ behavior: 'smooth' }); };
+  const scrollHow = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setMenu(false);
+    document.getElementById('how')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const arrow = (size: number) => <ArrowRight size={size} className={ar ? 'rotate-180' : ''} />;
 
   const organizationSchema = {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    "name": "SMM Rapid",
-    "url": SITE,
-    "logo": "https://smmrapid.store/favicon.svg",
-    "sameAs": ["https://twitter.com/smmrapid", "https://t.me/smmrapid", "https://www.facebook.com/smmrapid"],
-    "contactPoint": [{ "@type": "ContactPoint", "email": "support@smmrapid.store", "contactType": "customer service", "availableLanguage": ["English", "Arabic"] }]
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'SMM Rapid',
+    url: SITE,
+    logo: 'https://smmrapid.store/favicon.svg',
+    sameAs: ['https://twitter.com/smmrapid', 'https://t.me/smmrapid', 'https://www.facebook.com/smmrapid'],
+    contactPoint: [{ '@type': 'ContactPoint', email: 'support@smmrapid.store', contactType: 'customer service', availableLanguage: ['English', 'Arabic'] }],
   };
 
   const websiteSchema = {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    "name": "SMM Rapid",
-    "url": SITE,
-    "potentialAction": { "@type": "SearchAction", "target": "https://smmrapid.store/services?q={search_term_string}", "query-input": "required name=search_term_string" }
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'SMM Rapid',
+    url: SITE,
+    potentialAction: { '@type': 'SearchAction', target: 'https://smmrapid.store/services?q={search_term_string}', 'query-input': 'required name=search_term_string' },
   };
+
+  const faqSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: (ar ? FAQ_AR : FAQ_EN).slice(0, 6).map(([q, a]) => ({
+      '@type': 'Question',
+      name: q,
+      acceptedAnswer: { '@type': 'Answer', text: a },
+    })),
+  };
+
+  const section = 'mx-auto w-full max-w-[1200px] px-4 sm:px-6 lg:px-8';
 
   return (
     <div className="landing-shell min-h-screen bg-surface-container text-on-surface" dir={dir}>
       <SEO
-        title="SMM Rapid — Direct SMM Platform"
-        description="SMM Rapid is a direct SMM platform that builds and operates its own social media growth services. Owned infrastructure, direct delivery, guaranteed quality. Real followers, likes, views & engagement on Instagram, TikTok, YouTube, Facebook, Telegram & more."
+        title={ar
+          ? 'SMM Rapid — متابعين ولايكات ومشاهدات لإنستجرام وتيك توك ويوتيوب'
+          : 'SMM Rapid — Buy Followers, Likes & Views for Instagram, TikTok & YouTube'}
+        description={ar
+          ? 'اشترِ متابعين إنستجرام، مشاهدات تيك توك، مشتركين يوتيوب، لايكات فيسبوك وأعضاء تليجرام. أسعار معلنة لكل 1000، بدء سريع، إعادة تعبئة مضمونة، ومحفظة بالدولار مع تتبع مباشر لكل طلب.'
+          : 'Buy Instagram followers, TikTok views, YouTube subscribers, Facebook likes and Telegram members. Published price per 1,000, fast start, refill guarantee and a USD wallet with live order tracking.'}
         path="/"
-        keywords={['SMM panel', 'social media marketing', 'buy followers', 'buy likes', 'buy views', 'Instagram followers', 'TikTok followers', 'YouTube subscribers', 'Facebook likes', 'Telegram members']}
+        keywords={['buy followers', 'buy Instagram followers', 'TikTok views', 'YouTube subscribers', 'social media growth', 'engagement services', 'SMM panel']}
         locale={ar ? 'ar' : 'en'}
         type="website"
-        jsonLd={[organizationSchema, websiteSchema]}
+        jsonLd={[organizationSchema, websiteSchema, faqSchema]}
         alternates={{ ar: '/ar', en: '/', xDefault: '/' }}
       />
 
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-outline-variant bg-surface-container/95 bg-surface-container-low/95 backdrop-blur-xl">
-        <div className="mx-auto flex h-[72px] max-w-[1240px] items-center justify-between px-4 sm:px-6">
-          <Link to="/" className="flex items-center gap-3" onClick={() => setMenu(false)}>
+      {/* ------------------------------- header ------------------------------- */}
+      <header className="sticky top-0 z-50 border-b border-outline-variant bg-surface-container/95 backdrop-blur-xl">
+        <div className={`${section} flex h-[72px] items-center justify-between gap-4`}>
+          <Link to="/" className="flex shrink-0 items-center gap-3" onClick={() => setMenu(false)}>
             <span className="brand-mark">R</span>
-            <span className="text-xl font-black tracking-tight">SMM<span className="text-violet-600">Rapid</span></span>
+            <span className="text-xl font-black tracking-tight">SMM<span className="text-violet-600 dark:text-violet-400">Rapid</span></span>
           </Link>
-          <nav className="hidden items-center gap-7 text-sm font-bold text-on-surface-variant md:flex">
+
+          <nav className="hidden items-center gap-6 text-sm font-bold text-on-surface-variant lg:flex">
             <Link className="landing-nav-link" to="/services">{text.navServices}</Link>
             <a className="landing-nav-link" href="#how" onClick={scrollHow}>{text.navHow}</a>
             <Link className="landing-nav-link" to="/blog">{text.navBlog}</Link>
             <Link className="landing-nav-link" to="/support">{text.navSupport}</Link>
             <Link className="landing-nav-link" to="/api">{text.navApi}</Link>
           </nav>
-          <div className="hidden items-center gap-2 md:flex">
-            {user ? <Link to="/dashboard" className="btn-primary">{text.dashboard}<ArrowRight size={15} className={ar ? 'mr-1 rotate-180' : 'ml-1'} /></Link> :
-              <><button className="btn-ghost" onClick={() => setAuth('login')}>{text.login}</button>
-                <button className="btn-primary" onClick={() => setAuth('register')}>{text.start}<ArrowRight size={15} className={ar ? 'mr-1 rotate-180' : 'ml-1'} /></button></>}
-            <ThemeToggle className="ml-2" />
+
+          <div className="hidden items-center gap-2 lg:flex">
+            {user ? (
+              <Link to="/dashboard" className="btn-primary flex items-center gap-1.5">{text.dashboard}{arrow(15)}</Link>
+            ) : (
+              <>
+                <button className="btn-ghost" onClick={() => setAuth('login')}>{text.login}</button>
+                <button className="btn-primary flex items-center gap-1.5" onClick={() => setAuth('register')}>{text.start}{arrow(15)}</button>
+              </>
+            )}
+            <ThemeToggle />
           </div>
-          <button className="rounded-xl bg-surface-container-high p-2 md:hidden" onClick={() => setMenu(!menu)} aria-label="menu">
-            {menu ? <X /> : <Menu />}
+
+          <button className="rounded-xl bg-surface-container-high p-2.5 lg:hidden" onClick={() => setMenu(!menu)} aria-label={ar ? 'القائمة' : 'Menu'} aria-expanded={menu}>
+            {menu ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
+
         {menu && (
-          <div className="border-t border-outline-variant bg-surface-container p-4 md:hidden">
-            <div className="mx-auto flex max-w-md flex-col gap-2">
-              <Link onClick={() => setMenu(false)} className="mobile-nav" to="/services">{text.navServices}</Link>
-              <a onClick={scrollHow} className="mobile-nav" href="#how">{text.navHow}</a>
-              <Link onClick={() => setMenu(false)} className="mobile-nav" to="/blog">{text.navBlog}</Link>
-              <Link onClick={() => setMenu(false)} className="mobile-nav" to="/support">{text.navSupport}</Link>
-              <Link onClick={() => setMenu(false)} className="mobile-nav" to="/api">{text.navApi}</Link>
-              {user ? <Link onClick={() => setMenu(false)} className="btn-primary justify-center" to="/dashboard">{text.dashboard}</Link> :
-                <><button onClick={() => { setMenu(false); setAuth('login'); }} className="btn-ghost">{text.login}</button>
-                  <button onClick={() => { setMenu(false); setAuth('register'); }} className="btn-primary">{text.start}</button></>}
-              <div className="mt-2"><ThemeToggle className="w-full justify-center" /></div>
+          <div className="border-t border-outline-variant bg-surface-container px-4 pb-5 pt-4 lg:hidden">
+            <div className="mx-auto flex max-w-md flex-col gap-1.5">
+              {[
+                { to: '/services', label: text.navServices },
+                { to: '/blog', label: text.navBlog },
+                { to: '/support', label: text.navSupport },
+                { to: '/api', label: text.navApi },
+              ].map(l => (
+                <Link key={l.to} to={l.to} onClick={() => setMenu(false)}
+                  className="rounded-xl px-3 py-3 text-sm font-bold text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface">
+                  {l.label}
+                </Link>
+              ))}
+              <a href="#how" onClick={scrollHow} className="rounded-xl px-3 py-3 text-sm font-bold text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface">
+                {text.navHow}
+              </a>
+              <div className="mt-3 flex flex-col gap-2 border-t border-outline-variant pt-4">
+                {user ? (
+                  <Link onClick={() => setMenu(false)} className="btn-primary justify-center" to="/dashboard">{text.dashboard}</Link>
+                ) : (
+                  <>
+                    <button onClick={() => { setMenu(false); setAuth('login'); }} className="btn-ghost justify-center">{text.login}</button>
+                    <button onClick={() => { setMenu(false); setAuth('register'); }} className="btn-primary justify-center">{text.start}</button>
+                  </>
+                )}
+                <ThemeToggle className="mt-1 w-full justify-center" />
+              </div>
             </div>
           </div>
         )}
       </header>
 
-      <main className="bg-surface-container">
-        {/* Hero Section */}
-        <section className="relative overflow-hidden bg-surface-container py-20">
-          <div className="absolute inset-0 -z-10">
-            <div className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 w-[600px] h-[600px] rounded-full bg-violet-300/15 dark:bg-violet-600/5 blur-3xl" />
-            <div className="absolute bottom-0 left-0 translate-y-1/4 -translate-x-1/4 w-[600px] h-[600px] rounded-full bg-indigo-300/15 dark:bg-indigo-600/5 blur-3xl" />
+      <main>
+        {/* -------------------------------- hero -------------------------------- */}
+        <section className="relative overflow-hidden py-16 sm:py-20">
+          <div className="pointer-events-none absolute inset-0 -z-10">
+            <div className="absolute end-0 top-0 h-[520px] w-[520px] -translate-y-1/3 translate-x-1/4 rounded-full bg-violet-400/15 blur-3xl dark:bg-violet-600/10" />
+            <div className="absolute bottom-0 start-0 h-[520px] w-[520px] -translate-y-0 -translate-x-1/4 rounded-full bg-indigo-400/10 blur-3xl dark:bg-indigo-600/10" />
           </div>
-          <div className="mx-auto max-w-[1240px] px-4 sm:px-6 lg:px-8">
-            <div className="mx-auto grid gap-12 lg:grid-cols-[1fr_1fr] lg:items-center lg:gap-16">
-              <div>
-                <div className="inline-flex items-center gap-2 px-4 py-2 bg-violet-100/70 dark:bg-violet-900/30 rounded-full text-xs font-bold text-violet-700 dark:text-violet-300">
-                  <Sparkles size={12} className="text-violet-600 dark:text-violet-400" />
-                  {text.badge}
+
+          <div className={section}>
+            <div className="mx-auto max-w-3xl text-center">
+              <span className="inline-flex items-center gap-2 rounded-full border border-outline-variant bg-surface-container-high px-4 py-2 text-xs font-bold text-violet-700 dark:text-violet-300">
+                <Sparkles size={13} />
+                {text.badge}
+              </span>
+              <h1 className="mt-6 text-4xl font-black leading-[1.15] tracking-tight sm:text-5xl">
+                {text.title}
+                <span className="mt-2 block text-violet-600 dark:text-violet-400">{text.titleAccent}</span>
+              </h1>
+              <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-on-surface-variant sm:text-lg">{text.copy}</p>
+              <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
+                <button onClick={() => setAuth('register')} className="btn-primary flex items-center justify-center gap-2 !px-6 !py-3.5">
+                  {text.startFree}{arrow(17)}
+                </button>
+                <Link to="/services" className="btn-secondary flex items-center justify-center !px-6 !py-3.5">
+                  {text.browse}
+                </Link>
+              </div>
+              <div className="mt-7 flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
+                {text.proof.map((item: string) => (
+                  <span key={item} className="flex items-center gap-1.5 text-sm font-medium text-on-surface-variant">
+                    <Check size={15} className="text-emerald-500" />{item}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* live catalog preview — real rows from /api/public/showcase */}
+            <div className="mx-auto mt-14 max-w-4xl rounded-2xl border border-outline-variant bg-surface-container shadow-xl shadow-slate-900/5 dark:shadow-slate-950/40">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-outline-variant px-5 py-4">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">SMM Rapid</p>
+                  <h2 className="text-base font-black">{text.catalogTitle}</h2>
                 </div>
-                <h1 className="mt-6 text-4xl font-black tracking-tight text-on-surface sm:text-5xl leading-tight">
-                  {text.title}
-                </h1>
-                <p className="mt-6 text-lg text-on-surface-variant leading-relaxed">
-                  {text.copy}
-                </p>
-                <div className="mt-8 flex-col gap-3 sm:flex-row">
-                  <button onClick={() => setAuth('register')} className="btn-primary !px-6 !py-3.5">
-                    {text.start}<ArrowRight size={17} className={ar ? 'mr-1 rotate-180' : 'ml-1'} />
-                  </button>
-                  <Link to="/services" className="btn-ghost !px-6 !py-3.5 dark:!border-slate-600 dark:!bg-slate-800 dark:!text-gray-200">
-                    {text.browse}
-                  </Link>
-                </div>
-                <div className="mt-6 flex-wrap gap-4">
-                  {text.proof.map((item: string) => (
-                    <span key={item} className="flex items-center gap-1 text-sm font-medium text-on-surface-variant">
-                      <Check size={14} className="text-violet-600 dark:text-violet-400" />{item}
+                <div className="flex items-center gap-2">
+                  {serviceCount > 0 && (
+                    <span className="rounded-full bg-surface-container-high px-3 py-1 text-xs font-bold text-on-surface-variant">
+                      {serviceCount} {ar ? 'خدمة' : 'services'}
                     </span>
-                  ))}
+                  )}
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/12 px-3 py-1 text-xs font-black text-emerald-600 dark:text-emerald-400">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />{text.live}
+                  </span>
                 </div>
               </div>
 
-              {/* Service Catalog Preview Card */}
-              <div className="relative">
-                <div className="rounded-xl border border-outline-variant bg-surface-container p-6 shadow-2xl shadow-slate-200 dark:shadow-slate-900/50">
-                  <div className="mb-4 flex items-center justify-between">
-                    <div>
-                      <small className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">SMM Rapid</small>
-                      <h3 className="text-lg font-black text-on-surface">{text.how}</h3>
+              <div className="divide-y divide-outline-variant">
+                {services.slice(0, 4).map((s: any) => (
+                  <div key={s.id} className="flex items-center gap-3 px-5 py-3.5">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-bold text-on-surface">{s.name}</p>
+                      <p className="mt-0.5 truncate text-xs text-on-surface-variant">
+                        {s.category}{s.min ? ` · ${text.from} ${s.min}` : ''}{s.max ? ` · ${text.to} ${s.max}` : ''}
+                      </p>
                     </div>
-                    <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-black text-emerald-600 dark:text-emerald-400">● {text.live}</span>
+                    <div className="shrink-0 text-end">
+                      <p className="text-sm font-black tabular-nums text-violet-600 dark:text-violet-400">{currency}{Number(s.rate || 0).toFixed(4)}</p>
+                      <p className="text-[11px] text-on-surface-variant">{text.per1k}</p>
+                    </div>
                   </div>
+                ))}
+                {!services.length && (
+                  <p className="px-5 py-6 text-center text-sm text-on-surface-variant">
+                    {showcase === undefined ? text.loadingCatalog : text.noCatalog}
+                  </p>
+                )}
+              </div>
 
-                  {/* Feature Highlight */}
-                  <div className="mb-6 rounded-xl bg-surface-container-high/50 p-4 text-center">
-                    <div className="text-3xl font-black text-violet-600 dark:text-violet-400 mb-1">+{serviceCount || 0}</div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">{ar ? 'خدمة متاحة مباشرة' : 'Services available direct'}</p>
-                  </div>
-
-                  <div className="mb-4 rounded-xl bg-surface-container-high/50 p-3">
-                    <small className="text-xs font-bold text-slate-500 dark:text-slate-400">{ar ? '1 — الفئة' : '1 — Category'}</small>
-                    <div className="mt-1 text-sm font-medium text-on-surface">Instagram</div>
-                  </div>
-                  <div className="rounded-xl bg-surface-container-high/50 p-3">
-                    <small className="text-xs font-bold text-slate-500 dark:text-slate-400">{ar ? '2 — الخدمة' : '2 — Service'}</small>
-                    <div className="mt-1 text-sm font-medium text-on-surface">{ar ? 'متابعين إنستجرام' : 'Instagram Followers'}</div>
-                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{ar ? 'جودة عالية • تسليم مباشر' : 'High quality • Direct delivery'}</div>
-                  </div>
-                  <div className="mt-4 rounded-xl bg-violet-50 dark:bg-violet-900/20 p-3 text-xs text-violet-700 dark:text-violet-300">
-                    {ar ? 'نحن المورّد المباشر. اختر الخدمة واستلم النتائج.' : 'We are the direct provider. Choose a service and get results.'}
-                  </div>
-                </div>
+              <div className="border-t border-outline-variant px-5 py-3.5 text-center">
+                <Link to="/services" className="inline-flex items-center gap-1.5 text-sm font-bold text-violet-600 hover:underline dark:text-violet-400">
+                  {text.openCatalog}{arrow(15)}
+                </Link>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Live Statistics Bar */}
-        <section className="border-y border-outline-variant bg-surface-container/50 py-12">
-          <div className="mx-auto max-w-[1240px] px-4 sm:px-6">
-            <div className="grid-cols-2 gap-8 md:grid-cols-4 md:gap-0 md:text-center">
-              {[
-                { value: '10M+', label: ar ? 'طلب مكتمل' : 'Orders Completed', icon: BarChart3 },
-                { value: '500+', label: text.stats[0]?.[0] || (ar ? 'خدمة متاحة' : 'Live services'), icon: Zap },
-                { value: '99.9%', label: ar ? 'وقت تشغيل' : 'Uptime', icon: Clock },
-                { value: '24/7', label: ar ? 'دعم مباشر' : 'Direct Support', icon: Headphones }
-              ].map((stat) => {
-                const Icon = stat.icon;
+        {/* ------------------------------ platforms ------------------------------ */}
+        <section className="border-y border-outline-variant bg-surface-container-low py-8">
+          <div className={section}>
+            <p className="text-center text-xs font-black uppercase tracking-[.18em] text-on-surface-variant">{text.platformsTitle}</p>
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5">
+              {PLATFORMS.map(p => (
+                <span key={p} className="rounded-full border border-outline-variant bg-surface-container px-4 py-2 text-sm font-bold text-on-surface-variant">{p}</span>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* --------------------- marketing band (headline mid-page) --------------------- */}
+        <section className="bg-gradient-to-br from-violet-600 to-indigo-700 py-14 text-white">
+          <div className={`${section} text-center`}>
+            <h2 className="mx-auto max-w-4xl text-2xl font-black leading-snug sm:text-3xl">{text.band1}</h2>
+            <p className="mx-auto mt-4 max-w-2xl text-violet-100">{text.band1sub}</p>
+          </div>
+        </section>
+
+        {/* -------------------------------- stats -------------------------------- */}
+        <section className="py-12">
+          <div className={section}>
+            <div className="grid grid-cols-2 gap-6 lg:grid-cols-4">
+              {text.stats.map((s: any) => (
+                <div key={s.label} className="rounded-2xl border border-outline-variant bg-surface-container p-5 text-center">
+                  <b className="block text-2xl font-black tabular-nums text-on-surface sm:text-3xl">{s.value}</b>
+                  <span className="mt-1 block text-sm font-medium text-on-surface-variant">{s.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ------------------------------- features ------------------------------- */}
+        <section className="py-16">
+          <div className={section}>
+            <div className="mx-auto max-w-2xl text-center">
+              <p className="text-xs font-black uppercase tracking-[.16em] text-violet-600 dark:text-violet-400">{ar ? 'المميزات' : 'Features'}</p>
+              <h2 className="mt-2 text-3xl font-black leading-tight">{text.featuresTitle}</h2>
+              <p className="mt-3 text-on-surface-variant">{text.featuresCopy}</p>
+            </div>
+            <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {text.features.map((f: any) => {
+                const [title, desc, Icon] = f;
                 return (
-                  <div key={stat.label} className="flex-col items-center gap-2 md:items-center">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400">
-                      <Icon size={20} />
+                  <div key={title} className="rounded-2xl border border-outline-variant bg-surface-container p-6 transition-shadow hover:shadow-lg">
+                    <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">
+                      <Icon size={22} />
                     </div>
-                    <b className="text-2xl font-black text-on-surface md:text-3xl">{stat.value}</b>
-                    <span className="text-sm font-medium text-on-surface-variant">{stat.label}</span>
+                    <h3 className="mb-2 text-lg font-black leading-snug">{title}</h3>
+                    <p className="text-sm leading-relaxed text-on-surface-variant">{desc}</p>
                   </div>
                 );
               })}
@@ -342,112 +530,71 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Premium Features */}
-        <section className="py-20 bg-surface-container">
-          <div className="mx-auto max-w-[1240px] px-4 sm:px-6">
-            <div className="text-center">
-              <p className="mb-2 text-xs font-black tracking-[.16em] text-violet-600 dark:text-violet-400">{ar ? 'المميزات' : 'FEATURES'}</p>
-              <h2 className="text-3xl font-black text-on-surface">{text.featuresTitle}</h2>
-              <p className="mx-auto mt-3 max-w-2xl text-on-surface-variant">{text.featuresCopy}</p>
+        {/* ------------------------------ how it works ------------------------------ */}
+        <section id="how" className="scroll-mt-24 border-y border-outline-variant bg-surface-container-low py-16">
+          <div className={section}>
+            <div className="mx-auto max-w-2xl text-center">
+              <p className="text-xs font-black uppercase tracking-[.16em] text-violet-600 dark:text-violet-400">{text.navHow}</p>
+              <h2 className="mt-2 text-3xl font-black leading-tight">{text.howTitle}</h2>
+              <p className="mt-3 text-on-surface-variant">{text.howCopy}</p>
             </div>
-            <div className="mt-12 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-              {text.features.map((f: any, i: number) => { const [title, desc, Icon] = f; return (
-                <div key={i} className="flex-col rounded-xl border border-outline-variant bg-surface-container p-6 transition-all hover:shadow-xl">
-                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400">
-                    <Icon size={24} />
+            <div className="mt-12 grid gap-6 md:grid-cols-3">
+              {text.steps.map((step: any) => (
+                <div key={step.step} className="rounded-2xl border border-outline-variant bg-surface-container p-7 text-center">
+                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-violet-600 text-lg font-black text-white">
+                    {step.step}
                   </div>
-                  <h3 className="mb-2 text-lg font-black text-on-surface">{title}</h3>
-                  <p className="text-sm text-on-surface-variant leading-relaxed">{desc}</p>
-                </div>
-              ); })}
-            </div>
-          </div>
-        </section>
-
-        {/* How It Works */}
-        <section id="how" className="py-20 bg-surface-container/30">
-          <div className="mx-auto max-w-[1240px] px-4 sm:px-6">
-            <div className="text-center">
-              <p className="mb-2 text-xs font-black tracking-[.16em] text-violet-600 dark:text-violet-400">{text.how}</p>
-              <h2 className="text-3xl font-black text-on-surface">{text.howCopy}</h2>
-            </div>
-            <div className="mt-12 grid gap-8 md:grid-cols-3">
-              {text.steps.map((step) => (
-                <div key={step.step} className="relative rounded-xl border border-outline-variant bg-surface-container p-8 text-center transition-all hover:shadow-xl">
-                  <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400">
-                    <span className="text-xl font-black">{step.step}</span>
-                  </div>
-                  <h3 className="mb-3 text-xl font-black text-on-surface">{step.title}</h3>
-                  <p className="text-on-surface-variant">{step.desc}</p>
+                  <h3 className="mb-2 text-lg font-black">{step.title}</h3>
+                  <p className="text-sm leading-relaxed text-on-surface-variant">{step.desc}</p>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* Our Guarantee */}
-        <section className="py-16 bg-surface-container">
-          <div className="mx-auto max-w-[1240px] px-4 sm:px-6">
-            <div className="overflow-hidden rounded-xl border border-outline-variant bg-surface-container">
-              <div className="grid gap-8 p-8 md:grid-cols-2 md:p-12">
-                <div>
-                  <div className="inline-flex items-center gap-2 mb-4 px-3 py-1.5 bg-violet-100 dark:bg-violet-900/30 rounded-full text-xs font-bold text-violet-700 dark:text-violet-300">
-                    <ShieldCheck size={14} /> {text.guarantee}
+        {/* ------------------------------- guarantee ------------------------------- */}
+        <section className="py-16">
+          <div className={section}>
+            <div className="grid gap-8 rounded-2xl border border-outline-variant bg-surface-container p-7 md:grid-cols-2 md:p-10">
+              <div>
+                <span className="inline-flex items-center gap-2 rounded-full bg-violet-100 px-3 py-1.5 text-xs font-bold text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">
+                  <ShieldCheck size={14} />{text.guarantee}
+                </span>
+                <h2 className="mt-4 text-2xl font-black leading-tight md:text-3xl">{text.guaranteeTitle}</h2>
+                <p className="mt-3 text-on-surface-variant">{text.guaranteeCopy}</p>
+              </div>
+              <div className="flex flex-col justify-center gap-3">
+                {text.guarantees.map((item: string) => (
+                  <div key={item} className="flex items-start gap-2.5 rounded-xl bg-surface-container-high p-3.5">
+                    <Check size={17} className="mt-0.5 shrink-0 text-emerald-500" />
+                    <span className="text-sm leading-relaxed text-on-surface">{item}</span>
                   </div>
-                  <h2 className="mb-4 text-2xl font-black text-on-surface md:text-3xl">{text.trust}</h2>
-                  <p className="mb-6 text-on-surface-variant">{text.trustCopy}</p>
-                  <div className="space-y-3">
-                    {[
-                      ar ? 'إعادة تعبئة أو استبدال أي طلب غير راضٍ عن الجودة' : 'Re-fill or replace any order not meeting quality standards',
-                      ar ? 'ضمان استرداد كامل للرصيد' : 'Full wallet refund guarantee on rejected orders',
-                      ar ? 'دعم مباشر 24/7' : '24/7 direct customer support'
-                    ].map((item, i) => (
-                      <div key={i} className="flex items-center gap-2">
-                        <Check size={16} className="text-violet-600 dark:text-violet-400" />
-                        <span className="text-sm text-on-surface-variant">{item}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex items-center justify-center">
-                  <div className="grid-cols-2 gap-4 w-full max-w-sm">
-                    {[
-                      { label: ar ? 'تسليم مباشر' : 'Direct delivery', value: '99%' },
-                      { label: ar ? 'وقت استجابة سريع' : 'Fast response', value: '<30s' },
-                      { label: ar ? 'جودة مضمونة' : 'Quality guaranteed', value: '100%' },
-                      { label: ar ? 'دعم 24/7' : '24/7 support', value: 'مستمر' }
-                    ].map((item, i) => (
-                      <div key={i} className="rounded-xl bg-surface-container p-4 text-center border border-outline-variant">
-                        <div className="text-2xl font-black text-violet-600 dark:text-violet-400">{item.value}</div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">{item.label}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
           </div>
         </section>
 
-        {/* FAQ */}
-        <section className="py-20 bg-surface-container">
-          <div className="mx-auto max-w-[1240px] px-4 sm:px-6">
-            <div className="mx-auto max-w-3xl text-center">
-              <p className="mb-2 text-xs font-black tracking-[.16em] text-violet-600 dark:text-violet-400">FAQ</p>
-              <h2 className="text-3xl font-black text-on-surface">{text.faqTitle}</h2>
-              <p className="mx-auto mt-3 max-w-xl text-on-surface-variant">{text.faqCopy}</p>
+        {/* ---------------------------------- FAQ ---------------------------------- */}
+        <section className="border-t border-outline-variant py-16">
+          <div className={section}>
+            <div className="mx-auto max-w-2xl text-center">
+              <p className="text-xs font-black uppercase tracking-[.16em] text-violet-600 dark:text-violet-400">FAQ</p>
+              <h2 className="mt-2 text-3xl font-black leading-tight">{text.faqTitle}</h2>
+              <p className="mt-3 text-on-surface-variant">{text.faqCopy}</p>
             </div>
-            <div className="mx-auto mt-8 max-w-3xl rounded-xl border border-outline-variant bg-surface-container shadow-sm">
-              {faqs.map(([q, a], i) => (
+            <div className="mx-auto mt-10 max-w-3xl overflow-hidden rounded-2xl border border-outline-variant bg-surface-container">
+              {faqs.map(([q, a, extra], i) => (
                 <div key={q} className="border-b border-outline-variant last:border-0">
-                  <button onClick={() => setFaq(faq === i ? -1 : i)} className="flex w-full items-center justify-between gap-4 px-6 py-4 text-left">
-                    <span className="font-medium text-on-surface">{q}</span>
-                    <ChevronDown size={18} className={`shrink-0 text-slate-400 transition-transform ${faq === i ? 'rotate-180' : ''}`} />
+                  <button onClick={() => setFaq(faq === i ? -1 : i)} aria-expanded={faq === i}
+                    className="flex w-full items-center justify-between gap-4 px-5 py-4 text-start sm:px-6">
+                    <span className="text-sm font-bold text-on-surface sm:text-base">{q}</span>
+                    <ChevronDown size={18} className={`shrink-0 text-on-surface-variant transition-transform ${faq === i ? 'rotate-180' : ''}`} />
                   </button>
                   {faq === i && (
-                    <div className="px-6 pb-4">
-                      <p className="text-sm text-on-surface-variant mb-2">{a}</p>
-                      {faqs[i][2] && <p className="text-sm text-outline">{faqs[i][2]}</p>}
+                    <div className="px-5 pb-5 sm:px-6">
+                      <p className="text-sm leading-relaxed text-on-surface-variant">{a}</p>
+                      {extra && <p className="mt-2 text-sm leading-relaxed text-on-surface-variant/80">{extra}</p>}
                     </div>
                   )}
                 </div>
@@ -456,82 +603,91 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* CTA */}
-        <section className="py-20 bg-gradient-to-br from-violet-600 to-indigo-700 text-white">
-          <div className="mx-auto max-w-[1240px] px-4 text-center sm:px-6">
+        {/* ------------------------- marketing band + final CTA ------------------------- */}
+        <section className="border-t border-outline-variant bg-gradient-to-br from-violet-600 to-indigo-700 py-16 text-white">
+          <div className={`${section} text-center`}>
             <div className="mx-auto max-w-2xl">
-              <ShieldCheck className="mx-auto mb-4 h-12 w-12 text-violet-200" />
-              <h2 className="mt-4 text-3xl font-black">{text.ctaTitle}</h2>
+              <Heart className="mx-auto mb-2 h-8 w-8 text-violet-200" />
+              <p className="text-xl font-black leading-snug sm:text-2xl">{text.band2}</p>
+              <p className="mt-2 text-violet-100">{text.band2sub}</p>
+              <h2 className="mt-8 text-3xl font-black leading-tight sm:text-4xl">{text.ctaTitle}</h2>
               <p className="mx-auto mt-3 max-w-xl text-violet-100">{text.ctaCopy}</p>
-              <button onClick={() => setAuth('register')} className="btn-ghost mt-7 !border-0 !border-white/20 !bg-surface-container/10 text-white hover:!bg-surface-container/20">
-                {text.cta}<ArrowRight size={16} className={ar ? 'mr-1 rotate-180' : 'ml-1'} />
+              <button onClick={() => setAuth('register')}
+                className="mt-7 inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3.5 text-base font-black text-violet-700 transition-colors hover:bg-violet-50">
+                {text.cta}{arrow(17)}
               </button>
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-violet-100">
+                <span className="inline-flex items-center gap-1.5"><Wallet size={15} />{text.stats[2].value} {ar ? 'محفظة' : 'wallet'}</span>
+                <span className="inline-flex items-center gap-1.5"><Clock size={15} />{ar ? 'بدأ سريع' : 'Fast start'}</span>
+                <span className="inline-flex items-center gap-1.5"><Globe2 size={15} />{ar ? 'عملاء من كل مكان' : 'Customers worldwide'}</span>
+              </div>
             </div>
           </div>
         </section>
       </main>
 
-      {/* Auth Modal */}
+      {/* ------------------------------ auth modal ------------------------------ */}
       {auth && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
           onMouseDown={e => { if (e.currentTarget === e.target) setAuth(null); }}>
-          <div className="w-full max-w-md rounded-xl bg-surface-container p-6 shadow-2xl sm:p-8" dir={dir}>
-            <div className="mb-6 flex items-start justify-between">
+          <div className="w-full max-w-md rounded-2xl border border-outline-variant bg-surface-container p-6 shadow-2xl sm:p-8" dir={dir} role="dialog" aria-modal="true">
+            <div className="mb-6 flex items-start justify-between gap-4">
               <div>
                 <span className="brand-mark">R</span>
-                <h2 className="mt-4 text-2xl font-black text-on-surface">{auth === 'register' ? text.registerTitle : text.loginTitle}</h2>
+                <h2 className="mt-3 text-2xl font-black">{auth === 'register' ? text.registerTitle : text.loginTitle}</h2>
               </div>
-              <button className="rounded-xl bg-surface-container-high text-on-surface p-2" onClick={() => setAuth(null)} aria-label={text.close}>
+              <button className="rounded-xl bg-surface-container-high p-2 text-on-surface-variant hover:text-on-surface" onClick={() => setAuth(null)} aria-label={text.close}>
                 <X size={18} />
               </button>
             </div>
+
             <form onSubmit={handleAuth} className="space-y-4">
               {auth === 'register' && (
                 <div>
-                  <label className="label-primary text-on-surface-variant">{text.name}</label>
-                  <input className="input-primary bg-surface-container-high border border-outline-variant text-on-surface placeholder:text-outline"
-                    value={name} onChange={e => setName(e.target.value)} required />
+                  <label className="label-primary text-on-surface-variant" htmlFor="landing-name">{text.name}</label>
+                  <input id="landing-name" className="input-primary bg-surface-container-high" value={name} onChange={e => setName(e.target.value)} required />
                 </div>
               )}
               <div>
-                <label className="label-primary text-on-surface-variant">{text.email}</label>
-                <input className="input-primary bg-surface-container-high border border-outline-variant text-on-surface placeholder:text-outline"
-                  type="email" value={email} onChange={e => setEmail(e.target.value)} required />
+                <label className="label-primary text-on-surface-variant" htmlFor="landing-email">{text.email}</label>
+                <input id="landing-email" className="input-primary bg-surface-container-high" type="email" value={email} onChange={e => setEmail(e.target.value)} required />
               </div>
               <div>
-                <label className="label-primary text-on-surface-variant">{text.password}</label>
-                <input className="input-primary bg-surface-container-high border border-outline-variant text-on-surface placeholder:text-outline"
-                  type="password" minLength={8} value={password} onChange={e => setPassword(e.target.value)} required />
+                <label className="label-primary text-on-surface-variant" htmlFor="landing-password">{text.password}</label>
+                <input id="landing-password" className="input-primary bg-surface-container-high" type="password" minLength={8}
+                  value={password} onChange={e => setPassword(e.target.value)} required />
               </div>
+
               {auth === 'login' && (
-                <div className="text-right">
-                  <button type="button" onClick={handleReset} className="text-xs font-bold text-violet-600 dark:text-violet-400">{text.forgot}</button>
+                <div className="text-end">
+                  <button type="button" onClick={handleReset} className="text-xs font-bold text-violet-600 hover:underline dark:text-violet-400">{text.forgot}</button>
                 </div>
               )}
+
               {auth === 'register' && (
                 <div>
-                  <label className="label-primary text-on-surface-variant">{text.ref} <span className="font-normal text-slate-400 dark:text-slate-500">({text.optional})</span></label>
-                  <input className="input-primary bg-surface-container-high border border-outline-variant text-on-surface placeholder:text-outline"
-                    value={referralCode} disabled={!!referralFromUrl}
-                    onChange={e => setReferralCode(e.target.value.toUpperCase())} placeholder="REF123" />
-                  {referralFromUrl && (
-                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                      {ar ? 'الكود جاي من رابط الدعوة ومثبت.' : 'This code came from your invitation link and is locked.'}
-                    </p>
-                  )}
+                  <label className="label-primary text-on-surface-variant" htmlFor="landing-ref">
+                    {text.ref} <span className="font-normal text-on-surface-variant/70">({text.optional})</span>
+                  </label>
+                  <input id="landing-ref" className="input-primary bg-surface-container-high" value={referralCode}
+                    disabled={!!referralFromUrl} placeholder="REF123"
+                    onChange={e => setReferralCode(e.target.value.toUpperCase())} />
+                  {referralFromUrl && <p className="mt-1.5 text-xs text-on-surface-variant">{text.refLocked}</p>}
                 </div>
               )}
-              <button className="btn-primary w-full">{auth === 'register' ? text.submitRegister : text.submitLogin}</button>
-              <div className="mt-4 text-center text-sm text-on-surface-variant">
+
+              <button className="btn-primary w-full justify-center">{auth === 'register' ? text.submitRegister : text.submitLogin}</button>
+
+              <div className="pt-1 text-center text-sm text-on-surface-variant">
                 {auth === 'register' ? (
                   <>
-                    {text.already}
-                    <button className="font-bold text-violet-600 dark:text-violet-400" onClick={() => setAuth('login')}>{text.login}</button>
+                    {text.already}{' '}
+                    <button type="button" className="font-bold text-violet-600 hover:underline dark:text-violet-400" onClick={() => setAuth('login')}>{text.login}</button>
                   </>
                 ) : (
                   <>
-                    {text.newUser}
-                    <button className="font-bold text-violet-600 dark:text-violet-400" onClick={() => setAuth('register')}>{text.start}</button>
+                    {text.newUser}{' '}
+                    <button type="button" className="font-bold text-violet-600 hover:underline dark:text-violet-400" onClick={() => setAuth('register')}>{text.start}</button>
                   </>
                 )}
               </div>
@@ -540,26 +696,23 @@ export default function LandingPage() {
         </div>
       )}
 
-      {/* Footer */}
-      <footer className="border-t border-outline-variant bg-surface-container py-8">
-        <div className="mx-auto max-w-[1240px] px-4 sm:px-6">
-          <div className="flex-col items-center justify-between gap-6 md:flex-row">
-            <div className="flex items-center gap-3">
-              <span className="brand-mark">R</span>
-              <span className="text-xl font-black">SMM<span className="text-violet-600">Rapid</span></span>
-            </div>
-            <div className="flex-wrap items-center justify-center gap-6 text-sm text-on-surface-variant">
-              <Link to="/terms" className="hover:text-violet-600 dark:hover:text-violet-400">{ar ? 'الشروط' : 'Terms'}</Link>
-              <Link to="/privacy" className="hover:text-violet-600 dark:hover:text-violet-400">{ar ? 'الخصوصية' : 'Privacy'}</Link>
-              <Link to="/refund-policy" className="hover:text-violet-600 dark:hover:text-violet-400">{ar ? 'الاسترجاع' : 'Refunds'}</Link>
-              <Link to="/support" className="hover:text-violet-600 dark:hover:text-violet-400">{text.navSupport}</Link>
-              <Link to="/blog" className="hover:text-violet-600 dark:hover:text-violet-400">{text.navBlog}</Link>
-              <Link to="/api" className="hover:text-violet-600 dark:hover:text-violet-400">{text.navApi}</Link>
-            </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400">
-              &copy; {new Date().getFullYear()} SMM Rapid. {ar ? 'جميع الحقوق محفوظة.' : 'All rights reserved.'}
-            </div>
-          </div>
+      {/* -------------------------------- footer -------------------------------- */}
+      <footer className="border-t border-outline-variant bg-surface-container-low py-9">
+        <div className={`${section} flex flex-col items-center justify-between gap-6 lg:flex-row`}>
+          <Link to="/" className="flex items-center gap-3">
+            <span className="brand-mark">R</span>
+            <span className="text-xl font-black tracking-tight">SMM<span className="text-violet-600 dark:text-violet-400">Rapid</span></span>
+          </Link>
+          <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-on-surface-variant">
+            <Link to="/services" className="hover:text-violet-600 dark:hover:text-violet-400">{text.navServices}</Link>
+            <Link to="/blog" className="hover:text-violet-600 dark:hover:text-violet-400">{text.navBlog}</Link>
+            <Link to="/support" className="hover:text-violet-600 dark:hover:text-violet-400">{text.navSupport}</Link>
+            <Link to="/api" className="hover:text-violet-600 dark:hover:text-violet-400">{text.navApi}</Link>
+            <Link to="/terms" className="hover:text-violet-600 dark:hover:text-violet-400">{ar ? 'الشروط' : 'Terms'}</Link>
+            <Link to="/privacy" className="hover:text-violet-600 dark:hover:text-violet-400">{ar ? 'الخصوصية' : 'Privacy'}</Link>
+            <Link to="/refund-policy" className="hover:text-violet-600 dark:hover:text-violet-400">{ar ? 'سياسة الاسترجاع' : 'Refunds'}</Link>
+          </nav>
+          <p className="text-xs text-on-surface-variant">&copy; {new Date().getFullYear()} SMM Rapid. {text.footerRights}</p>
         </div>
       </footer>
     </div>

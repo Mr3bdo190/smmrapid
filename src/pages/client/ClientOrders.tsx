@@ -7,7 +7,14 @@ import { notify } from '../../lib/notify';
 import { useTranslation } from '../../lib/i18n';
 import { ArrowRight, Banknote, Copy, Download, ExternalLink, Info, Loader2, Package, RefreshCw, Search, X } from 'lucide-react';
 
-const readErr = async (r: Response, fallback: string) => { const b = await r.json().catch(() => ({})); return b?.error || fallback; };
+/** Keep the server's error CODE and support reference. Dropping them collapses a specific,
+ *  translated, actionable message into raw developer wording. */
+const readErr = async (r: Response, fallback: string) => {
+  const b = await r.json().catch(() => ({}));
+  const err: any = new Error(b?.error || b?.message || fallback);
+  err.code = b?.code; err.ref = b?.ref; err.status = r.status;
+  return err;
+};
 const CANCELABLE_STATUSES = ['Pending', 'Processing', 'In Progress'];
 const REFILLABLE_STATUSES = ['Completed', 'Partial'];
 const ACTIVE_STATUSES = ['Pending', 'Processing', 'In Progress'];
@@ -47,18 +54,18 @@ export default function ClientOrders() {
   });
 
   const refill = useMutation({
-    mutationFn: async (id: string) => { const t = await user!.getIdToken(); const r = await apiFetch(`/api/client/orders/${id}/refill`, user, { method: 'POST', headers: { Authorization: `Bearer ${t}` } }); if (!r.ok) throw new Error(await readErr(r, 'Refill request failed')); return r.json(); },
+    mutationFn: async (id: string) => { const t = await user!.getIdToken(); const r = await apiFetch(`/api/client/orders/${id}/refill`, user, { method: 'POST', headers: { Authorization: `Bearer ${t}` } }); if (!r.ok) throw await readErr(r, 'Refill request failed'); return r.json(); },
     onSuccess: () => { notify.success(en('Refill requested — we will update the order as soon as it is processed.', 'تم طلب إعادة التعبئة — هنحدّث الطلب بمجرد ما يتم تنفيذه.')); qc.invalidateQueries({ queryKey: ['client-orders'] }); },
     onError: (e: any) => notify.error(e),
   });
   const cancel = useMutation({
-    mutationFn: async (id: string) => { const t = await user!.getIdToken(); const r = await apiFetch(`/api/client/orders/${id}/cancel`, user, { method: 'POST', headers: { Authorization: `Bearer ${t}` } }); if (!r.ok) throw new Error(await readErr(r, 'Cancel request failed')); return r.json(); },
+    mutationFn: async (id: string) => { const t = await user!.getIdToken(); const r = await apiFetch(`/api/client/orders/${id}/cancel`, user, { method: 'POST', headers: { Authorization: `Bearer ${t}` } }); if (!r.ok) throw await readErr(r, 'Cancel request failed'); return r.json(); },
     onSuccess: (data: any) => { notify.success(Number(data?.refundedAmount || 0) > 0 ? 'Order canceled. The unfulfilled quantity was refunded to your wallet.' : en('Cancellation requested — we are processing it now, and your refund is calculated from the unfulfilled quantity.', 'تم طلب الإلغاء — بنعالجه حالياً، والاسترداد بيتحسب من الكمية غير المنفَّذة.')); qc.invalidateQueries({ queryKey: ['client-orders'] }); qc.invalidateQueries({ queryKey: ['client-me'] }); },
     onError: (e: any) => notify.error(e),
   });
 
   const refreshOrder = useMutation({
-    mutationFn: async (id: string) => { const t = await user!.getIdToken(); const r = await apiFetch(`/api/client/orders/${id}/refresh`, user, { method: 'POST', headers: { Authorization: `Bearer ${t}` } }); if (!r.ok) throw new Error(await readErr(r, 'Could not refresh order')); return r.json(); },
+    mutationFn: async (id: string) => { const t = await user!.getIdToken(); const r = await apiFetch(`/api/client/orders/${id}/refresh`, user, { method: 'POST', headers: { Authorization: `Bearer ${t}` } }); if (!r.ok) throw await readErr(r, 'Could not refresh order'); return r.json(); },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['client-orders'] }); qc.invalidateQueries({ queryKey: ['client-me'] }); },
     onError: (e: any) => notify.error(e),
   });

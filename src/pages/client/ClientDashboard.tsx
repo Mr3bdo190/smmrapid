@@ -9,7 +9,7 @@ import { useTranslation } from '../../lib/i18n';
 const money = (v:any) => `$${Number(v || 0).toFixed(2)}`;
 const num = (v:any) => Number(v || 0);
 const shortId = (id:any) => String(id || '').slice(0, 8);
-const readError = async (res: Response, fallback: string) => { const b = await res.json().catch(() => ({})); return b?.error || b?.message || fallback; };
+const readError = async (res: Response, fallback: string) => { const b = await res.json().catch(() => ({})); const err: any = new Error(b?.error || b?.message || fallback); err.code = b?.code; err.ref = b?.ref; err.status = res.status; return err; };
 const statusSlug:any = { Pending:'pending', Processing:'processing', 'In Progress':'inprogress', Completed:'completed', Partial:'partial', Canceled:'canceled', Refunded:'refunded' };
 const REFILLABLE_STATUSES = ['Completed', 'Partial'];
 
@@ -27,7 +27,7 @@ export default function ClientDashboard() {
   });
 
   const refill = useMutation({
-    mutationFn: async (id: string) => { const tok = await user!.getIdToken(); const r = await apiFetch(`/api/client/orders/${id}/refill`, user, { method: 'POST', headers: { Authorization: `Bearer ${tok}` } }); if (!r.ok) throw new Error(await readError(r, 'Refill request failed')); return r.json(); },
+    mutationFn: async (id: string) => { const tok = await user!.getIdToken(); const r = await apiFetch(`/api/client/orders/${id}/refill`, user, { method: 'POST', headers: { Authorization: `Bearer ${tok}` } }); if (!r.ok) throw await readError(r, 'Refill request failed'); return r.json(); },
     onSuccess: () => { notify.success(L('Refill request submitted', 'تم إرسال طلب الإعادة')); qc.invalidateQueries({ queryKey: ['client-dashboard'] }); },
     onError: (e:any) => notify.error(e, 'REFILL_FAILED')
   });

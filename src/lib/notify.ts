@@ -98,6 +98,152 @@ const CODE_TEXT: Record<string, (raw: string, ref?: string) => { en: string; ar:
   }),
 };
 
+/** Localise one pair without repeating the ar()/en switch at every call site. */
+const say = (en: string, arText: string) => (ar() ? arText : en);
+
+/**
+ * A payment gateway that is down is OUR problem — but the customer still has to be told which
+ * method is off, that no money moved, and what to try instead. Gateway wording never reaches them.
+ */
+const WALLET_DOWN = (ref?: string) => say(
+  `Electronic-wallet top-up is unavailable right now. Nothing was deducted from your balance — try the crypto option if it is shown as available, or top up again in a few minutes${ref ? ` (reference ${ref})` : ''}.`,
+  `الشحن بالمحفظة الإلكترونية مش شغال دلوقتي. مفيش أي مبلغ اتخصم من رصيدك — جرّب الشحن بالعملات الرقمية لو ظاهر إنها متاحة، أو جرّب تاني بعد كام دقيقة${ref ? ` (رقم المرجع ${ref})` : ''}.`);
+const CRYPTO_DOWN = (ref?: string) => say(
+  `Crypto top-up is unavailable right now. Nothing was deducted — use an electronic wallet, or try again in a few minutes${ref ? ` (reference ${ref})` : ''}.`,
+  `الشحن بالعملات الرقمية مش شغال دلوقتي. مفيش أي مبلغ اتخصم — استخدم المحفظة الإلكترونية، أو جرّب تاني بعد كام دقيقة${ref ? ` (رقم المرجع ${ref})` : ''}.`);
+const RATE_LIMIT_TEXT = () => say(
+  'You have made too many attempts in a short time. Wait about a minute, then try again — nothing was charged.',
+  'عملت محاولات كتير في وقت قصير. استنى حوالي دقيقة وجرّب تاني — مفيش أي مبلغ اتخصم.');
+
+/** Coupon refusals carry a precise reason — keep it, in the customer's own language. */
+const COUPON_TEXT = (raw: string) => {
+  const r = String(raw).toLowerCase();
+  if (/expire/.test(r)) return say(
+    'This coupon has expired. Remove it or use another code — the order total will be recalculated.',
+    'الكوبون ده انتهت صلاحيته. شيله أو استخدم كود تاني — إجمالي الطلب هيتحسب من جديد.');
+  if (/already used|usage limit|limit reached/.test(r)) return say(
+    'This coupon has already been used the maximum number of times. Remove it and continue without it.',
+    'الكوبون ده استُخدم بأقصى عدد مسموح. شيله وكمّل الطلب من غيره.');
+  if (/minimum/.test(r)) return say(
+    'This coupon needs a bigger order. Increase the quantity, or continue without the coupon.',
+    'الكوبون ده محتاج طلب أكبر. زوّد الكمية، أو كمّل من غير الكوبون.');
+  return say(
+    'That coupon code is not valid. Check the spelling, or continue without it.',
+    'كود الخصم ده غير صحيح. راجع كتابته، أو كمّل من غير كوبون.');
+};
+
+/**
+ * Every code a CUSTOMER can reach, answered with three things: what happened, whether money moved,
+ * and the exact next step. Codes listed here are checked BEFORE the internal-code block.
+ */
+const CUSTOMER_CODE_TEXT: Record<string, (raw: string, ref?: string) => string> = {
+  RATE_LIMITED: () => RATE_LIMIT_TEXT(),
+  TOO_MANY_REQUESTS: () => RATE_LIMIT_TEXT(),
+  ACCOUNT_DISABLED: () => say(
+    'Your account is on hold, so this action was not allowed. Nothing was charged — contact support and we will reactivate it for you.',
+    'حسابك موقوف مؤقتًا، فالعملية دي مش مسموح بيها. مفيش أي مبلغ اتخصم — راسل الدعم ونرجّع حسابك شغال.'),
+  TOKEN_REQUIRED: () => say(
+    'Your session has expired. Sign in again to continue — nothing was lost.',
+    'انتهت جلستك. سجّل الدخول تاني وكمّل — مفيش أي حاجة ضاعت.'),
+  UNAUTHORIZED: () => say(
+    'Your session has expired. Sign in again to continue — nothing was lost.',
+    'انتهت جلستك. سجّل الدخول تاني وكمّل — مفيش أي حاجة ضاعت.'),
+  INVALID_TOKEN: () => say(
+    'Your session has expired. Sign in again to continue — nothing was lost.',
+    'انتهت جلستك. سجّل الدخول تاني وكمّل — مفيش أي حاجة ضاعت.'),
+  INVALID_API_KEY: () => say(
+    'Your API key is not valid. Create a new key from this page and try again.',
+    'مفتاح الـ API بتاعك غير صالح. اعمل مفتاح جديد من الصفحة دي وجرّب تاني.'),
+  FORBIDDEN: () => say(
+    'You do not have access to this. If you think that is a mistake, contact support.',
+    'مالكش صلاحية للوصول لده. لو بتحس إن ده غلط، راسل الدعم.'),
+  SINGLE_UNIT_REQUIRED: () => say(
+    'This service is sold as a single item — set the quantity to 1.',
+    'الخدمة دي تُباع كقطعة واحدة — خلّي الكمية 1.'),
+  INVALID_LINK: () => say(
+    'Type the target exactly as this service needs it — a link, an email, a number or any text.',
+    'اكتب البيانات المطلوبة زي ما الخدمة محتاجاها — رابط أو إيميل أو رقم أو أي نص.'),
+  NOT_FOUND: () => say(
+    'That item was not found — it may have been removed. Refresh the page and try again.',
+    'العنصر ده مش موجود — ممكن يكون اتشال. حدّث الصفحة وجرّب تاني.'),
+  VALIDATION_ERROR: () => say(
+    'Some details are missing or not valid. Review the highlighted fields and try again.',
+    'فيه بيانات ناقصة أو غير صحيحة. راجع الحقول المطلوبة وجرّب تاني.'),
+  INVALID_REQUEST: () => say(
+    'Some details are missing or not valid. Review the fields and try again.',
+    'فيه بيانات ناقصة أو غير صحيحة. راجع الحقول وجرّب تاني.'),
+  COUPON_INVALID: (raw) => COUPON_TEXT(raw),
+  INVALID_COUPON: (raw) => COUPON_TEXT(raw),
+  COUPON_CREATE_FAILED: (raw) => COUPON_TEXT(raw),
+  INVALID_PAYMENT: () => say(
+    'We could not match this payment to your account. Start the deposit again — nothing was charged to you.',
+    'معرفناش نطابق الدفعة دي بحسابك. ابدأ الشحن من جديد — مفيش أي مبلغ اتخصم منك.'),
+  PAYMENT_MISMATCH: () => say(
+    'We could not match this payment to your account. Start the deposit again — nothing was charged to you.',
+    'معرفناش نطابق الدفعة دي بحسابك. ابدأ الشحن من جديد — مفيش أي مبلغ اتخصم منك.'),
+  ORDER_CANCEL_FAILED: () => say(
+    'We could not cancel this order — it may already be finished, or this service does not allow cancellation. Refresh the order to see its latest status.',
+    'معرفناش نلغي الطلب ده — ممكن يكون خلص، أو الخدمة مش بتسمح بالإلغاء. اعمل تحديث للطلب وشوف حالته الأخيرة.'),
+  CANCEL_ERROR: () => say(
+    'We could not cancel this order — it may already be finished, or this service does not allow cancellation. Refresh the order to see its latest status.',
+    'معرفناش نلغي الطلب ده — ممكن يكون خلص، أو الخدمة مش بتسمح بالإلغاء. اعمل تحديث للطلب وشوف حالته الأخيرة.'),
+  ORDER_REFRESH_FAILED: () => say(
+    'We could not refresh this order right now. Try again in a moment — your order is unaffected.',
+    'معرفناش نحدّث الطلب دلوقتي. جرّب تاني بعد لحظة — طلبك زي ما هو.'),
+  REFRESH_ERROR: () => say(
+    'We could not refresh this order right now. Try again in a moment — your order is unaffected.',
+    'معرفناش نحدّث الطلب دلوقتي. جرّب تاني بعد لحظة — طلبك زي ما هو.'),
+  ORDER_REFILL_FAILED: () => say(
+    'We could not submit the refill request — this service may not allow refills, or the order is not completed yet. Refresh to check the status.',
+    'معرفناش نبعت طلب إعادة التعبئة — ممكن الخدمة مش بتسمح بالإعادة، أو الطلب لسه مش مكتمل. اعمل تحديث وشوف الحالة.'),
+  REFILL_ERROR: () => say(
+    'We could not submit the refill request — this service may not allow refills, or the order is not completed yet. Refresh to check the status.',
+    'معرفناش نبعت طلب إعادة التعبئة — ممكن الخدمة مش بتسمح بالإعادة، أو الطلب لسه مش مكتمل. اعمل تحديث وشوف الحالة.'),
+  TICKET_CREATE_FAILED: () => say(
+    'We could not open the ticket. Write a clear subject and message, then try again.',
+    'معرفناش نفتح التذكرة. اكتب موضوع ورسالة واضحين، وجرّب تاني.'),
+  TICKET_MESSAGE_FAILED: () => say(
+    'Your message was not sent. Check your connection and try again — the ticket is still open.',
+    'الرسالة مابعتتش. راجع اتصالك وجرّب تاني — التذكرة لسه مفتوحة.'),
+  TICKET_LOAD_FAILED: () => say(
+    'We could not load this ticket. Refresh the page to see the latest replies.',
+    'معرفناش نحمّل التذكرة دي. حدّث الصفحة عشان تشوف آخر الردود.'),
+  INVALID_TICKET: () => say(
+    'We could not load this ticket. Refresh the page, or open a new one.',
+    'معرفناش نحمّل التذكرة دي. حدّث الصفحة، أو افتح تذكرة جديدة.'),
+  TICKET_CLOSED: () => say(
+    'This ticket is closed. Open a new one and we will follow up there.',
+    'التذكرة دي مقفولة. افتح تذكرة جديدة ونكمل معاك هناك.'),
+  INVALID_SUBJECT: () => say(
+    'Write a clear subject for the ticket, then send it again.',
+    'اكتب موضوع واضح للتذكرة، وابعت تاني.'),
+  INVALID_MESSAGE: () => say(
+    'Write the message you want to send, then try again.',
+    'اكتب الرسالة اللي عايز تبعتها وجرّب تاني.'),
+  SHORTLINK_START_FAILED: () => say(
+    'We could not start this task right now. Try again in a moment.',
+    'معرفناش نبدأ المهمة دي دلوقتي. جرّب تاني بعد لحظة.'),
+  SHORTLINK_CLAIM_FAILED: () => say(
+    'We could not confirm the task completion right now. Your progress is kept — try again in a moment.',
+    'معرفناش نتأكد من إتمام المهمة دلوقتي. تقدمك محفوظ — جرّب تاني بعد لحظة.'),
+  ALREADY_CLAIMED: () => say(
+    'You have already claimed the reward for this task.',
+    'أنت قبضت مكافأة المهمة دي بالفعل.'),
+  RAFFLE_BUY_FAILED: () => say(
+    'We could not complete this purchase. Nothing was deducted — try again, or pick another number.',
+    'معرفناش نكمّل الشراء. مفيش أي مبلغ اتخصم — جرّب تاني أو اختار رقم تاني.'),
+  PROFILE_UPDATE_FAILED: () => say(
+    'We could not save your profile changes right now. Your current details are unchanged — try again in a moment.',
+    'معرفناش نحفظ تعديلات الملف الشخصي دلوقتي. بياناتك الحالية زي ما هي — جرّب تاني بعد لحظة.'),
+  AFFILIATE_WITHDRAWAL_FAILED: () => say(
+    'We could not submit the withdrawal request. Check the amount and your payment details, then try again — nothing was deducted.',
+    'معرفناش نبعت طلب السحب. راجع المبلغ وبيانات الدفع وجرّب تاني — مفيش أي مبلغ اتخصم.'),
+};
+
+/** Gateway outages: the customer is told the method is off, not what broke inside. */
+const WALLET_GATEWAY_CODES = /^(GATEWAY_NOT_CONFIGURED|GATEWAY_DISABLED|GATEWAY_UNAUTHORIZED|SHA7NAWY_CREATE_ERROR|SHA7NAWY_CONFIRM_ERROR|RATE_NOT_CONFIGURED)$/;
+const CRYPTO_GATEWAY_CODES = /^(HELEKET_CREATE_ERROR|MERCHANT_UNKNOWN|INVALID_MERCHANT_ID|INVALID_MERCHANT)$/;
+
 // Internal-only codes: always replaced by the neutral message (+ support reference).
 const INTERNAL_CODES = /^(INTERNAL_ERROR|RATE_NOT_CONFIGURED|GATEWAY_(NOT_CONFIGURED|DISABLED|UNAUTHORIZED)|MERCHANT_UNKNOWN|INVALID_MERCHANT_ID|SHA7NAWY_(CREATE|CONFIRM)_ERROR|HELEKET_CREATE_ERROR|ORDER_CREATION_FAILED|PROVIDER_ORDER_FAILED|MASS_ORDER_ERROR|DB_UNAVAILABLE|AUTH_DB_UNAVAILABLE)$/;
 
@@ -112,6 +258,12 @@ export function friendlyError(error: any, fallback?: string) {
   const upper = String(raw).toUpperCase();
   const ref = typeof error?.ref === 'string' ? error.ref : undefined;
   const codeRaw = String(error?.code || '').toUpperCase();
+
+  // 0. A gateway that is down, and every code a customer can act on — answered BEFORE the
+  // internal-code block so nothing falls through to the generic wording.
+  if (codeRaw && WALLET_GATEWAY_CODES.test(codeRaw)) return WALLET_DOWN(ref);
+  if (codeRaw && CRYPTO_GATEWAY_CODES.test(codeRaw)) return CRYPTO_DOWN(ref);
+  if (codeRaw && CUSTOMER_CODE_TEXT[codeRaw]) return CUSTOMER_CODE_TEXT[codeRaw](String(raw), ref);
 
   // 1. Codes we can translate into a specific, actionable instruction.
   if (codeRaw && CODE_TEXT[codeRaw]) {
@@ -133,6 +285,11 @@ export function friendlyError(error: any, fallback?: string) {
     const text = /quantity/i.test(String(raw)) ? QUANTITY_RANGE(r?.[0], r?.[1]) : AMOUNT_RANGE(r?.[0], r?.[1]);
     return ar() ? text.ar : text.en;
   }
+  // Legacy callers that hand us the server's own sentence with no code.
+  if (/coupon/i.test(String(raw))) return COUPON_TEXT(String(raw));
+  if (/too many|rate limit|rate-limit/i.test(String(raw))) return RATE_LIMIT_TEXT();
+  if (/account (is )?(not active|disabled|suspended)/i.test(String(raw))) return CUSTOMER_CODE_TEXT.ACCOUNT_DISABLED(String(raw), ref);
+  if (/session (has )?expired|please sign in|unauthor/i.test(String(raw))) return CUSTOMER_CODE_TEXT.UNAUTHORIZED(String(raw), ref);
   if (/could not (start|complete)|temporarily unavailable|not configured/i.test(String(raw)) && !/balance/i.test(String(raw))) {
     const text = INTERNAL(ref);
     return ar() ? text.ar : text.en;

@@ -37,6 +37,24 @@ async function makeCustomer() {
   return findOrProvisionUser({ uid: email, email, emailVerified: true, displayName: 'Payments Test', picture: null });
 }
 
+/**
+ * The offline tests only need an identity, not an account row: with no DATABASE_URL a real
+ * provisioning call would fail for the wrong reason and hide what the test is about.
+ */
+const offlineUser = {
+  id: '00000000-0000-0000-0000-0000000000bb',
+  firebase_uid: 'offline-payments',
+  email: 'offline@example.test',
+  email_verified: true,
+  display_name: 'Offline',
+  avatar_url: null,
+  referral_code: 'OFFLINE',
+  status: 'active',
+  created_at: new Date().toISOString(),
+};
+
+const identity = async () => (hasDb ? await makeCustomer() : offlineUser);
+
 const sellerFor = (user) => ({
   verifyIdToken: async () => ({ uid: user.firebase_uid, email: user.email, emailVerified: true }),
   findOrProvisionUser: async () => user,
@@ -112,7 +130,7 @@ const depsFor = (adapter, extra = {}) => ({
 /* ── starting a deposit ───────────────────────────────────────────────────────────────────────── */
 
 test('a switched-off gateway is refused, and so is a missing credential', async () => {
-  const user = await makeCustomer();
+  const user = await identity();
   const { adapter } = fakeAdapter();
 
   const off = await startServer({ ...depsFor(adapter, { enabled: async () => [] }), auth: sellerFor(user) });
@@ -135,7 +153,7 @@ test('a switched-off gateway is refused, and so is a missing credential', async 
 });
 
 test('a deposit request validates the amount, the method and the wallet number', async () => {
-  const user = await makeCustomer();
+  const user = await identity();
   const { adapter } = fakeAdapter();
   const { url, close } = await startServer({ ...depsFor(adapter), auth: sellerFor(user) });
 
@@ -334,7 +352,7 @@ test('Heleket: a valid signature is trusted, an invalid one is refused', { skip:
 });
 
 test('the public gateway list only offers what is switched on and configured', async () => {
-  const user = await makeCustomer();
+  const user = await identity();
   const { adapter } = fakeAdapter();
   const { url, close } = await startServer({ ...depsFor(adapter, { enabled: async () => ['shahnawy'] }), auth: sellerFor(user) });
 

@@ -34,6 +34,27 @@ async function makeUser(permissions = []) {
   return { user, perms: permissions };
 }
 
+/**
+ * The offline tests only need an identity, not an account row: with no DATABASE_URL a real
+ * provisioning call would fail for the wrong reason and hide what the test is about.
+ */
+const offlineIdentity = (permissions = []) => ({
+  user: {
+    id: '00000000-0000-0000-0000-0000000000cc',
+    firebase_uid: 'offline-tickets',
+    email: 'offline-tickets@example.test',
+    email_verified: true,
+    display_name: 'Offline',
+    avatar_url: null,
+    referral_code: 'OFFLINE',
+    status: 'active',
+    created_at: new Date().toISOString(),
+  },
+  perms: permissions,
+});
+
+const identity = async (permissions = []) => (hasDb ? await makeUser(permissions) : offlineIdentity(permissions));
+
 const sellerFor = ({ user, perms }) => ({
   verifyIdToken: async () => ({ uid: user.firebase_uid, email: user.email, emailVerified: true }),
   findOrProvisionUser: async () => user,
@@ -51,7 +72,7 @@ const openTicket = async (url, subject = 'مشكلة في الطلب') => {
 /* ── validation, no database needed ───────────────────────────────────────────────────────────── */
 
 test('a ticket needs a real subject and a body', async () => {
-  const { url, close } = await startServer(sellerFor(await makeUser()));
+  const { url, close } = await startServer(sellerFor(await identity()));
   try {
     for (const payload of [{ subject: 'ab', body: 'x' }, { subject: 'مشكلة', body: '' }, { subject: 'مشكلة', body: 'x', extra: 1 }]) {
       const res = await post(url, '/api/tickets', payload);
@@ -64,7 +85,7 @@ test('a ticket needs a real subject and a body', async () => {
 });
 
 test('an unsupported status is refused', async () => {
-  const { url, close } = await startServer(sellerFor(await makeUser(['tickets.reply'])));
+  const { url, close } = await startServer(sellerFor(await identity(['tickets.reply'])));
   try {
     const res = await post(url, '/api/admin/tickets/TKT0123456789/status', { status: 'deleted' });
     assert.equal(res.status, 422);

@@ -4,43 +4,94 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * Design tokens — the single source of truth for colour, radius and typography.
- * Values are intentionally minimal in Phase 1; the full component system (buttons, inputs,
- * tables, badges, toasts) is built on these tokens in the UI phases, so nothing has to be
- * re-skinned later.
+ * ── SMM Rapid design tokens ──────────────────────────────────────────────────────────────────
+ * A deliberately different identity from the previous site: light-first, an ink/teal palette
+ * instead of dark violet, hairline borders instead of soft shadows, 10px radii instead of pills,
+ * and a type scale built for numbers (tabular) as much as for prose.
+ *
+ * Every component in every phase reads these names, so re-theming stays a one-file change.
  */
 @theme {
+  /* surfaces */
+  --color-canvas: #f4f7f9;
   --color-surface: #ffffff;
-  --color-surface-muted: #f5f6fa;
+  --color-surface-sunken: #eef2f6;
   --color-surface-raised: #ffffff;
-  --color-border: #e3e6ef;
-  --color-text: #12141c;
-  --color-text-muted: #5b6478;
 
-  --color-brand-50: #f1ecff;
-  --color-brand-100: #e2d9ff;
-  --color-brand-500: #6d3cff;
-  --color-brand-600: #5a2ee6;
-  --color-brand-700: #4823b8;
+  /* ink */
+  --color-ink: #0a1628;
+  --color-ink-soft: #3b4a5e;
+  --color-ink-muted: #6b7a90;
+  --color-ink-faint: #96a3b5;
 
-  --color-success: #16a34a;
-  --color-warning: #d97706;
-  --color-danger: #dc2626;
+  /* lines */
+  --color-line: #e2e8f0;
+  --color-line-strong: #c6d0dc;
 
-  --radius-card: 0.875rem;
-  --radius-control: 0.625rem;
+  /* accent: teal */
+  --color-accent: #00a88f;
+  --color-accent-strong: #00806d;
+  --color-accent-soft: #e4f7f3;
+  --color-accent-ink: #04443a;
 
-  --font-sans: "Inter", "Segoe UI", "Noto Kufi Arabic", system-ui, sans-serif;
+  /* semantics */
+  --color-ok: #12805c;
+  --color-ok-soft: #e3f6ee;
+  --color-warn: #a35a06;
+  --color-warn-soft: #fdf2e0;
+  --color-danger: #c02a2a;
+  --color-danger-soft: #fdeaea;
+  --color-info: #1d5fd0;
+  --color-info-soft: #e8f0fe;
+
+  /* shape */
+  --radius-xs: 3px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  /* type */
+  --font-display: "Sora", "Segoe UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", "Noto Kufi Arabic", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
 }
 
-/* Dark theme overrides the same token names, so every component follows automatically. */
 .dark {
-  --color-surface: #0f1117;
-  --color-surface-muted: #161a23;
-  --color-surface-raised: #1c212c;
-  --color-border: #2a3040;
-  --color-text: #f3f5fa;
-  --color-text-muted: #a6aec2;
+  --color-canvas: #060d18;
+  --color-surface: #0c1524;
+  --color-surface-sunken: #091223;
+  --color-surface-raised: #111c2e;
+
+  --color-ink: #eef3f9;
+  --color-ink-soft: #c2ccda;
+  --color-ink-muted: #8d9bad;
+  --color-ink-faint: #66748a;
+
+  --color-line: #1d2a3e;
+  --color-line-strong: #2b3c55;
+
+  --color-accent: #22c3a6;
+  --color-accent-strong: #4ad7bd;
+  --color-accent-soft: #0d2f2a;
+  --color-accent-ink: #d8fff6;
+
+  --color-ok: #35c08d;
+  --color-ok-soft: #0e2b22;
+  --color-warn: #e0a642;
+  --color-warn-soft: #2c2314;
+  --color-danger: #ef6b6b;
+  --color-danger-soft: #2e1618;
+  --color-info: #74a8ff;
+  --color-info-soft: #12243f;
+}
+
+html {
+  color-scheme: light;
+}
+
+.dark html,
+html.dark {
+  color-scheme: dark;
 }
 
 html,
@@ -51,8 +102,172 @@ body,
 
 body {
   margin: 0;
-  background-color: var(--color-surface-muted);
-  color: var(--color-text);
-  font-family: var(--font-sans);
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ── primitives ─────────────────────────────────────────────────────────────────────────────── */
+
+.card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+}
+
+.card-tight {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+}
+
+.hairline {
+  border-bottom: 1px solid var(--color-line);
+}
+
+/* micro label: the structural voice of this design */
+.micro {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.display {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+/* buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 42px;
+  padding: 0 16px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background-color: var(--color-accent);
+  color: #ffffff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--color-accent-strong);
+}
+
+.btn-ghost {
+  background-color: transparent;
+  border-color: var(--color-line-strong);
+  color: var(--color-ink);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background-color: var(--color-surface-sunken);
+}
+
+.btn-quiet {
+  height: 36px;
+  padding: 0 12px;
+  font-size: 13px;
+  background-color: transparent;
+  color: var(--color-ink-soft);
+}
+
+.btn-quiet:hover:not(:disabled) {
+  color: var(--color-ink);
+  background-color: var(--color-surface-sunken);
+}
+
+/* fields */
+.field {
+  width: 100%;
+  height: 42px;
+  padding: 0 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-line-strong);
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+  font-size: 14px;
+  outline: none;
+}
+
+.field::placeholder {
+  color: var(--color-ink-faint);
+}
+
+.field:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-soft);
+}
+
+.label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-ink-soft);
+  margin-bottom: 6px;
+}
+
+/* pills: squared, tinted, never rounded-full */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: var(--radius-xs);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+}
+
+.pill-ok { background-color: var(--color-ok-soft); color: var(--color-ok); }
+.pill-warn { background-color: var(--color-warn-soft); color: var(--color-warn); }
+.pill-danger { background-color: var(--color-danger-soft); color: var(--color-danger); }
+.pill-info { background-color: var(--color-info-soft); color: var(--color-info); }
+.pill-accent { background-color: var(--color-accent-soft); color: var(--color-accent-ink); }
+.pill-neutral { background-color: var(--color-surface-sunken); color: var(--color-ink-soft); }
+
+/* dismissible banner for errors/warnings */
+.banner {
+  border: 1px solid var(--color-line);
+  border-left: 3px solid var(--color-ink-faint);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-size: 13px;
+  background-color: var(--color-surface);
+  color: var(--color-ink-soft);
+}
+
+.banner-danger { border-left-color: var(--color-danger); background-color: var(--color-danger-soft); color: var(--color-danger); }
+.banner-ok { border-left-color: var(--color-ok); background-color: var(--color-ok-soft); color: var(--color-ok); }
+.banner-warn { border-left-color: var(--color-warn); background-color: var(--color-warn-soft); color: var(--color-warn); }
+
+/* RTL-aware app frame */
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }

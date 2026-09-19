@@ -32,8 +32,25 @@ docs/                setup, environment, database, render, architecture
 ```
 
 `apps/api/src/modules/` — added one per phase, never before it is implemented:
-`health` · `auth` · `users` · `catalog` · `orders` · `wallet` · `pricing` · `payments` ·
+`health` · `auth` ✅ · `users` · `catalog` · `orders` · `wallet` · `pricing` · `payments` ·
 `providers` · `referrals` · `tickets` · `notifications` · `content` · `seo` · `admin` · `audit`.
+
+## Identity (Phase 3)
+
+`requireAuth` verifies a Firebase ID token with the Admin SDK (revocation checks on), finds or
+creates the account row, loads roles and permissions from the database, and attaches the result
+to the request. Nothing the browser claims about identity, role or balance is trusted. Both the
+identity layer and the database layer sit behind `AuthDeps`, so the HTTP surface is tested with
+fakes and the provisioning path is tested against the real schema.
+
+## Visual identity
+
+The rebuild uses a **deliberately different** design language from the previous site: light-first
+surfaces, an ink/teal palette (no violet), hairline borders instead of soft shadows, 6–10px radii
+instead of pills, uppercase micro-labels, and tabular monospace numerals for anything that is a
+number. All of it lives in `apps/web/src/index.css` as design tokens plus a few primitives
+(`.card`, `.btn`, `.field`, `.pill`, `.banner`, `.micro`, `.num`); pages compose those instead of
+inventing their own styling.
 
 ## Request path
 

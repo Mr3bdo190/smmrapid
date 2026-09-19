@@ -65,6 +65,14 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
       # Supabase already has these roles; this makes a local/CI database behave the same way.
       - name: Create Supabase role stand-ins
         run: psql -q -v ON_ERROR_STOP=1 -f database/tests/00_test_roles.sql
@@ -93,3 +101,11 @@ jobs:
 
       - name: Database assertions
         run: psql -v ON_ERROR_STOP=1 -f database/tests/verify.sql
+
+      # The API tests that need a database (account provisioning, wallet summary, RBAC lookups)
+      # run against the real schema that was just applied — not against mocks.
+      - name: API tests against the real schema
+        run: npm test --workspace @smmrapid/api
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/smmrapid_test
+          NODE_ENV: test

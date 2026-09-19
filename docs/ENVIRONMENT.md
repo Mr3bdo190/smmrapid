@@ -8,15 +8,15 @@ In production every value is set in the Render dashboard.
 | `NODE_ENV` | now | `development` \| `test` \| `production` |
 | `PORT` | now | HTTP port; Render injects it |
 | `PUBLIC_APP_URL` | now | absolute origin used in links and payment callbacks |
-| `DATABASE_URL` | Phase 2 | Supabase **pooled** connection string used by the API |
+| `DATABASE_URL` | Phase 3 | Supabase **transaction pooler** connection string (port `6543`) used by the API |
 | `DATABASE_DIRECT_URL` | Phase 2 | direct connection, used only to run migrations/seed |
-| `SUPABASE_URL` | Phase 2 | project URL |
-| `SUPABASE_ANON_KEY` | Phase 2 | publishable key (safe for the browser, unused by the API) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Phase 2 | privileged server-side key — **never exposed** |
-| `FIREBASE_PROJECT_ID` | Phase 3 | Admin SDK: existing project |
+| `SUPABASE_URL` | Phase 4 | project URL |
+| `SUPABASE_ANON_KEY` | Phase 4 | publishable key (safe for the browser; the API does not use it) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Phase 4 | privileged server-side key — **never exposed** |
+| `FIREBASE_PROJECT_ID` | Phase 3 | Admin SDK: the existing project (`scope-app-492120`) |
 | `FIREBASE_CLIENT_EMAIL` | Phase 3 | Admin SDK service account |
 | `FIREBASE_PRIVATE_KEY` | Phase 3 | Admin SDK private key (multi-line PEM, keep quotes and `\n`) |
-| `VITE_FIREBASE_*` | Phase 3 | client SDK config, public by definition |
+| `VITE_FIREBASE_*` | Phase 3 | client SDK config — optional, the public config ships in `apps/web/firebase-config.json`. **Inlined at build time** |
 | `PROVIDER_ENCRYPTION_KEY` | Phase 7 | encrypts provider credentials at rest (32+ chars) |
 | `SHAHNAWY_*` | Phase 9 | Sh7nawy electronic-wallet gateway (EGP) |
 | `HELEKET_*` | Phase 9 | Heleket crypto gateway (USD) |

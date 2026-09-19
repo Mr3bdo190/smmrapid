@@ -22,6 +22,22 @@ run that has no memory of previous conversations) must read it first and update 
 - Everything the customer sees is Arabic-first and English-capable, and every error says what
   happened and what to do next.
 
+## 1.1 Error message contract (the owner's top priority)
+
+Every message a customer can see must be written for a non-technical person and must answer three
+questions: **what happened**, **who caused it** (their input, their balance, or the site), and
+**what to do next**. Rules:
+
+- The API never forwards a database, driver, provider or stack message. Each failure maps to a
+  stable `SCREAMING_SNAKE` code plus a customer-safe Arabic sentence.
+- One catalogue file per side, no per-component copy: `docs/ERROR_CODES.md` (code, HTTP status,
+  Arabic sentence, next step) and `apps/web/src/i18n/error-codes.ts` (ar + en, with `nextStep`).
+  A code that is not in the catalogue is a bug, not a fallback.
+- Every error carries a short support `ref` that is also written to the server log, so a customer
+  and an engineer can talk about the same incident.
+- Unknown codes still render: server message + support ref, never a blank screen.
+- `apps/web/scripts/check-error-codes.mjs` compares the two catalogues and fails on a gap.
+
 ## 2. Design language (the rebuild looks deliberately different from the old site)
 
 Light-first surfaces, ink/teal palette (no violet, no dark sidebar rail), hairline `1px` borders
@@ -86,4 +102,11 @@ Subagents may not run git commands, may not edit shared files (`package.json`, `
 `routes/index.ts`, `index.css`, `App.tsx`, `tsconfig*`, `eslint.config.js`, `ci.yml`), and must
 report the wiring they need. The parent session owns integration, verification and every commit.
 
-In flight: Phase 5 (wallet module), Phase 7 (providers adapters), web UI kit + i18n.
+In flight right now: Phase 5 (wallet module — subagent), Phase 7 (providers — subagent), and the
+web UI kit + i18n (subagent). The parent session owns integration: when their work lands, add the
+build entries and route mounts they report, run the full verification, then commit each phase
+separately so a failure can be reverted on its own.
+
+The scheduled job is gated by `~/.hermes/scripts/smmrapid-state.sh`, whose output changes only
+when the build state actually changes (next unfinished phase, dirty tree, CI conclusion). So a
+finished phase wakes exactly one new run, and an in-flight phase wakes none.

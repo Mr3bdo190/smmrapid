@@ -16,6 +16,9 @@ import { Support, TicketView } from './pages/Support';
 import { Notifications } from './pages/Notifications';
 import { Account } from './pages/Account';
 import { NotFound } from './pages/NotFound';
+import { AdminDashboard } from './pages/admin/Dashboard';
+import { AdminServices } from './pages/admin/Services';
+import { AdminUsers } from './pages/admin/Users';
 
 /**
  * The application shell: who is signed in, which page is on screen, and the header that ties them
@@ -40,6 +43,9 @@ function Screens({ pathname }: { pathname: string }) {
     { path: '/notifications', element: <Notifications /> },
     { path: '/account', element: <Account /> },
     { path: '/signin', element: <SignInPanel /> },
+    { path: '/admin', element: <AdminDashboard /> },
+    { path: '/admin/services', element: <AdminServices /> },
+    { path: '/admin/users', element: <AdminUsers /> },
   ];
   const patterns = [
     { path: '/services/:slug', render: (params: Record<string, string>) => <ServiceDetail slug={params.slug!} /> },

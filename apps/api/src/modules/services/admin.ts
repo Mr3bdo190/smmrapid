@@ -92,6 +92,7 @@ type AdminServiceRow = {
   markup_fixed_minor: string | number | null;
   min_quantity: string | number;
   max_quantity: string | number;
+  estimated_time: string | null;
   price_unit: string;
   input_type: string;
   is_active: boolean;
@@ -120,6 +121,7 @@ const publicAdminService = (row: AdminServiceRow) => ({
   markupFixedMinor: row.markup_fixed_minor === null ? null : toInt(row.markup_fixed_minor),
   minQuantity: toInt(row.min_quantity),
   maxQuantity: toInt(row.max_quantity),
+  estimatedTime: row.estimated_time,
   priceUnit: row.price_unit,
   inputType: row.input_type,
   isActive: row.is_active,
@@ -134,7 +136,7 @@ const publicAdminService = (row: AdminServiceRow) => ({
 
 const SERVICE_SELECT = `
   select s.id, s.slug, s.name, s.name_ar, s.price_minor, s.provider_cost_minor, s.markup_percent,
-         s.markup_fixed_minor, s.min_quantity, s.max_quantity, s.price_unit, s.input_type,
+         s.markup_fixed_minor, s.min_quantity, s.max_quantity, s.estimated_time, s.price_unit, s.input_type,
          s.is_active, s.is_featured, s.deleted_at, s.provider_id,
          p.name as provider_name, c.name as category_name,
          count(*) over() as total
@@ -247,7 +249,7 @@ export function createServicesAdminModule(deps: AuthDeps) {
              updated_at = now()
            where id = $1::uuid
            returning id, slug, name, name_ar, price_minor, provider_cost_minor, markup_percent, markup_fixed_minor,
-                     min_quantity, max_quantity, price_unit, input_type, is_active, is_featured, deleted_at, provider_id,
+                     min_quantity, max_quantity, estimated_time, price_unit, input_type, is_active, is_featured, deleted_at, provider_id,
                      (select name from providers where id = services.provider_id) as provider_name,
                      (select name from categories where id = services.category_id) as category_name,
                      1 as total`,

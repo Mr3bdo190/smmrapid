@@ -123,13 +123,18 @@ test('activating a service in the panel puts it in the customer catalogue', { sk
 
     const res = await call(url, `/api/admin/services/${seeded.serviceId}`, {
       method: 'PATCH',
-      body: JSON.stringify({ isActive: true, priceMinor: 2500 }),
+      body: JSON.stringify({ isActive: true, priceMinor: 2500, estimatedTime: 'خلال ٣٠ دقيقة' }),
     });
     const text = await res.text();
     assert.equal(res.status, 200, text);
     const { data } = JSON.parse(text);
     assert.equal(data.service.isActive, true);
     assert.equal(data.service.priceMinor, 2500);
+    assert.equal(data.service.estimatedTime, 'خلال ٣٠ دقيقة', 'the panel gets back every field its form edits');
+
+    const listed = await call(url, `/api/admin/services?q=${encodeURIComponent(seeded.slug)}`);
+    const row = (await listed.json()).data.services[0];
+    assert.ok('estimatedTime' in row, 'and the list carries it too, so the form never opens blank');
 
     assert.equal(await inCatalogue(url, seeded.slug), true, 'and now the customer can buy it');
 

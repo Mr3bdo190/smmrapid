@@ -335,6 +335,9 @@ async function routesSection(): Promise<void> {
       '/notifications',
       '/account',
       '/signin',
+      '/admin',
+      '/admin/services',
+      '/admin/users',
       '/a/path/that/does/not/exist',
     ];
 
@@ -357,6 +360,17 @@ async function routesSection(): Promise<void> {
 
     const unknown = renderToStaticMarkup(<App initialPath="/a/path/that/does/not/exist" />);
     check('an unknown path gets the not-found page', unknown.includes(ar['app.notFound.title']));
+
+    const adminServices = renderToStaticMarkup(<App initialPath="/admin/services" />);
+    // With no session yet, the honest answer is "we are still checking who you are" — the panel
+    // content must not appear, and the page must not leak a raw key.
+    check(
+      'an admin page shows nothing but the waiting state before the account is known',
+      // markers unique to the panel: 'الخدمات' alone also appears in the navigation
+      adminServices.includes(ar['shell.loadingSession']) &&
+        !adminServices.includes(ar['admin.subtitle']) &&
+        !adminServices.includes(ar['admin.services.column.margin']),
+    );
 
     const orders = renderToStaticMarkup(<App initialPath="/orders" />);
     check(

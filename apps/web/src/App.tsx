@@ -1,122 +1,121 @@
-import { useEffect, useState } from 'react';
 import { AuthProvider, useAuth } from './auth/AuthProvider';
-import { LocaleProvider, LocaleSwitch, useT } from './i18n';
+import { LocaleProvider, useT } from './i18n';
+import { Link, RouterProvider, matchPath, useRouter } from './lib/router';
+import { useAsync } from './lib/useAsync';
+import { fetchNotifications } from './data/api';
+import { NavBar } from './components/NavBar';
 import { SignInPanel } from './components/SignInPanel';
-import { AccountPanel } from './components/AccountPanel';
+import { Home } from './pages/Home';
+import { Services } from './pages/Services';
+import { ServiceDetail } from './pages/ServiceDetail';
+import { Orders } from './pages/Orders';
+import { OrderDetail } from './pages/OrderDetail';
+import { Wallet } from './pages/Wallet';
+import { Deposit } from './pages/Deposit';
+import { Support, TicketView } from './pages/Support';
+import { Notifications } from './pages/Notifications';
+import { Account } from './pages/Account';
+import { NotFound } from './pages/NotFound';
 
-/** Brand mark: a squared signal block — part of the new identity, no image dependency. */
-function BrandMark() {
-  return (
-    <span className="grid h-8 w-8 place-items-center rounded-[var(--radius-xs)] bg-[var(--color-accent)]">
-      <span className="display text-[15px] font-bold text-white">S</span>
-    </span>
-  );
-}
+/**
+ * The application shell: who is signed in, which page is on screen, and the header that ties them
+ * together.
+ *
+ * Provider order matters and is deliberate — the locale is outermost (so every string and the
+ * document direction are decided first), then the router (so any page can navigate), then auth (the
+ * only provider that talks to the network on mount). A component that calls `useT()`, `useRouter()`
+ * or `useAuth()` outside its provider throws at runtime, which is a white page in the browser and
+ * not a type error — the SSR smoke test renders this component for exactly that reason.
+ */
 
-function ThemeToggle() {
-  const { t } = useT();
-  const [dark, setDark] = useState(false);
+/** The route table, in match order. First match wins; nothing matched means a real 404 page. */
+function Screens({ pathname }: { pathname: string }) {
+  const exact = [
+    { path: '/', element: <Home /> },
+    { path: '/services', element: <Services /> },
+    { path: '/orders', element: <Orders /> },
+    { path: '/wallet', element: <Wallet /> },
+    { path: '/wallet/deposit', element: <Deposit /> },
+    { path: '/support', element: <Support /> },
+    { path: '/notifications', element: <Notifications /> },
+    { path: '/account', element: <Account /> },
+    { path: '/signin', element: <SignInPanel /> },
+  ];
+  const patterns = [
+    { path: '/services/:slug', render: (params: Record<string, string>) => <ServiceDetail slug={params.slug!} /> },
+    { path: '/orders/:publicId', render: (params: Record<string, string>) => <OrderDetail publicId={params.publicId!} /> },
+    { path: '/support/:publicId', render: (params: Record<string, string>) => <TicketView publicId={params.publicId!} /> },
+  ];
 
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem('smmrapid.theme');
-      const prefers = window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
-      setDark(stored ? stored === 'dark' : prefers);
-    } catch {
-      /* storage blocked — keep the light default */
-    }
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', dark);
-    try {
-      localStorage.setItem('smmrapid.theme', dark ? 'dark' : 'light');
-    } catch {
-      /* storage blocked — the class still applies for this session */
-    }
-  }, [dark]);
-
-  return (
-    <button
-      type="button"
-      className="btn btn-quiet"
-      onClick={() => setDark((value) => !value)}
-      aria-label={t('theme.toggle')}
-    >
-      {dark ? t('theme.light') : t('theme.dark')}
-    </button>
-  );
+  for (const route of exact) {
+    if (pathname === route.path) return route.element;
+  }
+  for (const route of patterns) {
+    const params = matchPath(route.path, pathname);
+    if (params) return route.render(params);
+  }
+  return <NotFound />;
 }
 
 function Shell() {
   const { t } = useT();
-  const { ready, user, firebaseReady } = useAuth();
-  const [showAuth, setShowAuth] = useState(false);
+  const { path } = useRouter();
+  const { ready, user } = useAuth();
+  const pathname = path.split('?')[0] || '/';
 
-  const signedIn = Boolean(user);
+  // the header badge is the server's unread count, refreshed whenever the page changes
+  const notifications = useAsync(() => fetchNotifications(user, { limit: 1 }), [Boolean(user), pathname], {
+    skip: !user,
+  });
 
   return (
     <div className="app-shell">
-      <header className="sticky top-0 z-10 border-b border-[var(--color-line)] bg-[var(--color-surface)]/95 backdrop-blur">
-        <div className="mx-auto flex h-16 w-full max-w-[1100px] items-center justify-between gap-4 px-5">
-          <div className="flex items-center gap-3">
-            <BrandMark />
-            <span className="display text-[17px] font-semibold tracking-tight">{t('common.appName')}</span>
-            <span className="pill pill-accent hidden sm:inline-flex">{t('shell.phaseBadge')}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <LocaleSwitch />
-            <ThemeToggle />
-          </div>
-        </div>
-      </header>
+      <NavBar unread={notifications.data?.unread ?? 0} />
 
       <main className="mx-auto w-full max-w-[1100px] flex-1 px-5 py-8">
-        {!ready ? (
-          <div className="card mx-auto w-full max-w-[440px] p-6">
-            <p className="text-[13px] text-[var(--color-ink-muted)]">{t('shell.loadingSession')}</p>
-          </div>
-        ) : signedIn ? (
-          <AccountPanel />
-        ) : showAuth || firebaseReady ? (
-          <SignInPanel />
-        ) : (
-          <div className="card mx-auto w-full max-w-[520px] p-6">
-            <p className="micro">{t('shell.authDisabled.kicker')}</p>
-            <h1 className="display mt-1 text-[22px] font-semibold">{t('shell.authDisabled.title')}</h1>
-            <p className="mt-2 text-[13px] leading-relaxed text-[var(--color-ink-muted)]">
-              {t('shell.authDisabled.message')}
-            </p>
-            <button className="btn btn-ghost mt-4" onClick={() => setShowAuth(true)}>
-              {t('shell.authDisabled.action')}
-            </button>
-          </div>
-        )}
+        {/*
+          The router renders while the session is still resolving: the catalogue and a service page
+          need no account, and gating them behind the auth check made a first visit show a spinner
+          for something that was already loaded. The pages that do need an account handle the wait
+          themselves (RequireAuth), so nothing is shown as signed-in before it is.
+        */}
+        <Screens pathname={pathname} />
+        {!ready ? <span className="sr-only">{t('shell.loadingSession')}</span> : null}
       </main>
 
       <footer className="border-t border-[var(--color-line)] bg-[var(--color-surface)]">
-        <div className="mx-auto flex w-full max-w-[1100px] flex-wrap items-center justify-between gap-3 px-5 py-4">
+        <div className="mx-auto flex w-full max-w-[1100px] flex-wrap items-center justify-between gap-3 px-5 py-5">
+          <div className="flex flex-wrap items-center gap-4 text-[13px] text-[var(--color-ink-muted)]">
+            <Link to="/services" className="hover:text-[var(--color-ink)]">
+              {t('nav.services')}
+            </Link>
+            <Link to="/orders" className="hover:text-[var(--color-ink)]">
+              {t('nav.orders')}
+            </Link>
+            <Link to="/wallet" className="hover:text-[var(--color-ink)]">
+              {t('nav.wallet')}
+            </Link>
+            <Link to="/support" className="hover:text-[var(--color-ink)]">
+              {t('nav.support')}
+            </Link>
+          </div>
           <span className="micro">
             {t('common.appName')} · {new Date().getFullYear()}
           </span>
-          <span className="text-[12px] text-[var(--color-ink-faint)]">{t('shell.phaseNote')}</span>
         </div>
       </footer>
     </div>
   );
 }
 
-/**
- * The locale provider wraps everything: any component below may call `useT()`, and the document's
- * lang/dir follow the chosen language. Forgetting this wrapper is a runtime crash, not a type
- * error — which is why the SSR smoke test renders this exact component.
- */
-export default function App() {
+export default function App({ initialPath }: { initialPath?: string } = {}) {
   return (
     <LocaleProvider>
-      <AuthProvider>
-        <Shell />
-      </AuthProvider>
+      <RouterProvider initialPath={initialPath}>
+        <AuthProvider>
+          <Shell />
+        </AuthProvider>
+      </RouterProvider>
     </LocaleProvider>
   );
 }

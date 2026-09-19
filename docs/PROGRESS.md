@@ -62,7 +62,7 @@ inventing styling.
 | 8b | Order dispatch to providers (queue, retries, status sync) | ✅ |
 | 9 | Payments (Heleket, Sh7nawy adapters) | ✅ |
 | 10 | Support tickets + notifications | ✅ |
-| 11 | Client area UI (dashboard, new order, orders, funds) | ⏳ |
+| 11 | Client area UI (dashboard, new order, orders, funds) | ✅ |
 | 12 | Admin area (users, services, providers, orders, payments) | ⏳ |
 | 13 | Referrals / affiliate | ⏳ |
 | 14 | Content, banners, SEO | ⏳ |

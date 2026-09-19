@@ -310,6 +310,80 @@ async function panelsSection(): Promise<void> {
   }
 }
 
+/* ── every route, in both locales ─────────────────────────────────────────────────────────────── */
+/**
+ * The route table is new surface, and a page that throws during render is a white page in production
+ * — the failure mode this suite exists to catch. Each route is rendered through the real App (so the
+ * real providers, the real dictionary and the real router are exercised), and the copy each visitor
+ * should see is asserted, not just the absence of a crash.
+ */
+async function routesSection(): Promise<void> {
+  section('routes (real App, per path)');
+  try {
+    const { default: App } = await import('../src/App');
+    const ar = DICTIONARIES.ar;
+    const routes = [
+      '/',
+      '/services',
+      '/services/some-slug',
+      '/orders',
+      '/orders/ORD-0001',
+      '/wallet',
+      '/wallet/deposit',
+      '/support',
+      '/support/TKT-0001',
+      '/notifications',
+      '/account',
+      '/signin',
+      '/a/path/that/does/not/exist',
+    ];
+
+    for (const route of routes) {
+      try {
+        const html = renderToStaticMarkup(<App initialPath={route} />);
+        const clean = !html.includes('undefined') && !html.includes('nav.') && !html.includes('orders.status.');
+        check(`${route} renders (${html.length} chars, no leaked keys)`, html.length > 600 && clean);
+      } catch (error) {
+        check(`${route} renders (threw: ${String(error).slice(0, 80)})`, false);
+      }
+    }
+
+    const home = renderToStaticMarkup(<App initialPath="/" />);
+    check('the home page carries its own heading', home.includes(ar['home.title']));
+    check('the home page offers the catalogue', home.includes(ar['home.cta.browse']));
+
+    const services = renderToStaticMarkup(<App initialPath="/services" />);
+    check('the catalogue page renders its heading and search', services.includes(ar['services.title']) && services.includes(ar['services.search.label']));
+
+    const unknown = renderToStaticMarkup(<App initialPath="/a/path/that/does/not/exist" />);
+    check('an unknown path gets the not-found page', unknown.includes(ar['app.notFound.title']));
+
+    const orders = renderToStaticMarkup(<App initialPath="/orders" />);
+    check(
+      'a protected page waits for the session instead of showing an empty shell',
+      orders.includes(ar['shell.loadingSession']),
+    );
+
+    // The English render composes the same providers the App does, with the catalogue page inside.
+    const { Services } = await import('../src/pages/Services');
+    const { RouterProvider } = await import('../src/lib/router');
+    const { AuthProvider } = await import('../src/auth/AuthProvider');
+    const enServices = renderToStaticMarkup(
+      <LocaleProvider initialLocale="en">
+        <RouterProvider initialPath="/services">
+          <AuthProvider>
+            <Services />
+          </AuthProvider>
+        </RouterProvider>
+      </LocaleProvider>,
+    );
+    check('the catalogue renders in English too', enServices.includes(DICTIONARIES.en['services.title']));
+    check('the English catalogue keeps the layout direction ltr', !/[\u0600-\u06FF]/.test(enServices));
+  } catch (error) {
+    check(`routes render (threw: ${String(error).slice(0, 120)})`, false);
+  }
+}
+
 /* ── the real App ────────────────────────────────────────────────────────────────────────────── */
 /**
  * Renders the exact component main.tsx mounts. A missing provider (LocaleProvider, AuthProvider)
@@ -351,4 +425,5 @@ function summarise(): void {
 
 void panelsSection()
   .then(appSection)
+  .then(routesSection)
   .then(summarise);

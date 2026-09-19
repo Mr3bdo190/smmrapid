@@ -34,3 +34,62 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  # The schema is code: it is applied to a clean PostgreSQL and then asserted against.
+  database:
+    name: migrations · seeds · database assertions
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: smmrapid_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: smmrapid_test
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # Supabase already has these roles; this makes a local/CI database behave the same way.
+      - name: Create Supabase role stand-ins
+        run: psql -q -v ON_ERROR_STOP=1 -f database/tests/00_test_roles.sql
+
+      - name: Apply migrations
+        run: |
+          for f in database/migrations/*.sql; do
+            echo "applying $f"
+            psql -q -v ON_ERROR_STOP=1 -f "$f"
+          done
+
+      - name: Apply seeds
+        run: |
+          for f in database/seeds/*.sql; do
+            echo "applying $f"
+            psql -q -v ON_ERROR_STOP=1 -f "$f"
+          done
+
+      # Every file must be safe to run twice: a re-run must never corrupt a live database.
+      - name: Re-apply everything (idempotency)
+        run: |
+          for f in database/migrations/*.sql database/seeds/*.sql; do
+            echo "re-applying $f"
+            psql -q -v ON_ERROR_STOP=1 -f "$f"
+          done
+
+      - name: Database assertions
+        run: psql -v ON_ERROR_STOP=1 -f database/tests/verify.sql

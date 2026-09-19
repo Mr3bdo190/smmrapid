@@ -14,8 +14,8 @@ GitHub Actions (CI).
 |---|---|---|
 | 0 | Audit + architecture + locked decisions | ✅ done |
 | 1 | Monorepo scaffold, tooling, CI | ✅ done |
-| 2 | Database schema, migrations, seeds | ⏳ next |
-| 3 | Firebase authentication | ⏳ |
+| 2 | Database schema, migrations, seeds | ✅ done |
+| 3 | Firebase authentication | ⏳ next |
 | 4 | Backend core (modules, errors, validation) | ⏳ |
 | 5 | Wallet + ledger | ⏳ |
 | 6 | Pricing engine | ⏳ |
@@ -59,6 +59,7 @@ Local setup details and the `$HOME` rule for Android/Termux: `docs/SETUP.md`.
 ## Documentation
 
 - `docs/ARCHITECTURE.md` — locked decisions, module map, financial rules, phases
+- `docs/DATABASE_SCHEMA.md` — the 41 tables, their relationships and the money rules
 - `docs/SETUP.md` — prerequisites, install, verification, local run
 - `docs/ENVIRONMENT.md` — every environment variable and its phase
 - `docs/DATABASE_SETUP.md` — creating the Supabase project and running the SQL

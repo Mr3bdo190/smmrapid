@@ -80,6 +80,9 @@ export const ERROR_CODES = [
   'PAYMENT_GATEWAY_REJECTED',
   'PAYMENT_GATEWAY_AUTH_FAILED',
   'PAYMENT_SIGNATURE_INVALID',
+  /* ── support & notifications (phase 10) ──────────────────────────────────────────────── */
+  'TICKET_NOT_FOUND',
+  'NOTIFICATION_NOT_FOUND',
   /* ── providers + credentials (phase 7) — names are the contract, per docs/ERROR_CODES.md ─── */
   'PROVIDER_NOT_FOUND',
   'PROVIDER_NOT_CONFIGURED',
@@ -358,6 +361,15 @@ export const ERROR_CATALOGUE: ErrorCatalogue = {
   PAYMENT_SIGNATURE_INVALID: {
     en: { title: 'That notification was not from the provider', message: 'The notification\'s signature did not match, so it was ignored and nothing changed.', nextStep: 'Nothing to do — this is an internal alert.', },
     ar: { title: 'الإشعار ده مش جاي من مزوّد الدفع، فاتجاهلناه', message: 'الإشعار ده مش جاي من مزوّد الدفع، فاتجاهلناه.', nextStep: 'مفيش حاجة مطلوبة منك — ده تنبيه داخلي.', },
+  },
+  /* ── support & notifications (phase 10) ─────────────────────────────────────────────────── */
+  TICKET_NOT_FOUND: {
+    en: { title: 'We cannot find that ticket', message: 'This ticket is not on your account, so there is nothing to show.', nextStep: 'Check the ticket number again. If you are sure it is right, contact support.', actionLabel: 'Contact support' },
+    ar: { title: 'مش لاقيين التذكرة دي على حسابك', message: 'مش لاقيين التذكرة دي على حسابك.', nextStep: 'راجع رقم التذكرة، ولو متأكد إنه صح كلّم الدعم.', actionLabel: 'Contact support' },
+  },
+  NOTIFICATION_NOT_FOUND: {
+    en: { title: 'That notification is not available', message: 'This notification does not belong to your account, so nothing was changed.', nextStep: 'Refresh the page and open your notifications again.', actionLabel: 'Refresh' },
+    ar: { title: 'الإشعار ده مش موجود على حسابك', message: 'الإشعار ده مش موجود على حسابك.', nextStep: 'حدّث الصفحة وابدأ من قائمة الإشعارات.', actionLabel: 'Refresh' },
   },
   /* ── providers + credentials ────────────────────────────────────────────────────────────── */
   PROVIDER_NOT_FOUND: {

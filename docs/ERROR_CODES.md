@@ -154,6 +154,16 @@ on its own; a signed one (Heleket) is.
 The payments module also answers `WALLET_*` (a credit that the ledger refuses) and the auth and
 validation codes.
 
+## Support & notifications (phase 10)
+
+A ticket is a conversation: `open` means the customer is waiting on us, `answered` means we replied,
+`pending` means we are waiting on them, and a reply to a closed ticket reopens it.
+
+| Code | HTTP | What the customer reads (ar) | What to do next (ar) | Gloss |
+|---|---|---|---|---|
+| `TICKET_NOT_FOUND` | 404 | مش لاقيين التذكرة دي على حسابك. | راجع رقم التذكرة، ولو متأكد إنه صح كلّم الدعم. | No such ticket on this account. |
+| `NOTIFICATION_NOT_FOUND` | 404 | الإشعار ده مش موجود على حسابك. | حدّث الصفحة وابدأ من قائمة الإشعارات. | No such notification on this account. |
+
 ## Shared codes this module reuses (already defined elsewhere — never redefined here)
 
 | Code | HTTP | Defined by | Note |

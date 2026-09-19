@@ -4,6 +4,7 @@ import { adapterForProvider } from '../providers/adapters/registry.js';
 import { getProvider } from '../providers/repository.js';
 import { redactText } from '../providers/redact.js';
 import type { AdapterRegistry, FetchLike, LoggerLike, ProviderOrderStatus } from '../providers/types.js';
+import { createNotifier } from '../tickets/service.js';
 import { applyWalletMovement } from '../wallet/service.js';
 import { orderDispatchFailed } from './errors.js';
 import type { DbOrder, OrderStatus } from './types.js';
@@ -52,6 +53,9 @@ export type DispatchOutcome = {
   synced: number;
   results: DispatchResult[];
 };
+
+/** The customer is told about anything that changes their money or their order's fate. */
+const notify = createNotifier();
 
 const TERMINAL: OrderStatus[] = ['completed', 'partial', 'canceled', 'failed', 'refunded'];
 const IN_FLIGHT: OrderStatus[] = ['processing', 'in_progress', 'partial'];
@@ -106,6 +110,25 @@ export async function refundOrder(order: DbOrder, reason: string, deps: Dispatch
 /** Marks an order failed with a customer-safe note, then refunds it. */
 async function failOrder(order: DbOrder, code: string, message: string, deps: DispatchDeps = {}): Promise<DispatchResult> {
   const refunded = await refundOrder(order, message, deps);
+
+  await notify(
+    refunded > 0
+      ? {
+          userId: order.user_id,
+          type: 'order.refunded',
+          title: 'رجعنا مبلغ الطلب لمحفظتك',
+          body: `الطلب ${order.public_id}`,
+          link: `/orders/${order.public_id}`,
+        }
+      : {
+          userId: order.user_id,
+          type: 'order.failed',
+          title: 'الطلب ما اتنفذش',
+          body: `الطلب ${order.public_id}`,
+          link: `/orders/${order.public_id}`,
+        },
+  );
+
   return {
     publicId: order.public_id,
     action: 'failed',
@@ -266,8 +289,16 @@ export async function syncOrderStatuses(deps: DispatchDeps = {}, limit = 50): Pr
 
       outcome.synced += 1;
       outcome.results.push({ publicId: order.public_id, action: 'synced', status: next });
+
       if (next === 'completed' && order.status !== 'completed') {
         logger.info('order completed by the supplier', { publicId: order.public_id });
+        await notify({
+          userId: order.user_id,
+          type: 'order.completed',
+          title: 'طلبك خلص',
+          body: `الطلب ${order.public_id}`,
+          link: `/orders/${order.public_id}`,
+        });
       }
     } catch (error) {
       // A follow-up failure is not fatal: the next tick tries again. Nothing is refunded here —

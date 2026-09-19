@@ -10,6 +10,7 @@ import { pricingDbDeps } from '../modules/pricing/service.js';
 import { createOrdersModule } from '../modules/orders/routes.js';
 import { orderDbDeps } from '../modules/orders/index.js';
 import { createPaymentsModule, productionPaymentsDeps } from '../modules/payments/index.js';
+import { createTicketsModule } from '../modules/tickets/index.js';
 import type { PaymentsDeps } from '../modules/payments/types.js';
 import type { AuthDeps } from '../modules/auth/types.js';
 
@@ -36,6 +37,10 @@ export function registerRoutes(
   const orders = createOrdersModule({ auth: deps.auth, orders: orderDbDeps });
   app.use('/api/orders', orders.router);
   app.use('/api/admin/orders', orders.adminRouter);
+
+  const tickets = createTicketsModule({ auth: deps.auth });
+  app.use('/api', tickets.router);
+  app.use('/api/admin', tickets.adminRouter);
 
   const payments = createPaymentsModule({ ...productionPaymentsDeps(deps.auth), ...(deps.payments ?? {}), auth: deps.auth });
   app.use('/api/payments', payments.router);

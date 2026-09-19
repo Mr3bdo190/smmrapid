@@ -368,6 +368,16 @@ export async function creditDeposit(
     );
   });
 
+  // The customer hears that the money arrived (a notification never fails a credit).
+  const { createNotifier } = await import('../tickets/service.js');
+  await createNotifier()({
+    userId: row.user_id,
+    type: 'payment.approved',
+    title: 'تم إضافة الرصيد لمحفظتك',
+    body: `العملية ${row.public_id}`,
+    link: '/wallet',
+  });
+
   return true;
 }
 

@@ -77,6 +77,42 @@ Owned by `modules/wallet/`. The Arabic copy below mirrors `modules/wallet/servic
 `DB_UNAVAILABLE` and `VALIDATION_ERROR` are also answered by the wallet module; both are defined
 in the shared table below.
 
+## Pricing engine (Phase 6)
+
+Owned by `modules/pricing/`. The Arabic copy below mirrors `modules/pricing/errors.ts` verbatim —
+keep this table and that file in sync. A quote never charges anyone: every message here repeats
+that **no money moved**, because the first question a customer asks is whether it did.
+
+| Code | HTTP | ماذا حدث (عربي) | الخطوة التالية (عربي) | English gloss |
+|---|---|---|---|---|
+| `PRICING_SERVICE_NOT_FOUND` | 404 | الخدمة المطلوبة مش موجودة في القائمة، وما اتخصمش أي مبلغ. | ارجع لقائمة الخدمات واختر خدمة موجودة، ولو فتحت الرابط من مكان قديم حدّث الصفحة. | That service is not in our catalogue — nothing was charged. |
+| `PRICING_SERVICE_UNAVAILABLE` | 422 | الخدمة دي مش متاحة للحجز دلوقتي، وما اتخصمش أي مبلغ. | اختر خدمة تانية متاحة، ولو محتاجها بالتحديد كلّم الدعم. | The service is not on sale at the moment — nothing was charged. |
+| `PRICING_VARIANT_NOT_FOUND` | 404 | الخيار اللي اخترته مش موجود أو مش متاح في الخدمة دي، وما اتخصمش أي مبلغ. | ارجع للخدمة واختر خيارًا من القائمة المعروضة. | That option is not available for this service — nothing was charged. |
+| `PRICING_PRICE_UNAVAILABLE` | 409 | سعر الخدمة دي لسه ما اتحددش من عندنا، فمش قادرين نحسب المبلغ النهائي، وما اتخصمش أي مبلغ. | اختر خدمة تانية متاحة، ولو محتاج الخدمة دي كلّم الدعم يحدّد سعرها. | No price is set for this service yet, so there is no total to show — nothing was charged. |
+| `PRICING_QUANTITY_OUT_OF_RANGE` | 422 | الكمية اللي طلبتها بره النطاق المسموح للخدمة دي، وما اتخصمش أي مبلغ. | صحّح الكمية داخل النطاق المعروض للخدمة وجرّب تاني. | The quantity is outside what this service allows — `details` carries `minQuantity` and `maxQuantity`; nothing was charged. |
+| `PRICING_ORDER_TOO_SMALL` | 422 | قيمة الطلب أقل من أقل مبلغ نقدر نستقبله، وما اتخصمش أي مبلغ. | زوّد الكمية شوية لحد ما قيمة الطلب تبقى أكبر، وجرّب تاني. | Below the smallest order we accept — `details` carries `orderMinMinor`; nothing was charged. |
+| `PRICING_COUPON_NOT_FOUND` | 404 | كود الكوبون ده مش موجود عندنا أو مش مفعّل، وما اتخصمش أي مبلغ. | راجع الكود مظبوط زي ما وصلك، أو كمّل من غير كوبون. | That coupon code does not exist or is inactive — nothing was charged. |
+| `PRICING_COUPON_EXPIRED` | 422 | الكوبون ده مش ساري دلوقتي (إما انتهى أو لسه ما بدأش)، وما اتخصمش أي مبلغ. | استخدم كوبونًا ساريًا، أو كمّل من غير كوبون. | The coupon is outside its validity window — nothing was charged. |
+| `PRICING_COUPON_SCOPE_MISMATCH` | 422 | الكوبون ده مخصَّص لقسم أو خدمة تانية، وما اتخصمش أي مبلغ. | طبّقه على الخدمة المخصَّص لها، أو كمّل من غير الكوبون. | The coupon belongs to another category or service — nothing was charged. |
+| `PRICING_COUPON_MIN_ORDER` | 422 | الكوبون ده بيشتغل لما قيمة الطلب توصل حد أدنى، والطلب الحالي أقل من كده، وما اتخصمش أي مبلغ. | زوّد الكمية لحد ما توصل الحد الأدنى، أو كمّل من غير الكوبون. | The coupon needs a larger order — `details` carries `minOrderMinor`; nothing was charged. |
+| `PRICING_COUPON_USAGE_LIMIT` | 409 | الكوبون ده وصل للحد الأقصى لعدد مرات الاستخدام، وما اتخصمش أي مبلغ. | كمّل من غير الكوبون، ولو شايف إن ده غلط كلّم الدعم. | The coupon has reached its maximum number of uses — nothing was charged. |
+| `PRICING_COUPON_ALREADY_USED` | 409 | الكوبون ده استخدمته قبل كده، وكل عميل يقدر يستخدمه عدد مرات محدود، وما اتخصمش أي مبلغ. | كمّل من غير الكوبون أو استخدم كودًا تاني. | This customer has already used the coupon as often as allowed — nothing was charged. |
+
+Two of these carry numbers in `details`; both are numbers we computed (`minQuantity`, `maxQuantity`,
+`orderMinMinor`, `totalMinor`) and neither is ever our supplier cost. `provider_cost_minor` is not
+part of any customer shape: the pricing module builds every public response from named columns, so
+a cost cannot leak by accident, and the test suite asserts it on real responses.
+
+## Client-side codes (produced in the browser, never by the API)
+
+| Code | HTTP | ماذا حدث (عربي) | الخطوة التالية (عربي) | English gloss |
+|---|---|---|---|---|
+| `NETWORK_ERROR` | — | المتصفح ما وصلش للسيرفر، فالطلب ما خرجش من الجهاز أصلاً. | اتأكد من اتصال الإنترنت وجرّب تاني. | The request never left the browser (the API never answers this code). |
+| `REQUEST_FAILED` | — | الطلب ما وصلش للسيرفر بالشكل الصحيح، فما اتغيرش أي حاجة. | جرّب تاني، ولو فشل كل مرة كلّم الدعم. | The request failed without an API envelope (the API never answers this code). |
+
+`FORBIDDEN` is the third code a client may see without the API producing a sentence for it: it is
+listed once, in the shared table below, because `modules/auth/middleware.ts` owns it.
+
 ## Shared codes this module reuses (already defined elsewhere — never redefined here)
 
 | Code | HTTP | Defined by | Note |
@@ -87,7 +123,7 @@ in the shared table below.
 | `ACCOUNT_DISABLED` | 403 | `modules/auth/middleware.ts` | the account is not active — راسل الدعم ونراجع الحساب |
 | `FORBIDDEN` | 403 | `modules/auth/middleware.ts` | signed in, but missing the permission (`providers.view` / `providers.manage`) |
 | `VALIDATION_ERROR` | 422 | `middleware/validate.ts` | body/params/query failed validation; `details.fields` lists them |
-| `DB_UNAVAILABLE` | 503 | `modules/auth/middleware.ts` (`DB_NOT_CONFIGURED`) | the database is not configured/reachable |
+| `DB_UNAVAILABLE` | 503 | `modules/auth/middleware.ts` | the database is not configured or not reachable — the internal marker is mapped to this code before any client sees it |
 | `AUTH_NOT_CONFIGURED` | 503 | `modules/auth/middleware.ts` (`AUTH_NOT_CONFIGURED`) | sign-in verification is not configured on the server yet — our side, not the customer's: try again shortly, and contact support if it persists |
 | `NOT_FOUND` | 404 | `middleware/error-handler.ts` | unknown route |
 | `INTERNAL_ERROR` | 500 | `middleware/error-handler.ts` | unexpected failure; the message is neutral and `ref` is the support reference |
@@ -95,6 +131,12 @@ in the shared table below.
 
 ## Adding a code
 
-1. Add it to the module's code list (`modules/providers/errors.ts` → `PROVIDER_ERROR_CODES`).
-2. Add a row here, in Arabic, with the next step — before it can be answered.
-3. The provider test suite fails if a code is answered without a row here, by design.
+1. Add it to the module's own code list, where the customer copy for it is written:
+   `modules/providers/errors.ts` (`PROVIDER_ERROR_CODES`), `modules/pricing/errors.ts`
+   (`PRICING_ERROR_CODES`). The Arabic sentence lives next to the code, never at the call site.
+2. Add a row here — what happened, in Arabic, and the next step — **before** the code can be
+   answered. A code with no row here does not exist.
+3. Add the `ar` + `en` copy to the web catalogue (`apps/web/src/i18n/error-codes.ts`). The checks
+   in `apps/web/scripts/check-error-codes.mjs` compare the two catalogues in both directions.
+4. Each module's test suite fails if a code is answered without a row here, by design — the suite
+   records every code it sees and checks it against this file at the end.

@@ -12,8 +12,11 @@
  *     missing language a compile error; this catches merge damage and copy/paste mistakes too.)
  *  2. `docs/ERROR_CODES.md`, the shared list of codes the API actually returns: every code listed
  *     there must exist in the catalogue. Codes in the catalogue but not in the doc are reported as
- *     notes (planned codes for in-flight phases are fine). If the doc does not exist yet, check 2
- *     is skipped with a clear message instead of failing — other tasks own that file.
+ *     notes (planned codes for in-flight phases are fine). A code is read from the doc either as a
+ *     prose token containing an underscore or as a backticked table cell — the second form is what
+ *     lets a single-word code (`FORBIDDEN`) be listed without mistaking HTTP/USD for a code. If the
+ *     doc does not exist yet, check 2 is skipped with a clear message instead of failing — other
+ *     tasks own that file.
  *
  * Exit code 0 = everything covered, 1 = something is missing.
  */
@@ -51,9 +54,10 @@ const DOC_TOKEN_IGNORE = new Set([
   'MESSAGE',
   'NEXT_STEP',
   'NEXTSTEP',
-  /** `STABLE_CODE` is the placeholder code in the envelope example; this one is a constant name. */
+  /** `STABLE_CODE` is the placeholder code in the envelope example; these two are constants. */
   'STABLE_CODE',
   'PROVIDER_ERROR_CODES',
+  'PRICING_ERROR_CODES',
 ]);
 
 function fail(message) {
@@ -109,9 +113,21 @@ if (!existsSync(DOC)) {
   console.log(`\u2139 docs/ERROR_CODES.md does not exist yet — skipping the doc cross-check (not a failure).`);
 } else {
   const doc = readFileSync(DOC, 'utf8');
-  const docCodes = new Set(
-    (doc.match(/\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/g) ?? []).filter((token) => !DOC_TOKEN_IGNORE.has(token)),
-  );
+
+  /**
+   * A documented code is recognised in one of two ways, because codes without an underscore exist
+   * (`FORBIDDEN`):
+   *  - any ALL-CAPS token containing an underscore, wherever it is mentioned (the original rule);
+   *  - any backticked ALL-CAPS token, which is how the tables spell a code's name. Backticks are
+   *    what makes a single-word code recognisable without loosening the prose scan into noise
+   *    (it would otherwise pick up HTTP, USD, SQLSTATE … and report them as undocumented codes).
+   */
+  const docTokens = [
+    ...doc.matchAll(/\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/g),
+    ...doc.matchAll(/`([A-Z][A-Z0-9_]*)`/g),
+  ].map((match) => match[1] ?? match[0]);
+
+  const docCodes = new Set(docTokens.filter((token) => !DOC_TOKEN_IGNORE.has(token)));
 
   const missing = [...docCodes].filter((code) => !catalogue.has(code)).sort();
   const extra = [...catalogue.keys()].filter((code) => !docCodes.has(code) && !code.startsWith('auth/')).sort();

@@ -17,7 +17,8 @@ import type { Locale } from './locale';
  *   - `apps/api/src/middleware/error-handler.ts` (INTERNAL_ERROR, NOT_FOUND, VALIDATION_ERROR)
  *   - `apps/api/src/modules/auth/middleware.ts` (AUTH_REQUIRED, TOKEN_*, ACCOUNT_DISABLED, FORBIDDEN)
  *   - `apps/api/src/modules/auth/routes.ts` (RATE_LIMITED) and the auth/DB config guards
- *   - `apps/api/src/modules/wallet/*` (WALLET_*, INSUFFICIENT_BALANCE)
+ *   - `apps/api/src/modules/wallet/*` (WALLET_*)
+ *   - `apps/api/src/modules/pricing/*` (PRICING_*) — the price calculator's own refusals
  *   - the provider adapters (PROVIDER_*, CREDENTIAL_*) — the names, the HTTP status and the
  *     Arabic wording are kept in step with `docs/ERROR_CODES.md`, which is the contract
  *   - the client itself (NETWORK_ERROR, REQUEST_FAILED) and Firebase Auth (`auth/*`)
@@ -38,15 +39,26 @@ export const ERROR_CODES = [
   'NOT_FOUND',
   'INTERNAL_ERROR',
   'DB_UNAVAILABLE',
-  'DB_NOT_CONFIGURED',
   'AUTH_NOT_CONFIGURED',
   /* ── wallet (phase 5) ────────────────────────────────────────────────────────────────────── */
   'WALLET_NOT_FOUND',
-  'INSUFFICIENT_BALANCE',
   'WALLET_INSUFFICIENT_FUNDS',
   'WALLET_LIMIT_EXCEEDED',
   'WALLET_INVALID_CURSOR',
   'WALLET_MOVEMENT_REJECTED',
+  /* ── pricing engine (phase 6) — names are the contract, per docs/ERROR_CODES.md ──────────── */
+  'PRICING_SERVICE_NOT_FOUND',
+  'PRICING_SERVICE_UNAVAILABLE',
+  'PRICING_VARIANT_NOT_FOUND',
+  'PRICING_PRICE_UNAVAILABLE',
+  'PRICING_QUANTITY_OUT_OF_RANGE',
+  'PRICING_ORDER_TOO_SMALL',
+  'PRICING_COUPON_NOT_FOUND',
+  'PRICING_COUPON_EXPIRED',
+  'PRICING_COUPON_SCOPE_MISMATCH',
+  'PRICING_COUPON_MIN_ORDER',
+  'PRICING_COUPON_USAGE_LIMIT',
+  'PRICING_COUPON_ALREADY_USED',
   /* ── providers + credentials (phase 7) — names are the contract, per docs/ERROR_CODES.md ─── */
   'PROVIDER_NOT_FOUND',
   'PROVIDER_NOT_CONFIGURED',
@@ -171,10 +183,6 @@ export const ERROR_CATALOGUE: ErrorCatalogue = {
     en: { title: 'The service is unavailable for a moment', message: 'Our database is not reachable right now, so nothing was changed.', nextStep: 'Wait a minute and try again. If it keeps happening, send us the reference below.' },
     ar: { title: 'الخدمة مش متاحة لحظة', message: 'قاعدة البيانات مش متاحة دلوقتي، فمفيش أي تغيير حصل.', nextStep: 'استنى دقيقة وجرّب تاني. لو المشكلة كملت، ابعتلنا رقم المرجع اللي تحت.' },
   },
-  DB_NOT_CONFIGURED: {
-    en: { title: 'The service is unavailable for a moment', message: 'Our database is not reachable right now, so nothing was changed.', nextStep: 'Wait a minute and try again. If it keeps happening, send us the reference below.' },
-    ar: { title: 'الخدمة مش متاحة لحظة', message: 'قاعدة البيانات مش متاحة دلوقتي، فمفيش أي تغيير حصل.', nextStep: 'استنى دقيقة وجرّب تاني. لو المشكلة كملت، ابعتلنا رقم المرجع اللي تحت.' },
-  },
   AUTH_NOT_CONFIGURED: {
     en: { title: 'Sign-in is temporarily unavailable', message: 'The sign-in service is not fully configured on the server yet, so signing in is paused.', nextStep: 'Try again shortly. If it stays down, contact support and we will finish the setup.', actionLabel: 'Contact support' },
     ar: { title: 'تسجيل الدخول مش متاح مؤقتًا', message: 'خدمة تسجيل الدخول لسه مش مكتملة الإعدادات على السيرفر، فالدخول متوقّف.', nextStep: 'جرّب بعد شوية. لو فضلت واقفة، كلّم الدعم ونكمّل الإعداد.', actionLabel: 'كلّم الدعم' },
@@ -184,10 +192,6 @@ export const ERROR_CATALOGUE: ErrorCatalogue = {
   WALLET_NOT_FOUND: {
     en: { title: 'Your wallet is not ready yet', message: 'This account does not have a wallet row yet, so nothing was charged.', nextStep: 'Sign in again so we can provision it. If it stays like this, contact support.', actionLabel: 'Sign in again' },
     ar: { title: 'محفظتك لسه مش جاهزة', message: 'الحساب ده لسه مالوش محفظة، فما اتخصمش أي مبلغ.', nextStep: 'سجّل دخول من جديد ونجهّزها لك. لو فضلت زي ما هي، كلّم الدعم.', actionLabel: 'سجّل دخول من جديد' },
-  },
-  INSUFFICIENT_BALANCE: {
-    en: { title: 'Your balance is not enough', message: 'The available balance does not cover this operation, so nothing was charged.', nextStep: 'Top up your wallet, or lower the amount, then try again.', actionLabel: 'Add funds' },
-    ar: { title: 'رصيدك لا يكفي', message: 'الرصيد المتاح مش كافي للعملية دي، فما اتخصمش أي مبلغ.', nextStep: 'أضف رصيدًا للمحفظة، أو قلّل المبلغ، ثم أعد المحاولة.', actionLabel: 'أضف رصيدًا' },
   },
   WALLET_INSUFFICIENT_FUNDS: {
     en: { title: 'Your balance is not enough', message: 'The available balance does not cover this operation, so nothing was charged.', nextStep: 'Top up your wallet, or lower the amount, then try again.', actionLabel: 'Add funds' },
@@ -204,6 +208,56 @@ export const ERROR_CATALOGUE: ErrorCatalogue = {
   WALLET_MOVEMENT_REJECTED: {
     en: { title: 'The movement was rejected by the ledger', message: 'Our ledger refused this movement, so nothing was charged or added.', nextStep: 'Try again once. If it is rejected again, contact support with the code and reference below.', actionLabel: 'Contact support' },
     ar: { title: 'الحركة اترفضت من الدفتر', message: 'دفتر الحسابات رفض الحركة دي، فما اتخصمش وما اتضافش أي مبلغ.', nextStep: 'جرّب مرة تانية. ولو اترفضت تاني، كلّم الدعم مع الكود ورقم المرجع اللي تحت.', actionLabel: 'كلّم الدعم' },
+  },
+
+  /* ── pricing engine (phase 6) ─────────────────────────────────────────────────────────────── */
+  PRICING_SERVICE_NOT_FOUND: {
+    en: { title: 'That service is not available', message: 'The service you asked for is no longer in our list, so nothing was charged.', nextStep: 'Go back to the services and pick one that is there. If you opened an old link, reload the page.', actionLabel: 'Back to services' },
+    ar: { title: 'الخدمة دي مش متاحة', message: 'الخدمة اللي طلبتها مبقتش موجودة في القائمة عندنا، فما اتخصمش أي مبلغ.', nextStep: 'ارجع لقائمة الخدمات واختار خدمة موجودة. ولو فتحت رابط قديم، حدّث الصفحة.', actionLabel: 'رجوع للخدمات' },
+  },
+  PRICING_SERVICE_UNAVAILABLE: {
+    en: { title: 'This service is paused for now', message: 'We are not taking orders for this service at the moment, so nothing was charged.', nextStep: 'Choose another service that is available. If you need this one in particular, contact support.', actionLabel: 'Contact support' },
+    ar: { title: 'الخدمة دي متوقفة مؤقتًا', message: 'مش بنستقبل طلبات على الخدمة دي دلوقتي، فما اتخصمش أي مبلغ.', nextStep: 'اختار خدمة تانية متاحة. ولو محتاج الخدمة دي بالتحديد، كلّم الدعم.', actionLabel: 'كلّم الدعم' },
+  },
+  PRICING_VARIANT_NOT_FOUND: {
+    en: { title: 'That option is not available', message: 'The option you picked is not offered for this service, so nothing was charged.', nextStep: 'Reopen the service and choose one of the options shown in the list.' },
+    ar: { title: 'الخيار ده مش متاح', message: 'الخيار اللي اخترته مش متاح في الخدمة دي، فما اتخصمش أي مبلغ.', nextStep: 'افتح الخدمة تاني واختار خيارًا من القائمة المعروضة.' },
+  },
+  PRICING_PRICE_UNAVAILABLE: {
+    en: { title: 'This service has no price yet', message: 'We cannot work out the total for this service because its price is not set, so nothing was charged.', nextStep: 'Choose another service, or contact support so we can price this one.', actionLabel: 'Contact support' },
+    ar: { title: 'سعر الخدمة دي لسه ما اتحددش', message: 'مش قادرين نحسب المبلغ النهائي للخدمة دي لأن سعرها لسه ما اتحددش، فما اتخصمش أي مبلغ.', nextStep: 'اختار خدمة تانية، أو كلّم الدعم نحدّد سعر الخدمة دي.', actionLabel: 'كلّم الدعم' },
+  },
+  PRICING_QUANTITY_OUT_OF_RANGE: {
+    en: { title: 'That quantity is outside the allowed range', message: 'This service takes a quantity between the minimum and the maximum shown on its page, and nothing was charged.', nextStep: 'Set a quantity inside that range and try again.' },
+    ar: { title: 'الكمية بره النطاق المسموح', message: 'الخدمة دي بتقبل كمية من الحد الأدنى للحد الأقصى اللي مكتوب في صفحتها، وما اتخصمش أي مبلغ.', nextStep: 'حدّد كمية داخل النطاق ده وجرّب تاني.' },
+  },
+  PRICING_ORDER_TOO_SMALL: {
+    en: { title: 'The order is below our smallest amount', message: 'The total is smaller than the least we can accept, so nothing was charged.', nextStep: 'Increase the quantity a little and try again.' },
+    ar: { title: 'قيمة الطلب أقل من الحد الأدنى', message: 'قيمة الطلب أقل من أقل مبلغ نقدر نستقبله، فما اتخصمش أي مبلغ.', nextStep: 'زوّد الكمية شوية وجرّب تاني.' },
+  },
+  PRICING_COUPON_NOT_FOUND: {
+    en: { title: 'That coupon code is not valid', message: 'We have no active coupon with that code, so nothing was charged.', nextStep: 'Check the code and type it exactly as you received it, or continue without a coupon.' },
+    ar: { title: 'كود الكوبون مش صحيح', message: 'مفيش كوبون مفعّل بالكود ده عندنا، فما اتخصمش أي مبلغ.', nextStep: 'راجع الكود واكتبه بالظبط زي ما وصلك، أو كمّل من غير كوبون.' },
+  },
+  PRICING_COUPON_EXPIRED: {
+    en: { title: 'This coupon is not valid now', message: 'The coupon has expired or has not started yet, so nothing was charged.', nextStep: 'Use a valid coupon, or continue without one.' },
+    ar: { title: 'الكوبون ده مش ساري دلوقتي', message: 'الكوبون إما انتهى أو لسه ما بدأش، فما اتخصمش أي مبلغ.', nextStep: 'استخدم كوبونًا ساريًا، أو كمّل من غير كوبون.' },
+  },
+  PRICING_COUPON_SCOPE_MISMATCH: {
+    en: { title: 'This coupon is for another service', message: 'The coupon belongs to a different category or service, so nothing was charged.', nextStep: 'Apply it to the service it belongs to, or continue without it.' },
+    ar: { title: 'الكوبون ده لخدمة تانية', message: 'الكوبون مخصَّص لقسم أو خدمة تانية، فما اتخصمش أي مبلغ.', nextStep: 'طبّقه على الخدمة المخصَّص لها، أو كمّل من غير الكوبون.' },
+  },
+  PRICING_COUPON_MIN_ORDER: {
+    en: { title: 'This coupon needs a larger order', message: 'The coupon only applies from a minimum order value, and this order is below it, so nothing was charged.', nextStep: 'Increase the quantity until you reach that minimum, or continue without the coupon.' },
+    ar: { title: 'الكوبون محتاج طلب أكبر', message: 'الكوبون بيشتغل لما قيمة الطلب توصل حد أدنى، والطلب الحالي أقل من كده، فما اتخصمش أي مبلغ.', nextStep: 'زوّد الكمية لحد ما توصل الحد الأدنى، أو كمّل من غير الكوبون.' },
+  },
+  PRICING_COUPON_USAGE_LIMIT: {
+    en: { title: 'This coupon has been used up', message: 'The coupon reached its maximum number of uses, so nothing was charged.', nextStep: 'Continue without the coupon. If you think this is wrong, contact support.', actionLabel: 'Contact support' },
+    ar: { title: 'الكوبون ده استُخدم بالكامل', message: 'الكوبون وصل للحد الأقصى لعدد مرات الاستخدام، فما اتخصمش أي مبلغ.', nextStep: 'كمّل من غير الكوبون. ولو شايف إن ده غلط، كلّم الدعم.', actionLabel: 'كلّم الدعم' },
+  },
+  PRICING_COUPON_ALREADY_USED: {
+    en: { title: 'You have already used this coupon', message: 'Each customer may use this coupon a limited number of times, and you have reached it, so nothing was charged.', nextStep: 'Continue without the coupon, or use a different code.' },
+    ar: { title: 'استخدمت الكوبون ده قبل كده', message: 'كل عميل يقدر يستخدم الكوبون ده عدد مرات محدود، وانت وصلت للنهاية، فما اتخصمش أي مبلغ.', nextStep: 'كمّل من غير الكوبون، أو استخدم كودًا تاني.' },
   },
 
   /* ── providers + credentials ────────────────────────────────────────────────────────────── */

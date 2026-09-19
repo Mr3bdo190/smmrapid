@@ -56,7 +56,7 @@ inventing styling.
 | 3 | Firebase authentication + new visual identity | ✅ |
 | 4 | Core: validation, money arithmetic, profile | ✅ |
 | 5 | Wallet + ledger module | ✅ |
-| 6 | Pricing engine | ⏳ |
+| 6 | Pricing engine | ✅ |
 | 7 | Providers + service sync | ✅ |
 | 8 | Orders (create, status, history, re-order) | ⏳ |
 | 9 | Payments (Heleket, Sh7nawy adapters) | ⏳ |

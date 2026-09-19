@@ -55,9 +55,9 @@ inventing styling.
 | 2 | Database schema, migrations, seeds | ✅ |
 | 3 | Firebase authentication + new visual identity | ✅ |
 | 4 | Core: validation, money arithmetic, profile | ✅ |
-| 5 | Wallet + ledger module | ⏳ in flight |
+| 5 | Wallet + ledger module | ✅ |
 | 6 | Pricing engine | ⏳ |
-| 7 | Providers + service sync | ⏳ in flight |
+| 7 | Providers + service sync | ✅ |
 | 8 | Orders (create, status, history, re-order) | ⏳ |
 | 9 | Payments (Heleket, Sh7nawy adapters) | ⏳ |
 | 10 | Support tickets + notifications | ⏳ |
@@ -102,10 +102,10 @@ Subagents may not run git commands, may not edit shared files (`package.json`, `
 `routes/index.ts`, `index.css`, `App.tsx`, `tsconfig*`, `eslint.config.js`, `ci.yml`), and must
 report the wiring they need. The parent session owns integration, verification and every commit.
 
-In flight right now: Phase 5 (wallet module — subagent), Phase 7 (providers — subagent), and the
-web UI kit + i18n (subagent). The parent session owns integration: when their work lands, add the
-build entries and route mounts they report, run the full verification, then commit each phase
-separately so a failure can be reverted on its own.
+In flight right now: the web UI kit + i18n + error catalogue (subagent). Phases 5 and 7 landed
+and are wired into `routes/index.ts`; the parent session owns integration: add the build entries
+and route mounts a subagent reports, run the full verification, then commit each phase separately
+so a failure can be reverted on its own.
 
 The scheduled job is gated by `~/.hermes/scripts/smmrapid-state.sh`, whose output changes only
 when the build state actually changes (next unfinished phase, dirty tree, CI conclusion). So a

@@ -104,7 +104,13 @@ after(async () => {
   // the test leaves its own admin row in place rather than working around a real guarantee.
 });
 
-test('the admin services list demands services.view', async () => {
+/**
+ * Note the `skip`: the authorisation chain itself reads the database (the account's status and its
+ * permissions), so without one the request fails as a server error long before any 403 could be
+ * decided. The CI runs the whole suite twice — with and without a database — and this belongs to
+ * the run that has one.
+ */
+test('the admin services list demands services.view', { skip: !hasDb }, async () => {
   const { url, close } = await startServer([]);
   try {
     const res = await call(url, '/api/admin/services');

@@ -77,7 +77,7 @@ after(async () => {
   // its rows behind instead of working around a guarantee that protects real customers.
 });
 
-test('the admin users list demands users.view', async () => {
+test('the admin users list demands users.view', { skip: !hasDb }, async () => {
   const { url, close } = await startServer([]);
   try {
     const res = await call(url, '/api/admin/users');

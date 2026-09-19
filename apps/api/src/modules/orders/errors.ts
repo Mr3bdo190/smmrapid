@@ -14,6 +14,7 @@ export const ORDER_ERROR_CODES = [
   'ORDER_IDEMPOTENCY_CONFLICT',
   'ORDER_NOT_REPEATABLE',
   'ORDER_DUPLICATE_TARGET',
+  'ORDER_DISPATCH_FAILED',
 ] as const;
 export type OrderErrorCode = (typeof ORDER_ERROR_CODES)[number] | string;
 
@@ -48,3 +49,7 @@ export const orderDuplicateTarget = () =>
     'You already have an open order for this service and the same link. Wait for it to finish, or contact support.',
     409,
   );
+
+/** The dispatcher could not even start: no supplier for the order, or it is switched off. */
+export const orderDispatchFailed = (reason: string) =>
+  orderError('ORDER_DISPATCH_FAILED', `The order could not be sent to the supplier: ${reason}`, 503);

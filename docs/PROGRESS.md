@@ -59,7 +59,7 @@ inventing styling.
 | 6 | Pricing engine | ✅ |
 | 7 | Providers + service sync | ✅ |
 | 8 | Orders (create, status, history, re-order) | ✅ |
-| 8b | Order dispatch to providers (queue, retries, status sync) | ⏳ next |
+| 8b | Order dispatch to providers (queue, retries, status sync) | ✅ |
 | 9 | Payments (Heleket, Sh7nawy adapters) | ⏳ |
 | 10 | Support tickets + notifications | ⏳ |
 | 11 | Client area UI (dashboard, new order, orders, funds) | ⏳ |

@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { AppError } from '../../middleware/error-handler.js';
 import { validateBody, validateParams } from '../../middleware/validate.js';
 import { createAuthGuards } from '../auth/middleware.js';
+import { runOrderTick, type DispatchDeps } from './dispatch.js';
 import { orderIdempotencyConflict, orderNotFound } from './errors.js';
 import { createOrder, getOrder, listOrders, parseListQuery, repeatOrder } from './service.js';
 import type { OrderModuleDeps, PublicOrder } from './types.js';
@@ -83,9 +84,13 @@ function toOrdersError(error: unknown): unknown {
   return error;
 }
 
-export function createOrdersModule(deps: OrderModuleDeps): { router: Router } {
+export function createOrdersModule(deps: OrderModuleDeps & { dispatch?: DispatchDeps }): {
+  router: Router;
+  adminRouter: Router;
+} {
   const guards = createAuthGuards(deps.auth);
   const router = Router();
+  const adminRouter = Router();
 
   /** POST /api/orders — create and pay in one step. 201 when created, 200 when it was a replay. */
   router.post('/', createLimiter, guards.requireAuth, validateBody(createSchema), async (req, res, next) => {
@@ -155,7 +160,27 @@ export function createOrdersModule(deps: OrderModuleDeps): { router: Router } {
     }
   });
 
-  return { router };
+  /**
+   * POST /api/admin/orders/dispatch — one dispatch tick by hand: submit what is waiting, then
+   * refresh what is running. The same code the background ticker runs, so an operator can see the
+   * outcome without waiting for it.
+   */
+  adminRouter.post(
+    '/dispatch',
+    createLimiter,
+    guards.requireAuth,
+    guards.requirePermission('orders.edit'),
+    async (_req, res, next) => {
+      try {
+        const tick = await runOrderTick(deps.dispatch ?? {});
+        res.json({ success: true, data: tick });
+      } catch (error) {
+        next(toOrdersError(error));
+      }
+    },
+  );
+
+  return { router, adminRouter };
 }
 
 export { orderNotFound };

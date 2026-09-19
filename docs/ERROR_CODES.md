@@ -124,6 +124,7 @@ One order, one charge: the order row and the wallet movement commit in the same 
 | `ORDER_IDEMPOTENCY_CONFLICT` | 409 | نفس المحاولة اتبعتت قبل كده ببيانات مختلفة، فما اتعملش أي طلب. | ابدأ الطلب من جديد من غير ما تعيد إرسال نفس المحاولة. | The same attempt arrived with different details. |
 | `ORDER_NOT_REPEATABLE` | 409 | مش ممكن تكرر الطلب ده: الخدمة اتوقفت أو السعر/المدى اتغيّر. | اختار خدمة تانية أو جرّب تاني بعد شوية. | The order cannot be repeated as-is. |
 | `ORDER_DUPLICATE_TARGET` | 409 | عندك طلب مفتوح بالفعل على نفس الرابط ونفس الخدمة. | استنى الطلب الحالي يخلّص، أو كلّم الدعم لو محتاج طلب تاني. | An open order already covers this link. |
+| `ORDER_DISPATCH_FAILED` | 503 | مزوّد الخدمة دي مش متاح من عندنا دلوقتي، فما ابعتناش الطلب. | بنجرّب تلقائيًا. لو المشكلة كملت، كلّم الدعم برقم المرجع. | The supplier could not be reached to submit the order. |
 
 The orders module also answers `PRICING_*`, `WALLET_*`, `VALIDATION_ERROR`, `RATE_LIMITED` and the
 auth codes: a refusal is always the code of the module that owns the rule, never a new one.

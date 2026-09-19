@@ -65,6 +65,7 @@ export const ERROR_CODES = [
   'ORDER_IDEMPOTENCY_CONFLICT',
   'ORDER_NOT_REPEATABLE',
   'ORDER_DUPLICATE_TARGET',
+  'ORDER_DISPATCH_FAILED',
   /* ── providers + credentials (phase 7) — names are the contract, per docs/ERROR_CODES.md ─── */
   'PROVIDER_NOT_FOUND',
   'PROVIDER_NOT_CONFIGURED',
@@ -286,6 +287,10 @@ export const ERROR_CATALOGUE: ErrorCatalogue = {
   ORDER_DUPLICATE_TARGET: {
     en: { title: 'You already have an open order for this link', message: 'Two open orders for the same service and the same link would compete with each other, so we did not create a second one.', nextStep: 'Wait for the current order to finish, or contact support if you really need a second one.', actionLabel: 'Contact support' },
     ar: { title: 'عندك طلب مفتوح على نفس الرابط', message: 'طلبين مفتوحين على نفس الخدمة ونفس الرابط بيزاحموا بعض، فما عملناش طلب تاني.', nextStep: 'استنى الطلب الحالي يخلّص، أو كلّم الدعم لو محتاج طلب تاني فعلًا.', actionLabel: 'كلّم الدعم' },
+  },
+  ORDER_DISPATCH_FAILED: {
+    en: { title: 'We cannot send this order right now', message: 'The supplier for this service is not reachable from our side, so the order was not submitted and nothing extra was charged.', nextStep: 'We retry automatically. If it stays like this, contact support with the reference below.', actionLabel: 'Contact support' },
+    ar: { title: 'مش قادرين نرسل الطلب دلوقتي', message: 'مزوّد الخدمة دي مش متاح من عندنا، فما ابعتناش الطلب وما اتخصمش أي مبلغ إضافي.', nextStep: 'بنجرّب تلقائيًا. ولو المشكلة كملت، كلّم الدعم برقم المرجع اللي تحت.', actionLabel: 'كلّم الدعم' },
   },
   /* ── providers + credentials ────────────────────────────────────────────────────────────── */
   PROVIDER_NOT_FOUND: {

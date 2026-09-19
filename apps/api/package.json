@@ -7,7 +7,7 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "esbuild src/index.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/index.js --watch",
-    "build": "esbuild src/index.ts src/app.ts src/lib/logger.ts src/lib/db.ts src/lib/money.ts src/modules/auth/users.ts src/modules/wallet/routes.ts src/modules/wallet/service.ts src/modules/providers/routes.ts src/modules/pricing/index.ts src/modules/pricing/routes.ts src/modules/pricing/service.ts src/modules/pricing/engine.ts src/modules/orders/index.ts src/modules/orders/routes.ts src/modules/orders/service.ts --bundle --platform=node --format=esm --packages=external --outdir=dist --log-level=warning",
+    "build": "esbuild src/index.ts src/app.ts src/lib/logger.ts src/lib/db.ts src/lib/money.ts src/modules/auth/users.ts src/modules/wallet/routes.ts src/modules/wallet/service.ts src/modules/providers/routes.ts src/modules/providers/index.ts src/modules/pricing/index.ts src/modules/pricing/routes.ts src/modules/pricing/service.ts src/modules/pricing/engine.ts src/modules/orders/index.ts src/modules/orders/routes.ts src/modules/orders/service.ts src/modules/orders/dispatch.ts src/modules/orders/worker.ts --bundle --platform=node --format=esm --packages=external --outdir=dist --log-level=warning",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
     "test": "npm run build && node --test --test-concurrency=1 test/*.test.mjs"

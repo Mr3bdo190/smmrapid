@@ -229,7 +229,7 @@ export async function staffReply(
   adminUserId: string,
   body: string,
   options: { internal?: boolean; notify?: Notifier } = {},
-): Promise<TicketRow> {
+): Promise<PublicTicket> {
   const ticket = await queryOne<TicketRow>('select * from tickets where public_id = $1', [publicId]);
   if (!ticket) throw ticketNotFound();
 
@@ -263,10 +263,10 @@ export async function staffReply(
   }
 
   const fresh = await queryOne<TicketRow>('select * from tickets where id = $1', [ticket.id]);
-  return fresh ?? ticket;
+  return publicTicket(fresh ?? ticket);
 }
 
-export async function setTicketStatus(publicId: string, status: TicketStatus, options: { notify?: Notifier } = {}): Promise<TicketRow> {
+export async function setTicketStatus(publicId: string, status: TicketStatus, options: { notify?: Notifier } = {}): Promise<PublicTicket> {
   const ticket = await queryOne<TicketRow>('select * from tickets where public_id = $1', [publicId]);
   if (!ticket) throw ticketNotFound();
 
@@ -290,19 +290,23 @@ export async function setTicketStatus(publicId: string, status: TicketStatus, op
     });
   }
 
-  return updated ?? ticket;
+  return publicTicket(updated ?? ticket);
 }
 
-export async function assignTicket(publicId: string, adminUserId: string | null): Promise<TicketRow> {
+export async function assignTicket(publicId: string, adminUserId: string | null): Promise<PublicTicket> {
   const updated = await queryOne<TicketRow>(
     `update tickets set assigned_admin_id = $2 where public_id = $1 returning *`,
     [publicId, adminUserId],
   );
   if (!updated) throw ticketNotFound();
-  return updated;
+  return publicTicket(updated);
 }
 
-/** The staff queue: open work first, oldest first, so nothing is forgotten. */
+/**
+ * The staff queue: work waiting on us first (oldest first, so nothing is forgotten), then what we
+ * already handled newest-first. One ordering cannot serve both — ascending alone buries a ticket we
+ * just answered behind the whole archive, descending alone lets an old ticket rot at the bottom.
+ */
 export async function listTicketQueue(
   options: { status?: TicketStatus | null; limit?: number } = {},
 ): Promise<(PublicTicket & { userId: string | null })[]> {
@@ -311,7 +315,9 @@ export async function listTicketQueue(
        from tickets t
       where ($1::text is null or t.status = $1::ticket_status)
       order by case when t.status in ('open','pending') then 0 else 1 end,
-               coalesce(t.last_message_at, t.created_at) asc
+               case when t.status in ('open','pending')
+                    then coalesce(t.last_message_at, t.created_at) end asc nulls last,
+               coalesce(t.last_message_at, t.created_at) desc
       limit $2`,
     [options.status ?? null, Math.min(Math.max(options.limit ?? 25, 1), 100)],
   );

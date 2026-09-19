@@ -1,4 +1,4 @@
-import test from 'node:test';
+import test, { before } from 'node:test';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { randomUUID } from 'node:crypto';
@@ -68,6 +68,21 @@ const openTicket = async (url, subject = 'مشكلة في الطلب') => {
   assert.equal(res.status, 201, text);
   return JSON.parse(text).data.ticket;
 };
+
+/**
+ * The staff queue is global, and a local database keeps tickets from every previous run, so the
+ * ordering assertions would be reading foreign rows. Closing the tickets created by *test users*
+ * (the `ticket-…@example.test` pattern) makes the queue this run's queue; real data is untouched.
+ */
+before(async () => {
+  if (!hasDb) return;
+  const { query } = await import('../dist/lib/db.js');
+  await query(
+    `update tickets set status = 'closed', closed_at = now()
+      where status <> 'closed'
+        and user_id in (select id from users where email like 'ticket-%@example.test')`,
+  );
+});
 
 /* ── validation, no database needed ───────────────────────────────────────────────────────────── */
 
@@ -232,12 +247,17 @@ test('the staff queue shows open work first', { skip: !hasDb }, async () => {
   try {
     const first = await openTicket(customerServer.url, `قديمة ${run}`);
     const second = await openTicket(customerServer.url, `جديدة ${run}`);
-    await post(staffServer.url, `/api/admin/tickets/${second.publicId}/reply`, { body: 'ردينا على الجديدة' });
+    const answered = await post(staffServer.url, `/api/admin/tickets/${second.publicId}/reply`, {
+      body: 'ردينا على الجديدة',
+    });
+    assert.equal(answered.status, 201, await answered.text());
 
     const queue = await get(staffServer.url, '/api/admin/tickets').then((r) => r.json());
     const mine = queue.data.tickets.filter((entry) => [first.publicId, second.publicId].includes(entry.publicId));
-    assert.equal(mine.length, 2);
+    assert.equal(mine.length, 2, 'the queue is not only the open work: what we handled stays visible');
     assert.equal(mine[0].publicId, first.publicId, 'the unanswered ticket comes first');
+    assert.equal(mine[1].publicId, second.publicId, 'and the one we just answered sits right behind it');
+    assert.equal(mine[1].status, 'answered');
     assert.ok(mine[0].userId, 'the queue tells staff whose ticket it is');
   } finally {
     await customerServer.close();

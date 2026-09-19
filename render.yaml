@@ -1,25 +1,38 @@
-databases:
-  - name: smm-panel-db
-    plan: free
-    postgresMajorVersion: "16"
-
+# ─────────────────────────────────────────────────────────────────────────────
+# SMM Rapid — Render blueprint
+#
+# ⚠️ READ BEFORE ANY BLUEPRINT SYNC (Render dashboard → Blueprints):
+#   1. `name:` below MUST match the existing Render service name exactly. If it does not,
+#      a sync would create a SECOND service instead of updating the current one.
+#   2. The legacy `databases:` block was removed on purpose (the new database is Supabase).
+#      If this repository is attached to a Render Blueprint, a sync could interpret that as
+#      "delete the old Render Postgres" — confirm with the owner before syncing.
+#   3. Nothing here applies until this file lands on the tracked branch (main).
+#   See docs/RENDER_DEPLOYMENT.md.
+# ─────────────────────────────────────────────────────────────────────────────
 services:
   - type: web
-    name: smm-panel
+    name: smmrapid
     runtime: node
     plan: free
     region: oregon
     branch: main
     buildCommand: npm ci && npm run build
-    startCommand: npm start
-    healthCheckPath: /api/health
+    startCommand: npm run start
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
+      - key: PUBLIC_APP_URL
+        value: https://smmrapid.store
+      # Secrets: values are set in the Render dashboard, never in Git (sync: false = keep
+      # whatever the dashboard holds).
       - key: DATABASE_URL
-        fromDatabase:
-          name: smm-panel-db
-          property: connectionString
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
       - key: FIREBASE_PROJECT_ID
         sync: false
       - key: FIREBASE_CLIENT_EMAIL
@@ -28,9 +41,11 @@ services:
         sync: false
       - key: PROVIDER_ENCRYPTION_KEY
         sync: false
-      - key: CURRENCY
-        value: USD
-      - key: HELEKET_CURRENCY
-        value: USD
-      - key: HELEKET_TO_WALLET_RATE
-        value: "1"
+      - key: SHAHNAWY_MERCHANT_ID
+        sync: false
+      - key: SHAHNAWY_API_KEY
+        sync: false
+      - key: HELEKET_MERCHANT_ID
+        sync: false
+      - key: HELEKET_PAYMENT_API_KEY
+        sync: false

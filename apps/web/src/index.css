@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+/* Dark mode is class-based so the shell can switch it without touching the OS preference. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Design tokens — the single source of truth for colour, radius and typography.
+ * Values are intentionally minimal in Phase 1; the full component system (buttons, inputs,
+ * tables, badges, toasts) is built on these tokens in the UI phases, so nothing has to be
+ * re-skinned later.
+ */
+@theme {
+  --color-surface: #ffffff;
+  --color-surface-muted: #f5f6fa;
+  --color-surface-raised: #ffffff;
+  --color-border: #e3e6ef;
+  --color-text: #12141c;
+  --color-text-muted: #5b6478;
+
+  --color-brand-50: #f1ecff;
+  --color-brand-100: #e2d9ff;
+  --color-brand-500: #6d3cff;
+  --color-brand-600: #5a2ee6;
+  --color-brand-700: #4823b8;
+
+  --color-success: #16a34a;
+  --color-warning: #d97706;
+  --color-danger: #dc2626;
+
+  --radius-card: 0.875rem;
+  --radius-control: 0.625rem;
+
+  --font-sans: "Inter", "Segoe UI", "Noto Kufi Arabic", system-ui, sans-serif;
+}
+
+/* Dark theme overrides the same token names, so every component follows automatically. */
+.dark {
+  --color-surface: #0f1117;
+  --color-surface-muted: #161a23;
+  --color-surface-raised: #1c212c;
+  --color-border: #2a3040;
+  --color-text: #f3f5fa;
+  --color-text-muted: #a6aec2;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-surface-muted);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}

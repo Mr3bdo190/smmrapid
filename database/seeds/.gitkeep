@@ -1,0 +1,2 @@
+# Reference data for a fresh database (site settings, categories, plan limits).
+# Loaded after every migration has been applied — see docs/DATABASE_SETUP.md

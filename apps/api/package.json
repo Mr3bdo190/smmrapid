@@ -1,0 +1,22 @@
+{
+  "name": "@smmrapid/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "SMM Rapid API server (Express + TypeScript)",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "esbuild src/index.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/index.js --watch",
+    "build": "esbuild src/index.ts src/app.ts src/lib/logger.ts --bundle --platform=node --format=esm --packages=external --outdir=dist --log-level=warning",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build && node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6"
+  }
+}

@@ -1,52 +1,30 @@
 {
-  "name": "smm-panel",
+  "name": "smmrapid",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
+  "description": "SMM Rapid — SMM panel platform (monorepo: API + web app)",
   "engines": {
-    "node": "20.19.5"
+    "node": ">=22"
   },
+  "workspaces": [
+    "apps/*"
+  ],
   "scripts": {
-    "dev": "tsx server.ts",
-    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --outfile=dist/server.cjs",
-    "start": "node dist/server.cjs",
-    "typecheck": "tsc --noEmit",
-    "test": "node --test tests/smoke.test.mjs",
-    "check": "npm run test && npm run typecheck"
-  },
-  "dependencies": {
-    "@tailwindcss/vite": "^4.0.0",
-    "@tanstack/react-query": "^5.0.0",
-    "@vitejs/plugin-react": "^4.0.0",
-    "clsx": "^2.1.1",
-    "date-fns": "^4.4.0",
-    "dotenv": "^16.4.5",
-    "drizzle-orm": "^0.45.2",
-    "esbuild": "^0.20.2",
-    "express": "^4.19.0",
-    "express-rate-limit": "^7.2.0",
-    "compression": "^1.7.4",
-    "firebase": "^10.10.0",
-    "firebase-admin": "^12.0.0",
-    "lucide-react": "^0.360.0",
-    "pg": "^8.11.3",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-hot-toast": "^2.4.1",
-    "react-router-dom": "^6.22.3",
-    "recharts": "^2.12.3",
-    "tailwind-merge": "^3.6.0",
-    "tailwindcss": "^4.0.0",
-    "vite": "^5.2.0"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint .",
+    "test": "npm run test --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "check": "npm run typecheck && npm run lint && npm run test && npm run build",
+    "dev:api": "npm run dev --workspace @smmrapid/api",
+    "dev:web": "npm run dev --workspace @smmrapid/web",
+    "start": "npm run start --workspace @smmrapid/api"
   },
   "devDependencies": {
-    "@types/express": "^4.17.21",
-    "@types/compression": "^1.7.2",
-    "@types/node": "^20.12.0",
-    "@types/pg": "^8.11.0",
-    "@types/react": "^18.2.66",
-    "@types/react-dom": "^18.2.22",
-    "drizzle-kit": "^0.31.10",
-    "tsx": "^4.7.1",
-    "typescript": "^5.4.3"
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.2",
+    "eslint": "^10.11.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.70.0"
   }
 }

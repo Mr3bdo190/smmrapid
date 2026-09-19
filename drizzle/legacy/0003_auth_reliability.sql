@@ -1,3 +1,0 @@
--- Authentication reliability hardening:
--- Runtime PostgreSQL connections are forced to IPv4 (family=4) in src/db/index.ts.
--- Firebase token verification and database sync failures are now reported separately.

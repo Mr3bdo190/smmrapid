@@ -1,8 +1,34 @@
+# dependencies
 node_modules/
+.npm/
+
+# build output
 dist/
+build/
+*.tsbuildinfo
+
+# environment / secrets — only .env.example is ever committed
 .env
 .env.*
 !.env.example
+secrets/
+*.pem
+*-service-account*.json
+firebase-service-account*.json
+serviceAccountKey.json
+
+# logs & caches
 *.log
+npm-debug.log*
+coverage/
+.cache/
+
+# editors / OS
 .DS_Store
-.aider*
+.idea/
+.vscode/
+*.swp
+
+# local scratch (never part of the project)
+tmp/
+scratch/

@@ -347,6 +347,88 @@ export async function getServicePrice(slug: string): Promise<PublicServicePrice>
   }
 }
 
+/**
+ * The catalogue page: every service on sale, priced by the same code the order form quotes.
+ *
+ * The list never re-implements a price — it maps rows through `toPublicService`, so a service shown
+ * at X per 1000 is charged at X per 1000. Only rows the customer may actually order are listed
+ * (`is_active`, not soft-deleted); a category with nothing to sell is left out entirely rather than
+ * shown as a dead link.
+ */
+export async function listPublicServices(
+  options: { category?: string | null; q?: string | null; featured?: boolean | null; limit?: number; offset?: number } = {},
+): Promise<{ services: PublicServicePrice[]; total: number }> {
+  const limit = Math.min(Math.max(options.limit ?? 24, 1), 100);
+  const offset = Math.max(options.offset ?? 0, 0);
+
+  const rows = await query<ServicePricingRecord & { total: string | number }>(
+    `select ${SERVICE_COLUMNS}, count(*) over() as total ${SERVICE_FROM}
+      where s.deleted_at is null
+        and s.is_active = true
+        and ($1::text is null or c.slug = $1::text)
+        and ($2::text is null or s.name ilike '%' || $2::text || '%'
+                            or coalesce(s.name_ar, '') ilike '%' || $2::text || '%'
+                            or s.slug ilike '%' || $2::text || '%')
+        and ($3::boolean is null or s.is_featured = $3::boolean)
+      order by s.is_featured desc, s.sort_order asc, s.name asc
+      limit $4 offset $5`,
+    [options.category ?? null, options.q ?? null, options.featured ?? null, limit, offset],
+  );
+
+  const total = rows.length > 0 ? toIntegerMinor(rows[0]!.total, 'total') : 0;
+  if (rows.length === 0) return { services: [], total: 0 };
+
+  const settings = await loadSettings();
+  const variants = await query<ServiceVariantRecord & { service_id: string }>(
+    `select service_id, ${VARIANT_COLUMNS} from service_variants
+      where service_id = any($1::uuid[]) order by sort_order asc, name asc`,
+    [rows.map((row) => row.id)],
+  );
+  const byService = new Map<string, ServiceVariantRecord[]>();
+  for (const variant of variants) {
+    const list = byService.get(variant.service_id) ?? [];
+    list.push(variant);
+    byService.set(variant.service_id, list);
+  }
+
+  return {
+    services: rows.map((row) => toPublicService(row, byService.get(row.id) ?? [], settings)),
+    total,
+  };
+}
+
+/** The categories that have something on sale, with how much. Empty ones are not returned. */
+export async function listPublicCategories(): Promise<
+  { slug: string; name: string; nameAr: string | null; iconKey: string | null; serviceCount: number }[]
+> {
+  const rows = await query<{
+    slug: string;
+    name: string;
+    name_ar: string | null;
+    icon_key: string | null;
+    service_count: string | number;
+  }>(
+    `select c.slug, c.name, c.name_ar, c.icon_key, count(s.id) as service_count
+       from categories c
+       join services s on s.category_id = c.id and s.is_active and s.deleted_at is null
+      where c.is_active and c.deleted_at is null
+      group by c.id
+      order by c.sort_order asc, c.name asc`,
+  );
+  return rows.map((row) => ({
+    slug: row.slug,
+    name: row.name,
+    nameAr: row.name_ar,
+    iconKey: row.icon_key,
+    serviceCount: toIntegerMinor(row.service_count, 'service_count'),
+  }));
+}
+
+/** One service as the catalogue shows it — the same shape the order form prices. */
+export async function getPublicService(slug: string): Promise<PublicServicePrice> {
+  return getServicePrice(slug);
+}
+
 /** The admin view of the same row: what it costs us, what we charge, what we make on it. */
 export async function adminServicePricing(slug: string): Promise<AdminServicePricing> {
   try {

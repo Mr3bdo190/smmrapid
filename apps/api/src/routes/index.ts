@@ -11,6 +11,7 @@ import { createOrdersModule } from '../modules/orders/routes.js';
 import { orderDbDeps } from '../modules/orders/index.js';
 import { createPaymentsModule, productionPaymentsDeps } from '../modules/payments/index.js';
 import { createTicketsModule } from '../modules/tickets/index.js';
+import { createCatalogModule } from '../modules/catalog/index.js';
 import type { PaymentsDeps } from '../modules/payments/types.js';
 import type { AuthDeps } from '../modules/auth/types.js';
 
@@ -37,6 +38,9 @@ export function registerRoutes(
   const orders = createOrdersModule({ auth: deps.auth, orders: orderDbDeps });
   app.use('/api/orders', orders.router);
   app.use('/api/admin/orders', orders.adminRouter);
+
+  // the storefront catalogue is public: prices are not a secret, and browsing must not need an account
+  app.use('/api/catalog', createCatalogModule().router);
 
   const tickets = createTicketsModule({ auth: deps.auth });
   app.use('/api', tickets.router);

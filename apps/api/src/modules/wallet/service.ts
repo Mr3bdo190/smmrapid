@@ -13,6 +13,7 @@
  * customer): a database, driver or provider message is never the message a customer reads.
  */
 
+import type { PoolClient } from 'pg';
 import { query, queryOne, withTransaction } from '../../lib/db.js';
 import { AppError } from '../../middleware/error-handler.js';
 import type {
@@ -189,7 +190,11 @@ export async function listWalletTransactions({ userId, cursor, limit }: WalletLi
  * Exported for the phases that need it (payments, orders, refunds, referrals). The HTTP layer
  * deliberately has no route that reaches it: a client can never name a new balance.
  */
-export async function applyWalletMovement(input: ApplyWalletMovementInput): Promise<AppliedMovement> {
+export async function applyWalletMovement(
+  input: ApplyWalletMovementInput,
+  /** When given, the movement joins the caller's transaction instead of opening its own. */
+  client?: PoolClient,
+): Promise<AppliedMovement> {
   if (!Number.isInteger(input.amountMinor) || input.amountMinor <= 0) {
     throw invalidAmount();
   }
@@ -210,43 +215,52 @@ export async function applyWalletMovement(input: ApplyWalletMovementInput): Prom
   }
 
   try {
-    return await withTransaction(async (client) => {
-      const result = await client.query<DbWalletTransaction>(
-        `select * from wallet_apply(
-           $1::uuid, $2::wallet_direction, $3::wallet_tx_type, $4::bigint, $5::text, $6::text,
-           $7::uuid, $8::uuid, $9::uuid, $10::uuid, $11::jsonb)`,
-        [
-          input.userId,
-          input.direction,
-          input.type,
-          input.amountMinor,
-          input.description ?? null,
-          input.idempotencyKey ?? null,
-          input.orderId ?? null,
-          input.paymentId ?? null,
-          input.commissionId ?? null,
-          input.actorUserId ?? null,
-          input.metadata ? JSON.stringify(input.metadata) : null,
-        ],
-      );
-
-      const row = result.rows[0];
-      if (!row) throw new Error('wallet_apply returned no row');
-
-      return {
-        transactionId: String(row.id),
-        userId: row.user_id,
-        direction: row.direction,
-        type: row.type,
-        amountMinor: minorUnits(row.amount_minor, 'amount_minor'),
-        balanceAfterMinor: minorUnits(row.balance_after_minor, 'balance_after_minor'),
-        currency: row.currency,
-        createdAt: isoInstant(row.created_at) ?? '',
-      } satisfies AppliedMovement;
-    });
+    if (client) return await runMovement(client, input);
+    return await withTransaction((inner) => runMovement(inner, input));
   } catch (error) {
     throw toWalletError(error);
   }
+}
+
+/**
+ * The database call itself, on whichever client the caller owns.
+ *
+ * Orders pass their own transaction so the order row, the ledger row and the balance move together:
+ * a failure anywhere leaves no order and no charge.
+ */
+async function runMovement(client: PoolClient, input: ApplyWalletMovementInput): Promise<AppliedMovement> {
+  const result = await client.query<DbWalletTransaction>(
+    `select * from wallet_apply(
+       $1::uuid, $2::wallet_direction, $3::wallet_tx_type, $4::bigint, $5::text, $6::text,
+       $7::uuid, $8::uuid, $9::uuid, $10::uuid, $11::jsonb)`,
+    [
+      input.userId,
+      input.direction,
+      input.type,
+      input.amountMinor,
+      input.description ?? null,
+      input.idempotencyKey ?? null,
+      input.orderId ?? null,
+      input.paymentId ?? null,
+      input.commissionId ?? null,
+      input.actorUserId ?? null,
+      input.metadata ? JSON.stringify(input.metadata) : null,
+    ],
+  );
+
+  const row = result.rows[0];
+  if (!row) throw new Error('wallet_apply returned no row');
+
+  return {
+    transactionId: String(row.id),
+    userId: row.user_id,
+    direction: row.direction,
+    type: row.type,
+    amountMinor: minorUnits(row.amount_minor, 'amount_minor'),
+    balanceAfterMinor: minorUnits(row.balance_after_minor, 'balance_after_minor'),
+    currency: row.currency,
+    createdAt: isoInstant(row.created_at) ?? '',
+  } satisfies AppliedMovement;
 }
 
 function invalidAmount(): AppError {

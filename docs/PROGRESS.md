@@ -58,7 +58,8 @@ inventing styling.
 | 5 | Wallet + ledger module | ✅ |
 | 6 | Pricing engine | ✅ |
 | 7 | Providers + service sync | ✅ |
-| 8 | Orders (create, status, history, re-order) | ⏳ |
+| 8 | Orders (create, status, history, re-order) | ✅ |
+| 8b | Order dispatch to providers (queue, retries, status sync) | ⏳ next |
 | 9 | Payments (Heleket, Sh7nawy adapters) | ⏳ |
 | 10 | Support tickets + notifications | ⏳ |
 | 11 | Client area UI (dashboard, new order, orders, funds) | ⏳ |

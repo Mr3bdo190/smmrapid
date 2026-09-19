@@ -7,6 +7,8 @@ import { walletDbDeps } from '../modules/wallet/service.js';
 import { createProvidersModule } from '../modules/providers/routes.js';
 import { createPricingModule } from '../modules/pricing/routes.js';
 import { pricingDbDeps } from '../modules/pricing/service.js';
+import { createOrdersModule } from '../modules/orders/routes.js';
+import { orderDbDeps } from '../modules/orders/index.js';
 import type { AuthDeps } from '../modules/auth/types.js';
 
 /**
@@ -26,6 +28,7 @@ export function registerRoutes(app: Express, deps: { auth: AuthDeps }): void {
   app.use('/api/users', createUsersModule(deps.auth).router);
   app.use('/api/wallet', createWalletModule({ auth: deps.auth, wallet: walletDbDeps }).router);
   app.use('/api/admin/providers', createProvidersModule({ auth: deps.auth }).router);
+  app.use('/api/orders', createOrdersModule({ auth: deps.auth, orders: orderDbDeps }).router);
 
   // pricing owns two surfaces: the public price calculator and the admin repricing tools
   const pricing = createPricingModule({ auth: deps.auth, pricing: pricingDbDeps });

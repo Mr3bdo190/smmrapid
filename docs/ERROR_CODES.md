@@ -113,6 +113,21 @@ a cost cannot leak by accident, and the test suite asserts it on real responses.
 `FORBIDDEN` is the third code a client may see without the API producing a sentence for it: it is
 listed once, in the shared table below, because `modules/auth/middleware.ts` owns it.
 
+## Orders (phase 8)
+
+One order, one charge: the order row and the wallet movement commit in the same transaction.
+
+| Code | HTTP | What the customer reads (ar) | What to do next (ar) | Gloss |
+|---|---|---|---|---|
+| `ORDER_NOT_FOUND` | 404 | مش لاقيين الطلب ده على حسابك. | راجع رقم الطلب، ولو متأكد إنه صح كلّم الدعم. | No such order on this account. |
+| `ORDER_TARGET_INVALID` | 422 | الرابط أو اليوزر اللي كتبته مش صالح للخدمة دي. | صلّح الرابط أو اليوزر وأعد المحاولة. | The link/username cannot be used. |
+| `ORDER_IDEMPOTENCY_CONFLICT` | 409 | نفس المحاولة اتبعتت قبل كده ببيانات مختلفة، فما اتعملش أي طلب. | ابدأ الطلب من جديد من غير ما تعيد إرسال نفس المحاولة. | The same attempt arrived with different details. |
+| `ORDER_NOT_REPEATABLE` | 409 | مش ممكن تكرر الطلب ده: الخدمة اتوقفت أو السعر/المدى اتغيّر. | اختار خدمة تانية أو جرّب تاني بعد شوية. | The order cannot be repeated as-is. |
+| `ORDER_DUPLICATE_TARGET` | 409 | عندك طلب مفتوح بالفعل على نفس الرابط ونفس الخدمة. | استنى الطلب الحالي يخلّص، أو كلّم الدعم لو محتاج طلب تاني. | An open order already covers this link. |
+
+The orders module also answers `PRICING_*`, `WALLET_*`, `VALIDATION_ERROR`, `RATE_LIMITED` and the
+auth codes: a refusal is always the code of the module that owns the rule, never a new one.
+
 ## Shared codes this module reuses (already defined elsewhere — never redefined here)
 
 | Code | HTTP | Defined by | Note |

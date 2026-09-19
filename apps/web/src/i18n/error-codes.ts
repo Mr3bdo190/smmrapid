@@ -59,6 +59,12 @@ export const ERROR_CODES = [
   'PRICING_COUPON_MIN_ORDER',
   'PRICING_COUPON_USAGE_LIMIT',
   'PRICING_COUPON_ALREADY_USED',
+  /* ── orders (phase 8) — the money path: one order, one charge ───────────────────────────── */
+  'ORDER_NOT_FOUND',
+  'ORDER_TARGET_INVALID',
+  'ORDER_IDEMPOTENCY_CONFLICT',
+  'ORDER_NOT_REPEATABLE',
+  'ORDER_DUPLICATE_TARGET',
   /* ── providers + credentials (phase 7) — names are the contract, per docs/ERROR_CODES.md ─── */
   'PROVIDER_NOT_FOUND',
   'PROVIDER_NOT_CONFIGURED',
@@ -260,6 +266,27 @@ export const ERROR_CATALOGUE: ErrorCatalogue = {
     ar: { title: 'استخدمت الكوبون ده قبل كده', message: 'كل عميل يقدر يستخدم الكوبون ده عدد مرات محدود، وانت وصلت للنهاية، فما اتخصمش أي مبلغ.', nextStep: 'كمّل من غير الكوبون، أو استخدم كودًا تاني.' },
   },
 
+  /* ── orders (phase 8) ─────────────────────────────────────────────────────────────────────── */
+  ORDER_NOT_FOUND: {
+    en: { title: 'We cannot find that order', message: 'This order is not on your account, so there is nothing to show.', nextStep: 'Check the order number again. If you are sure it is right, contact support.', actionLabel: 'Contact support' },
+    ar: { title: 'مش لاقيين الطلب ده', message: 'الطلب ده مش موجود على حسابك، فمفيش حاجة نعرضها.', nextStep: 'راجع رقم الطلب تاني. ولو متأكد إنه صح، كلّم الدعم ونشوفه معاك.', actionLabel: 'كلّم الدعم' },
+  },
+  ORDER_TARGET_INVALID: {
+    en: { title: 'That link cannot be used', message: 'The link or username does not fit this service, so nothing was ordered and nothing was charged.', nextStep: 'Correct the link or username and try again.', actionLabel: 'Try again' },
+    ar: { title: 'الرابط ده مش صالح', message: 'الرابط أو اليوزر مش مناسب للخدمة دي، فما اتعملش أي طلب وما اتخصمش أي مبلغ.', nextStep: 'صلّح الرابط أو اليوزر وجرّب تاني.', actionLabel: 'جرّب تاني' },
+  },
+  ORDER_IDEMPOTENCY_CONFLICT: {
+    en: { title: 'This request was already used', message: 'The same attempt was sent earlier with different details, so no order was created.', nextStep: 'Start the order again from the form.', actionLabel: 'Start again' },
+    ar: { title: 'المحاولة دي اتستخدمت قبل كده', message: 'نفس المحاولة اتبعتت قبل كده ببيانات مختلفة، فما اتعملش أي طلب.', nextStep: 'ابدأ الطلب من جديد من الفورم.', actionLabel: 'ابدأ من جديد' },
+  },
+  ORDER_NOT_REPEATABLE: {
+    en: { title: 'This order cannot be repeated', message: 'The service stopped, or its price and quantity range changed, so we cannot place the same order again.', nextStep: 'Pick another service, or try again in a little while.', actionLabel: 'Choose a service' },
+    ar: { title: 'مش ممكن تكرر الطلب ده', message: 'الخدمة اتوقفت، أو سعرها ومدى الكمية اتغيّروا، فمش ممكن نعمل نفس الطلب تاني.', nextStep: 'اختار خدمة تانية، أو جرّب تاني بعد شوية.', actionLabel: 'اختار خدمة' },
+  },
+  ORDER_DUPLICATE_TARGET: {
+    en: { title: 'You already have an open order for this link', message: 'Two open orders for the same service and the same link would compete with each other, so we did not create a second one.', nextStep: 'Wait for the current order to finish, or contact support if you really need a second one.', actionLabel: 'Contact support' },
+    ar: { title: 'عندك طلب مفتوح على نفس الرابط', message: 'طلبين مفتوحين على نفس الخدمة ونفس الرابط بيزاحموا بعض، فما عملناش طلب تاني.', nextStep: 'استنى الطلب الحالي يخلّص، أو كلّم الدعم لو محتاج طلب تاني فعلًا.', actionLabel: 'كلّم الدعم' },
+  },
   /* ── providers + credentials ────────────────────────────────────────────────────────────── */
   PROVIDER_NOT_FOUND: {
     en: { title: 'That supplier no longer exists', message: 'The supplier we were asked to use is not in our list any more, so nothing was changed.', nextStep: 'Pick a supplier that still exists, or add it again before retrying.', actionLabel: 'Contact support' },

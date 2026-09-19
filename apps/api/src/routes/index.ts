@@ -1,6 +1,7 @@
 import type { Express } from 'express';
 import { healthRouter } from '../modules/health/routes.js';
 import { createAuthModule } from '../modules/auth/routes.js';
+import { createUsersModule } from '../modules/users/routes.js';
 import type { AuthDeps } from '../modules/auth/types.js';
 
 /**
@@ -17,4 +18,5 @@ export function registerRoutes(app: Express, deps: { auth: AuthDeps }): void {
 
   // modules
   app.use('/api/auth', createAuthModule(deps.auth).router);
+  app.use('/api/users', createUsersModule(deps.auth).router);
 }

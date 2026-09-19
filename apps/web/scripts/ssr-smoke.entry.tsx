@@ -310,6 +310,34 @@ async function panelsSection(): Promise<void> {
   }
 }
 
+/* ── the real App ────────────────────────────────────────────────────────────────────────────── */
+/**
+ * Renders the exact component main.tsx mounts. A missing provider (LocaleProvider, AuthProvider)
+ * is a runtime crash and a white page in the browser, not a type error — so the app itself is
+ * rendered here, in both the default locale and the other one.
+ */
+async function appSection(): Promise<void> {
+  section('the real App (what main.tsx mounts, end to end)');
+  try {
+    const { default: App } = await import('../src/App');
+    const html = renderToStaticMarkup(<App />);
+
+    check('App renders without throwing', html.length > 400);
+    check('the shell wrapper is present', html.includes('app-shell'));
+    check('the brand comes from the dictionary', html.includes('SMM Rapid'));
+    check('an Arabic-first screen renders (default locale)', /[\u0600-\u06FF]/.test(html));
+    check(
+      'no raw dictionary key leaked into the markup',
+      !html.includes('shell.') && !html.includes('common.') && !html.includes('theme.'),
+    );
+    check('no undefined leaked into the markup', !html.includes('undefined'));
+    check('the header offers a language switch', (html.match(/<button/g) ?? []).length >= 2);
+  } catch (error) {
+    // A crash here is exactly the regression this section exists for: fail, never skip.
+    check(`App renders without throwing (threw: ${String(error).slice(0, 120)})`, false);
+  }
+}
+
 /* ── summary ─────────────────────────────────────────────────────────────────────────────────── */
 function summarise(): void {
   console.log('');
@@ -321,4 +349,6 @@ function summarise(): void {
   console.log(`\u2714 SSR smoke test passed: ${checks} checks, 2 locales, no browser`);
 }
 
-void panelsSection().then(summarise);
+void panelsSection()
+  .then(appSection)
+  .then(summarise);

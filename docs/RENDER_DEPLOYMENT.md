@@ -25,6 +25,35 @@ sync**:
    as "delete the old database". Confirm before syncing; if in doubt, keep the service manual
    and set the values above in the dashboard.
 
+## Why the build tools live in `dependencies`
+
+Render runs the build with **`NODE_ENV=production`** in the environment, and `npm install`
+**skips devDependencies** in that mode. Anything the build itself executes must therefore be a
+regular dependency — otherwise the deploy dies with:
+
+```
+==> Running build command 'npm install && npm run build'
+up to date, audited 77 packages      ← 77 packages: devDependencies never installed
+sh: 1: esbuild: not found
+sh: 1: vite: not found
+```
+
+So `esbuild` (API bundle) and `vite`, `@vitejs/plugin-react`, `tailwindcss`, `@tailwindcss/vite`
+(web bundle) are declared as `dependencies`. Type-only packages (`@types/*`), `typescript` and
+`eslint` stay in `devDependencies`: only CI and local development run them.
+
+Either fix works — keeping the tools in `dependencies` means the dashboard's plain
+`npm install && npm run build` is enough:
+
+- keep build tools in `dependencies` (what this repo does), **or**
+- set the build command to `npm ci --include=dev && npm run build`.
+
+Verify a change to this area by reproducing the exact build locally:
+
+```bash
+NODE_ENV=production npm install && NODE_ENV=production npm run build && npm run start
+```
+
 ## Environment variables
 
 Set in the dashboard, never in Git: `DATABASE_URL`, `SUPABASE_URL`,

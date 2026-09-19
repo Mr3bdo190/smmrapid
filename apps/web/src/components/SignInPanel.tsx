@@ -1,208 +1,192 @@
 import { useState } from 'react';
+import type { FormEvent, ReactNode } from 'react';
 import { useAuth } from '../auth/AuthProvider';
-import { ApiError } from '../lib/api';
+import { useT } from '../i18n';
+import { Button, Card, ErrorBanner, Tabs, TextField } from '../ui';
 
+/**
+ * Sign in / create account / reset password.
+ *
+ * Migrated to the bilingual foundation: **no string is hard-coded here** — every visible word comes
+ * from the dictionary (`useT()`), and every failure is rendered by `ErrorBanner`, which maps the
+ * server or Firebase error code to a localized {title, message, nextStep} from the single error
+ * catalogue. An unknown code still shows the server's own message plus the support reference.
+ *
+ * Accessibility: the two entry modes are a real tab list (arrow keys, Home/End, RTL-aware), each
+ * field has a label plus `aria-describedby` wiring, the submit button keeps its label while it
+ * loads, and both panels stay mounted so a half-typed email survives a mode switch.
+ */
 type Mode = 'signin' | 'signup' | 'reset';
 
-const COPY: Record<Mode, { title: string; hint: string; submit: string; busy: string }> = {
-  signin: {
-    title: 'تسجيل الدخول',
-    hint: 'ادخل ببريدك وكلمة السر للمتابعة إلى حسابك.',
-    submit: 'دخول',
-    busy: 'بنتحقق…',
-  },
-  signup: {
-    title: 'حساب جديد',
-    hint: 'دقيقة واحدة — من غير أي بيانات دفع، والرصيد بيتضاف بعد تأكيد الدفع فقط.',
-    submit: 'إنشاء الحساب',
-    busy: 'بننشئ الحساب…',
-  },
-  reset: {
-    title: 'استعادة كلمة السر',
-    hint: 'هنبعت رابط إعادة التعيين على بريدك.',
-    submit: 'ابعت الرابط',
-    busy: 'بنبعت…',
-  },
-};
-
-/** Maps a server error code to a message that says what to do next — never raw server text. */
-function messageFor(error: unknown): string {
-  if (error instanceof ApiError) {
-    switch (error.code) {
-      case 'AUTH_NOT_CONFIGURED':
-        return 'خدمة تسجيل الدخول مش متظبطة على السيرفر حاليًا. راسل الدعم.';
-      case 'ACCOUNT_DISABLED':
-        return 'حسابك موقوف مؤقتًا. راسل الدعم ونرجّعه شغال.';
-      case 'RATE_LIMITED':
-        return 'محاولات كتير في وقت قصير. استنى دقيقة وجرّب تاني.';
-      case 'DB_UNAVAILABLE':
-        return 'الخدمة مش متاحة لحظة. جرّب تاني بعد شوية.';
-      default:
-        return error.message;
-    }
-  }
-  const firebaseCode = String((error as { code?: string })?.code ?? '');
-  switch (firebaseCode) {
-    case 'auth/invalid-email':
-      return 'البريد الإلكتروني ده غير صحيح.';
-    case 'auth/missing-password':
-      return 'اكتب كلمة السر.';
-    case 'auth/weak-password':
-      return 'كلمة السر ضعيفة — استخدم ٨ أحرف على الأقل.';
-    case 'auth/email-already-in-use':
-      return 'البريد ده مستخدم بالفعل. جرّب تسجيل الدخول.';
-    case 'auth/invalid-credential':
-    case 'auth/wrong-password':
-    case 'auth/user-not-found':
-      return 'البريد أو كلمة السر غير صحيحة.';
-    case 'auth/too-many-requests':
-      return 'محاولات كتير. استنى شوية وجرّب تاني.';
-    case 'auth/network-request-failed':
-      return 'تعذر الاتصال. راجع الإنترنت وجرّب تاني.';
-    default:
-      return error instanceof Error && error.message ? error.message : 'حصل خطأ. جرّب تاني.';
-  }
+/** A success notice, styled from the primitives but with a logical (RTL-safe) accent bar. */
+function AuthNotice({ children }: { children: ReactNode }) {
+  return (
+    <div
+      role="status"
+      className="relative mt-4 overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-ok-soft)] py-2.5 pe-3 ps-4 text-[13px] text-[var(--color-ink-soft)]"
+    >
+      <span aria-hidden="true" className="absolute inset-y-0 start-0 w-[3px] bg-[var(--color-ok)]" />
+      {children}
+    </div>
+  );
 }
 
 export function SignInPanel() {
   const { signIn, signUp, sendReset, firebaseReady } = useAuth();
+  const { t } = useT();
+
   const [mode, setMode] = useState<Mode>('signin');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  /** The thrown value itself, not a message: `ErrorBanner` needs the code to localize it. */
+  const [error, setError] = useState<unknown>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const copy = COPY[mode];
-
-  async function submit(event: React.FormEvent) {
+  async function submit(event: FormEvent<HTMLFormElement>, submitMode: Mode) {
     event.preventDefault();
     setError(null);
     setNotice(null);
     setBusy(true);
     try {
-      if (mode === 'signin') await signIn(email, password);
-      else if (mode === 'signup') await signUp(name, email, password);
+      if (submitMode === 'signin') await signIn(email, password);
+      else if (submitMode === 'signup') await signUp(name, email, password);
       else {
         await sendReset(email);
-        setNotice('لو البريد مسجّل عندنا، رابط الإعادة في طريقه إليك.');
+        setNotice(t('auth.resetSent'));
       }
-    } catch (err) {
-      setError(messageFor(err));
+    } catch (thrown) {
+      setError(thrown);
     } finally {
       setBusy(false);
     }
   }
 
-  function switchMode(next: Mode) {
-    setMode(next);
+  function toggleReset(next: boolean) {
+    setMode(next ? 'reset' : 'signin');
     setError(null);
     setNotice(null);
   }
 
-  return (
-    <div className="card mx-auto w-full max-w-[440px] p-6">
-      <div className="mb-5 flex items-center gap-1 rounded-[var(--radius-sm)] bg-[var(--color-surface-sunken)] p-1">
-        {(['signin', 'signup'] as const).map((value) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => switchMode(value)}
-            className={`h-9 flex-1 rounded-[var(--radius-xs)] text-sm font-semibold transition-colors ${
-              mode === value || (mode === 'reset' && value === 'signin')
-                ? 'bg-[var(--color-surface)] text-[var(--color-ink)] shadow-[0_1px_0_var(--color-line)]'
-                : 'text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]'
-            }`}
-          >
-            {value === 'signin' ? 'دخول' : 'حساب جديد'}
-          </button>
-        ))}
-      </div>
-
-      <h1 className="display text-[22px] font-semibold text-[var(--color-ink)]">{copy.title}</h1>
-      <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--color-ink-muted)]">{copy.hint}</p>
-
-      {!firebaseReady && (
-        <div className="banner banner-warn mt-4">
-          إعدادات Firebase العميلة مش متاحة في هذه النسخة، فتسجيل الدخول معطّل. (الإعدادات تُمرَّر وقت البناء.)
+  /**
+   * One form per mode, heading included, so the tab panel contains everything that describes it.
+   * Both are ordinary elements (not nested components), which keeps React from remounting the
+   * inputs — and therefore keeps the caret — on every keystroke.
+   */
+  function formFor(formMode: Mode) {
+    return (
+      <form className="flex flex-col gap-3.5" onSubmit={(event) => void submit(event, formMode)}>
+        <div>
+          <h1 className="display text-[22px] font-semibold text-[var(--color-ink)]">
+            {t(`auth.title.${formMode}`)}
+          </h1>
+          <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--color-ink-muted)]">
+            {t(`auth.hint.${formMode}`)}
+          </p>
         </div>
+
+        {formMode === 'signup' ? (
+          <TextField
+            label={t('auth.field.name')}
+            placeholder={t('auth.placeholder.name')}
+            autoComplete="name"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+          />
+        ) : null}
+
+        <TextField
+          label={t('auth.field.email')}
+          type="email"
+          required
+          inputMode="email"
+          autoComplete={formMode === 'signup' ? 'email' : 'username'}
+          placeholder="you@example.com"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+        />
+
+        {formMode !== 'reset' ? (
+          <TextField
+            label={t('auth.field.password')}
+            hint={formMode === 'signup' ? t('auth.hint.password') : undefined}
+            type="password"
+            required
+            minLength={8}
+            autoComplete={formMode === 'signup' ? 'new-password' : 'current-password'}
+            placeholder={t('auth.placeholder.password')}
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+          />
+        ) : null}
+
+        <Button
+          type="submit"
+          variant="primary"
+          loading={busy}
+          disabled={!firebaseReady}
+          className="mt-1 w-full"
+        >
+          {busy ? t(`auth.busy.${formMode}`) : t(`auth.submit.${formMode}`)}
+        </Button>
+      </form>
+    );
+  }
+
+  return (
+    <Card className="mx-auto w-full max-w-[460px]">
+      {mode === 'reset' ? (
+        formFor('reset')
+      ) : (
+        <Tabs
+          label={t('auth.tabsLabel')}
+          value={mode}
+          onChange={(id) => setMode(id === 'signup' ? 'signup' : 'signin')}
+          items={[
+            { id: 'signin', label: t('auth.tab.signIn'), content: formFor('signin') },
+            { id: 'signup', label: t('auth.tab.signUp'), content: formFor('signup') },
+          ]}
+        />
       )}
 
-      <form className="mt-5 flex flex-col gap-3.5" onSubmit={submit}>
-        {mode === 'signup' && (
-          <div>
-            <label className="label" htmlFor="auth-name">
-              الاسم
-            </label>
-            <input
-              id="auth-name"
-              className="field"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="اسمك كما يظهر في حسابك"
-              autoComplete="name"
-            />
-          </div>
-        )}
+      {!firebaseReady ? (
+        <ErrorBanner
+          className="mt-4"
+          tone="warn"
+          error={{ code: 'AUTH_NOT_CONFIGURED' }}
+          title={t('shell.authDisabled.title')}
+        >
+          <p className="mt-2 text-[12.5px] leading-relaxed text-[var(--color-ink-muted)]">
+            {t('auth.firebaseMissing')}
+          </p>
+        </ErrorBanner>
+      ) : null}
 
-        <div>
-          <label className="label" htmlFor="auth-email">
-            البريد الإلكتروني
-          </label>
-          <input
-            id="auth-email"
-            className="field"
-            type="email"
-            required
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="you@example.com"
-            autoComplete="email"
-            dir="ltr"
-          />
-        </div>
+      {error ? (
+        <ErrorBanner
+          className="mt-4"
+          error={error}
+          onDismiss={() => {
+            setError(null);
+          }}
+        />
+      ) : null}
 
-        {mode !== 'reset' && (
-          <div>
-            <label className="label" htmlFor="auth-password">
-              كلمة السر
-            </label>
-            <input
-              id="auth-password"
-              className="field"
-              type="password"
-              required
-              minLength={8}
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="٨ أحرف على الأقل"
-              autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-              dir="ltr"
-            />
-          </div>
-        )}
+      {notice ? <AuthNotice>{notice}</AuthNotice> : null}
 
-        {error && <div className="banner banner-danger">{error}</div>}
-        {notice && <div className="banner banner-ok">{notice}</div>}
-
-        <button className="btn btn-primary mt-1 w-full" type="submit" disabled={busy || !firebaseReady}>
-          {busy ? copy.busy : copy.submit}
-        </button>
-      </form>
-
-      <div className="mt-4 flex items-center justify-between text-[12px]">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-[12px]">
         {mode === 'reset' ? (
-          <button type="button" className="text-[var(--color-accent-strong)] hover:underline" onClick={() => switchMode('signin')}>
-            رجوع لتسجيل الدخول
-          </button>
+          <Button variant="ghost" size="sm" onClick={() => toggleReset(false)}>
+            {t('auth.backToSignIn')}
+          </Button>
         ) : (
-          <button type="button" className="text-[var(--color-accent-strong)] hover:underline" onClick={() => switchMode('reset')}>
-            نسيت كلمة السر؟
-          </button>
+          <Button variant="ghost" size="sm" onClick={() => toggleReset(true)}>
+            {t('auth.forgotPassword')}
+          </Button>
         )}
-        <span className="text-[var(--color-ink-faint)]">بياناتك محفوظة عندنا فقط</span>
+        <span className="text-[var(--color-ink-faint)]">{t('auth.privacyNote')}</span>
       </div>
-    </div>
+    </Card>
   );
 }

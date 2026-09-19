@@ -88,6 +88,7 @@ in the shared table below.
 | `FORBIDDEN` | 403 | `modules/auth/middleware.ts` | signed in, but missing the permission (`providers.view` / `providers.manage`) |
 | `VALIDATION_ERROR` | 422 | `middleware/validate.ts` | body/params/query failed validation; `details.fields` lists them |
 | `DB_UNAVAILABLE` | 503 | `modules/auth/middleware.ts` (`DB_NOT_CONFIGURED`) | the database is not configured/reachable |
+| `AUTH_NOT_CONFIGURED` | 503 | `modules/auth/middleware.ts` (`AUTH_NOT_CONFIGURED`) | sign-in verification is not configured on the server yet — our side, not the customer's: try again shortly, and contact support if it persists |
 | `NOT_FOUND` | 404 | `middleware/error-handler.ts` | unknown route |
 | `INTERNAL_ERROR` | 500 | `middleware/error-handler.ts` | unexpected failure; the message is neutral and `ref` is the support reference |
 | `RATE_LIMITED` | 429 | `modules/auth/routes.ts` | too many identity requests |

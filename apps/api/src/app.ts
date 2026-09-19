@@ -9,6 +9,7 @@ import { logger } from './lib/logger.js';
 import { verifyIdToken } from './modules/auth/firebase.js';
 import { findOrProvisionUser, loadAccess, loadWallet } from './modules/auth/users.js';
 import type { AuthDeps } from './modules/auth/types.js';
+import type { PaymentsDeps } from './modules/payments/types.js';
 
 /**
  * Built web client, produced by `npm run build` (apps/web/dist).
@@ -23,6 +24,8 @@ const defaultAuthDeps: AuthDeps = { verifyIdToken, findOrProvisionUser, loadAcce
 
 export type AppOptions = {
   auth?: Partial<AuthDeps>;
+  /** Tests inject fake gateways here; production reads the credentials from the environment. */
+  payments?: Partial<PaymentsDeps>;
 };
 
 /**
@@ -42,7 +45,10 @@ export function createApp(options: AppOptions = {}): Express {
   app.use(express.json({ limit: '1mb' }));
 
   // API surface first: /health, /api/*
-  registerRoutes(app, { auth: { ...defaultAuthDeps, ...options.auth } });
+  registerRoutes(app, {
+    auth: { ...defaultAuthDeps, ...options.auth },
+    payments: options.payments,
+  });
 
   // The built client, when it exists. Until the product phases land this is the scaffold
   // screen — but the deployment must serve something at / to be verifiable at all.

@@ -66,6 +66,20 @@ export const ERROR_CODES = [
   'ORDER_NOT_REPEATABLE',
   'ORDER_DUPLICATE_TARGET',
   'ORDER_DISPATCH_FAILED',
+  /* ── payments (phase 9) ─────────────────────────────────────────────────────────────── */
+  'PAYMENT_NOT_FOUND',
+  'PAYMENT_GATEWAY_OFF',
+  'PAYMENT_GATEWAY_UNCONFIGURED',
+  'PAYMENT_AMOUNT_OUT_OF_RANGE',
+  'PAYMENT_METHOD_INVALID',
+  'PAYMENT_WALLET_NUMBER_INVALID',
+  'PAYMENT_ALREADY_RESOLVED',
+  'PAYMENT_PENDING_CONFIRMATION',
+  'PAYMENT_EXPIRED',
+  'PAYMENT_GATEWAY_UNREACHABLE',
+  'PAYMENT_GATEWAY_REJECTED',
+  'PAYMENT_GATEWAY_AUTH_FAILED',
+  'PAYMENT_SIGNATURE_INVALID',
   /* ── providers + credentials (phase 7) — names are the contract, per docs/ERROR_CODES.md ─── */
   'PROVIDER_NOT_FOUND',
   'PROVIDER_NOT_CONFIGURED',
@@ -112,7 +126,7 @@ export const ERROR_CODES = [
 
 export type ErrorCode = (typeof ERROR_CODES)[number];
 
-/** The three sentences the owner requires on every error, plus the next action's button label. */
+/** The three sentences the owner requires on every error, plus the next action\'s button label. */
 export type ErrorCopy = {
   /** What happened. */
   title: string;
@@ -291,6 +305,59 @@ export const ERROR_CATALOGUE: ErrorCatalogue = {
   ORDER_DISPATCH_FAILED: {
     en: { title: 'We cannot send this order right now', message: 'The supplier for this service is not reachable from our side, so the order was not submitted and nothing extra was charged.', nextStep: 'We retry automatically. If it stays like this, contact support with the reference below.', actionLabel: 'Contact support' },
     ar: { title: 'مش قادرين نرسل الطلب دلوقتي', message: 'مزوّد الخدمة دي مش متاح من عندنا، فما ابعتناش الطلب وما اتخصمش أي مبلغ إضافي.', nextStep: 'بنجرّب تلقائيًا. ولو المشكلة كملت، كلّم الدعم برقم المرجع اللي تحت.', actionLabel: 'كلّم الدعم' },
+  },
+  /* ── payments (phase 9) ─────────────────────────────────────────────────────────────────── */
+  PAYMENT_NOT_FOUND: {
+    en: { title: 'We cannot find that payment', message: 'This payment is not on your account, so there is nothing to show.', nextStep: 'Check the payment number again. If you are sure it is right, contact support.', actionLabel: 'Contact support' },
+    ar: { title: 'مش لاقيين عملية الدفع دي على حسابك', message: 'مش لاقيين عملية الدفع دي على حسابك.', nextStep: 'راجع رقم العملية، ولو متأكد إنه صح كلّم الدعم.', actionLabel: 'Contact support' },
+  },
+  PAYMENT_GATEWAY_OFF: {
+    en: { title: 'This deposit method is paused', message: 'We are not accepting deposits through this method right now, so no payment was started.', nextStep: 'Choose another method, or try again later.', actionLabel: 'Choose a method' },
+    ar: { title: 'طريقة الدفع دي متوقفة مؤقتًا', message: 'طريقة الدفع دي متوقفة مؤقتًا.', nextStep: 'اختار طريقة دفع تانية، أو جرّب تاني بعد شوية.', actionLabel: 'Choose a method' },
+  },
+  PAYMENT_GATEWAY_UNCONFIGURED: {
+    en: { title: 'This deposit method is not ready yet', message: 'The provider credentials for this method are missing on our side, so no payment was started.', nextStep: 'Try another method. If every method is unavailable, contact support.', actionLabel: 'Contact support' },
+    ar: { title: 'طريقة الدفع دي لسه مش مظبوطة عندنا', message: 'طريقة الدفع دي لسه مش مظبوطة عندنا.', nextStep: 'جرّب طريقة تانية، وكلّم الدعم لو كل الطرق واقفة.', actionLabel: 'Contact support' },
+  },
+  PAYMENT_AMOUNT_OUT_OF_RANGE: {
+    en: { title: 'That amount is not allowed', message: 'The amount is outside the range this method accepts, so nothing was charged.', nextStep: 'Enter an amount inside the range shown on the page.', actionLabel: 'Change amount' },
+    ar: { title: 'المبلغ المطلوب أكبر أو أصغر من المسموح', message: 'المبلغ المطلوب أكبر أو أصغر من المسموح.', nextStep: 'ادخل مبلغ داخل الحدود المكتوبة في الصفحة.', actionLabel: 'Change amount' },
+  },
+  PAYMENT_METHOD_INVALID: {
+    en: { title: 'That wallet is not supported', message: 'The chosen wallet is not one of the methods this provider supports.', nextStep: 'Pick one of the wallets offered on the page.', actionLabel: 'Choose a method' },
+    ar: { title: 'طريقة الدفع المختارة مش متاحة', message: 'طريقة الدفع المختارة مش متاحة.', nextStep: 'اختار واحدة من الطرق المعروضة.', actionLabel: 'Choose a method' },
+  },
+  PAYMENT_WALLET_NUMBER_INVALID: {
+    en: { title: 'That wallet number is not valid', message: 'The wallet number must be 11 digits, so no payment was started.', nextStep: 'Type your 11-digit wallet number and try again.', actionLabel: 'Fix the number' },
+    ar: { title: 'رقم المحفظة غلط — لازم 11 رقم زي 01012345678', message: 'رقم المحفظة غلط — لازم 11 رقم زي 01012345678.', nextStep: 'اكتب رقم المحفظة صح وجرّب تاني.', actionLabel: 'Fix the number' },
+  },
+  PAYMENT_ALREADY_RESOLVED: {
+    en: { title: 'This payment is already settled', message: 'The payment was already approved or closed, so this action changed nothing.', nextStep: 'Check the payment status. Contact support if something looks wrong.', actionLabel: 'Contact support' },
+    ar: { title: 'عملية الدفع دي اتقفلت خلاص، وما اتغيرش أي حاجة', message: 'عملية الدفع دي اتقفلت خلاص، وما اتغيرش أي حاجة.', nextStep: 'راجع حالة العملية، وابعت تذكرة لو محتاج مساعدة.', actionLabel: 'Contact support' },
+  },
+  PAYMENT_PENDING_CONFIRMATION: {
+    en: { title: 'Waiting for your approval', message: 'Your wallet has not approved the withdrawal yet, so the money has not moved.', nextStep: 'Approve it on your phone (Vodafone: dial *9*1#), then press check again.', actionLabel: 'Check again' },
+    ar: { title: 'المحفظة لسه ما أكدتش العملية', message: 'المحفظة لسه ما أكدتش العملية. أكّدها من موبايلك الأول وبعدها اضغط تحديث.', nextStep: 'أكّد العملية من موبايلك (مثلاً *9*1# لفودافون) وبعدها اضغط تحديث.', actionLabel: 'Check again' },
+  },
+  PAYMENT_EXPIRED: {
+    en: { title: 'The confirmation time ran out', message: 'The confirmation window closed, so the payment was cancelled and nothing was charged.', nextStep: 'Start a new deposit if you still want to top up.', actionLabel: 'Start again' },
+    ar: { title: 'انتهت مدة التأكيد، فالعملية اتلغت وما اتخصمش أي مبلغ', message: 'انتهت مدة التأكيد، فالعملية اتلغت وما اتخصمش أي مبلغ.', nextStep: 'ابدأ عملية دفع جديدة لو لسه محتاج تشحن.', actionLabel: 'Start again' },
+  },
+  PAYMENT_GATEWAY_UNREACHABLE: {
+    en: { title: 'The payment provider is not answering', message: 'We could not reach the payment provider, so nothing was charged and no payment was created.', nextStep: 'Wait a moment and try again.', actionLabel: 'Try again' },
+    ar: { title: 'مزوّد الدفع مش متاح دلوقتي، وما اتخصمش أي مبلغ', message: 'مزوّد الدفع مش متاح دلوقتي، وما اتخصمش أي مبلغ.', nextStep: 'استنى شوية وجرّب تاني.', actionLabel: 'Try again' },
+  },
+  PAYMENT_GATEWAY_REJECTED: {
+    en: { title: 'The payment provider refused this request', message: 'The provider refused the request as sent, so nothing was charged.', nextStep: 'Check your details and try again. Contact support if it keeps happening.', actionLabel: 'Try again' },
+    ar: { title: 'مزوّد الدفع رفض الطلب، وما اتخصمش أي مبلغ', message: 'مزوّد الدفع رفض الطلب، وما اتخصمش أي مبلغ.', nextStep: 'راجع البيانات وجرّب تاني، وكلّم الدعم لو تكررت.', actionLabel: 'Try again' },
+  },
+  PAYMENT_GATEWAY_AUTH_FAILED: {
+    en: { title: 'Our payment settings were refused', message: 'The provider refused our credentials, so no payment could start. This one is ours, not yours.', nextStep: 'Contact support — we will fix it. No need to retry right now.', actionLabel: 'Contact support' },
+    ar: { title: 'بيانات الدخول بتاعتنا عند مزوّد الدفع اترفضت — المشكلة عندنا مش عندك', message: 'بيانات الدخول بتاعتنا عند مزوّد الدفع اترفضت — المشكلة عندنا مش عندك.', nextStep: 'كلّم الدعم، وما تعيدش المحاولة دلوقتي.', actionLabel: 'Contact support' },
+  },
+  PAYMENT_SIGNATURE_INVALID: {
+    en: { title: 'That notification was not from the provider', message: 'The notification\'s signature did not match, so it was ignored and nothing changed.', nextStep: 'Nothing to do — this is an internal alert.', },
+    ar: { title: 'الإشعار ده مش جاي من مزوّد الدفع، فاتجاهلناه', message: 'الإشعار ده مش جاي من مزوّد الدفع، فاتجاهلناه.', nextStep: 'مفيش حاجة مطلوبة منك — ده تنبيه داخلي.', },
   },
   /* ── providers + credentials ────────────────────────────────────────────────────────────── */
   PROVIDER_NOT_FOUND: {

@@ -9,6 +9,8 @@ import { createPricingModule } from '../modules/pricing/routes.js';
 import { pricingDbDeps } from '../modules/pricing/service.js';
 import { createOrdersModule } from '../modules/orders/routes.js';
 import { orderDbDeps } from '../modules/orders/index.js';
+import { createPaymentsModule, productionPaymentsDeps } from '../modules/payments/index.js';
+import type { PaymentsDeps } from '../modules/payments/types.js';
 import type { AuthDeps } from '../modules/auth/types.js';
 
 /**
@@ -19,7 +21,10 @@ import type { AuthDeps } from '../modules/auth/types.js';
  * this list in one file means a route is never registered from two places and the full surface
  * of the API is readable at a glance.
  */
-export function registerRoutes(app: Express, deps: { auth: AuthDeps }): void {
+export function registerRoutes(
+  app: Express,
+  deps: { auth: AuthDeps; payments?: Partial<PaymentsDeps> },
+): void {
   // infrastructure
   app.use(healthRouter);
 
@@ -31,6 +36,10 @@ export function registerRoutes(app: Express, deps: { auth: AuthDeps }): void {
   const orders = createOrdersModule({ auth: deps.auth, orders: orderDbDeps });
   app.use('/api/orders', orders.router);
   app.use('/api/admin/orders', orders.adminRouter);
+
+  const payments = createPaymentsModule({ ...productionPaymentsDeps(deps.auth), ...(deps.payments ?? {}), auth: deps.auth });
+  app.use('/api/payments', payments.router);
+  app.use('/api/webhooks/payments', payments.webhookRouter);
 
   // pricing owns two surfaces: the public price calculator and the admin repricing tools
   const pricing = createPricingModule({ auth: deps.auth, pricing: pricingDbDeps });

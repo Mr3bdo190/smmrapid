@@ -129,6 +129,31 @@ One order, one charge: the order row and the wallet movement commit in the same 
 The orders module also answers `PRICING_*`, `WALLET_*`, `VALIDATION_ERROR`, `RATE_LIMITED` and the
 auth codes: a refusal is always the code of the module that owns the rule, never a new one.
 
+## Payments (phase 9)
+
+Deposits: a gateway reports, we verify against the gateway's own endpoint, and only then does the
+ledger move — once, keyed by the payment id. An unsigned notification (Sha7nawy) is never trusted
+on its own; a signed one (Heleket) is.
+
+| Code | HTTP | What the customer reads (ar) | What to do next (ar) | Gloss |
+|---|---|---|---|---|
+| `PAYMENT_NOT_FOUND` | 404 | مش لاقيين عملية الدفع دي على حسابك. | راجع رقم العملية، ولو متأكد إنه صح كلّم الدعم. | No such payment on this account. |
+| `PAYMENT_GATEWAY_OFF` | 503 | طريقة الدفع دي متوقفة مؤقتًا. | اختار طريقة دفع تانية، أو جرّب تاني بعد شوية. | That deposit method is switched off. |
+| `PAYMENT_GATEWAY_UNCONFIGURED` | 503 | طريقة الدفع دي لسه مش مظبوطة عندنا. | جرّب طريقة تانية، وكلّم الدعم لو كل الطرق واقفة. | The gateway is not configured on our side. |
+| `PAYMENT_AMOUNT_OUT_OF_RANGE` | 422 | المبلغ المطلوب أكبر أو أصغر من المسموح. | ادخل مبلغ داخل الحدود المكتوبة في الصفحة. | The amount is outside the allowed range. |
+| `PAYMENT_METHOD_INVALID` | 422 | طريقة الدفع المختارة مش متاحة. | اختار واحدة من الطرق المعروضة. | That wallet method is not available. |
+| `PAYMENT_WALLET_NUMBER_INVALID` | 422 | رقم المحفظة غلط — لازم 11 رقم زي 01012345678. | اكتب رقم المحفظة صح وجرّب تاني. | The wallet number must be 11 digits. |
+| `PAYMENT_ALREADY_RESOLVED` | 409 | عملية الدفع دي اتقفلت خلاص، وما اتغيرش أي حاجة. | راجع حالة العملية، وابعت تذكرة لو محتاج مساعدة. | The payment is already settled. |
+| `PAYMENT_PENDING_CONFIRMATION` | 409 | المحفظة لسه ما أكدتش العملية. أكّدها من موبايلك الأول وبعدها اضغط تحديث. | أكّد العملية من موبايلك (مثلاً *9*1# لفودافون) وبعدها اضغط تحديث. | The wallet has not confirmed the payment yet. |
+| `PAYMENT_EXPIRED` | 409 | انتهت مدة التأكيد، فالعملية اتلغت وما اتخصمش أي مبلغ. | ابدأ عملية دفع جديدة لو لسه محتاج تشحن. | The confirmation window closed. |
+| `PAYMENT_GATEWAY_UNREACHABLE` | 503 | مزوّد الدفع مش متاح دلوقتي، وما اتخصمش أي مبلغ. | استنى شوية وجرّب تاني. | The provider could not be reached. |
+| `PAYMENT_GATEWAY_REJECTED` | 502 | مزوّد الدفع رفض الطلب، وما اتخصمش أي مبلغ. | راجع البيانات وجرّب تاني، وكلّم الدعم لو تكررت. | The provider refused the request. |
+| `PAYMENT_GATEWAY_AUTH_FAILED` | 503 | بيانات الدخول بتاعتنا عند مزوّد الدفع اترفضت — المشكلة عندنا مش عندك. | كلّم الدعم، وما تعيدش المحاولة دلوقتي. | Our credentials were refused by the provider. |
+| `PAYMENT_SIGNATURE_INVALID` | 400 | الإشعار ده مش جاي من مزوّد الدفع، فاتجاهلناه. | مفيش حاجة مطلوبة منك — ده تنبيه داخلي. | The notification did not come from the provider. |
+
+The payments module also answers `WALLET_*` (a credit that the ledger refuses) and the auth and
+validation codes.
+
 ## Shared codes this module reuses (already defined elsewhere — never redefined here)
 
 | Code | HTTP | Defined by | Note |

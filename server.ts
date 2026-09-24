@@ -1832,10 +1832,10 @@ app.get('/api/reports/financial', requireAdmin, async (req: any, res) => {
     }));
 
     // Top services by net profit
-    const svcAgg: Record<string, { nameEn: string; orders: number; sales: number; cost: number; profit: number }> = {};
+    const svcAgg: Record<string, { nameEn: string; nameAr: string; platform: string; orders: number; sales: number; cost: number; profit: number }> = {};
     orders.forEach((o: any) => {
       const sid = o.service_id || 'unknown';
-      if (!svcAgg[sid]) svcAgg[sid] = { nameEn: o.service_name_en || sid, orders: 0, sales: 0, cost: 0, profit: 0 };
+      if (!svcAgg[sid]) svcAgg[sid] = { nameEn: o.service_name_en || sid, nameAr: o.service_name_ar || sid, platform: o.platform || 'unknown', orders: 0, sales: 0, cost: 0, profit: 0 };
       svcAgg[sid].orders += 1;
       svcAgg[sid].sales += parseFloat(o.charge || '0');
       svcAgg[sid].cost += parseFloat(o.provider_cost || '0');

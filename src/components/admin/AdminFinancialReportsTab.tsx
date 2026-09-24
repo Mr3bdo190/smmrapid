@@ -146,6 +146,51 @@ export const AdminFinancialReportsTab: React.FC = () => {
   // Prefer server-side aggregated summary; fall back to client-side computation
   const effectiveFinancialSummary = apiFinancialSummary || financialSummary;
 
+  // Platform revenue: prefer server-side data, fallback to mock
+  const effectivePlatformData = useMemo(() => {
+    if (apiRevenueByPlatform.length > 0) {
+      const total = apiRevenueByPlatform.reduce((sum, p) => sum + p.sales, 0);
+      if (total > 0) {
+        const arNames: Record<string, string> = {
+          instagram: 'إنستغرام', tiktok: 'تيك توك', youtube: 'يوتيوب',
+          telegram: 'تيليجرام', facebook: 'فيسبوك', twitter: 'تويتر (X)', x: 'تويتر (X)'
+        };
+        return effectivePlatformData.map(mock => {
+          const match = apiRevenueByPlatform.find(p => {
+            const pl = (p.platform || '').toLowerCase();
+            return pl === mock.name.toLowerCase().split(' ')[0] ||
+                   (mock.name.includes('TikTok') && pl === 'tiktok') ||
+                   (mock.name.includes('Twitter') && (pl === 'twitter' || pl === 'x'));
+          });
+          return {
+            ...mock,
+            value: match ? Number(((match.sales / total) * 100).toFixed(1)) : 0
+          };
+        });
+      }
+    }
+    return PLATFORM_REVENUE_DISTRIBUTION;
+  }, [apiRevenueByPlatform]);
+
+  // Top services: prefer server-side data, fallback to client-side aggregation
+  const effectiveTopServices = useMemo(() => {
+    if (apiTopServices.length > 0) {
+      return apiTopServices.map(s => ({
+        id: s.id,
+        nameAr: s.nameAr || s.nameEn || s.id,
+        nameEn: s.nameEn || s.id,
+        platform: s.platform || 'unknown',
+        ordersCount: s.orders || 0,
+        totalQty: '-',
+        grossSales: s.sales || 0,
+        providerCost: s.cost || 0,
+        netProfit: s.profit || 0,
+        marginPct: s.margin || 0
+      }));
+    }
+    return filteredServices;
+  }, [apiTopServices, filteredServices]);
+
   // Monthly aggregated data from real orders
   const monthlyData = useMemo(() => {
     const months = isAr 
@@ -179,7 +224,7 @@ export const AdminFinancialReportsTab: React.FC = () => {
     return result;
   }, [orders, isAr]);
 
-  // Dynamic Top Services based on real orders
+  // Dynamic Top Services based on real orders (client-side fallback)
   const filteredServices = useMemo(() => {
     const serviceMap: Record<string, {
       id: string;
@@ -410,13 +455,13 @@ export const AdminFinancialReportsTab: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            ${filteredServices.length === 0 ? `
+            ${effectiveTopServices.length === 0 ? `
               <tr>
                 <td colspan="8" style="text-align: center; color: #64748b; padding: 18px;">
                   ${isAr ? 'لا توجد طلبات مسجلة حتى الآن' : 'No recorded orders yet'}
                 </td>
               </tr>
-            ` : filteredServices.map((s, idx) => `
+            ` : effectiveTopServices.map((s, idx) => `
               <tr>
                 <td>${idx + 1}</td>
                 <td><strong>${isAr ? s.nameAr : s.nameEn}</strong></td>
@@ -485,7 +530,7 @@ export const AdminFinancialReportsTab: React.FC = () => {
     let csvContent = "data:text/csv;charset=utf-8,";
     csvContent += "Service Name,Platform,Orders Count,Gross Sales USD,Provider Cost USD,Net Profit USD,Profit Margin %\n";
 
-    filteredServices.forEach((s: any) => {
+    effectiveTopServices.forEach((s: any) => {
       const name = isAr ? s.nameAr.replace(/,/g, '') : s.nameEn.replace(/,/g, '');
       csvContent += `"${name}",${s.platform},${s.ordersCount},${s.grossSales},${s.providerCost},${s.netProfit},${s.marginPct}%\n`;
     });
@@ -798,7 +843,7 @@ export const AdminFinancialReportsTab: React.FC = () => {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={PLATFORM_REVENUE_DISTRIBUTION}
+                  data={effectivePlatformData}
                   cx="50%"
                   cy="50%"
                   innerRadius={50}
@@ -806,7 +851,7 @@ export const AdminFinancialReportsTab: React.FC = () => {
                   paddingAngle={4}
                   dataKey="value"
                 >
-                  {PLATFORM_REVENUE_DISTRIBUTION.map((entry, index) => (
+                  {effectivePlatformData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
@@ -819,7 +864,7 @@ export const AdminFinancialReportsTab: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-2 gap-2 text-xs font-bold pt-2 border-t border-slate-100 dark:border-slate-800">
-            {PLATFORM_REVENUE_DISTRIBUTION.map((item) => (
+            {effectivePlatformData.map((item) => (
               <div key={item.name} className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
                 <span className="truncate text-slate-700 dark:text-slate-300">{isAr ? item.nameAr : item.name}</span>
@@ -925,7 +970,7 @@ export const AdminFinancialReportsTab: React.FC = () => {
           </div>
           
           <span className="text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-xl">
-            {filteredServices.length} {isAr ? 'خدمة معروضة' : 'services shown'}
+            {effectiveTopServices.length} {isAr ? 'خدمة معروضة' : 'services shown'}
           </span>
         </div>
 
@@ -944,7 +989,7 @@ export const AdminFinancialReportsTab: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
-              {filteredServices.map((service, index) => (
+              {effectiveTopServices.map((service, index) => (
                 <tr key={service.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                   <td className="py-3 px-3 text-slate-400 font-bold">
                     {index + 1}

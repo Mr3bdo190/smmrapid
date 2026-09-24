@@ -1,0 +1,7 @@
+{
+  "name": "SMM Rapid",
+  "description": "منصة خدمات التواصل الاجتماعي الرائدة لزيادة المتابعين والتفاعل بسرعة فائقة وأسعار تنافسية ولوحة تحكم متكاملة.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
